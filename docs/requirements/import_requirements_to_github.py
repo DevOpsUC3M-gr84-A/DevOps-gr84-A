@@ -6,7 +6,7 @@ from collections import defaultdict
 
 # CONFIGURACIÓN DE GITHUB
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_OWNER = "bherranz"
+REPO_OWNER = "DevOpsUC3M-gr84-A"
 REPO_NAME = "DevOps-gr84-A"
 HEADERS = {
     "Authorization": f"token {GITHUB_TOKEN}",
