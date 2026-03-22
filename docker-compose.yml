@@ -1,24 +1,37 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # 1. Servicio del Backend API
+  # Servicio del Backend API
   backend:
-    # 1.1. Ruta y configuración de construcción
-    build: 
+    build:
       context: ./newsradar_api
       dockerfile: Dockerfile
-    # 1.2. Nombre de la imagen
     image: newsradar_backend_image
-    # 1.3. Nombre del contenedor
     container_name: newsradar_backend_container
-    # 1.4. Mapeo de puertos para poder acceder desde fuera (Host:Contenedor)
     ports:
       - "8000:8000"
-    # 1.5. Variables de entorno
     environment:
       - ENVIRONMENT=development
-    # 1.6. Volúmenes: Sincroniza el código local con el del contenedor en tiempo real
+      - DATABASE_URL=postgresql://postgres:devops2026@db:5432/newsradar
     volumes:
       - ./newsradar_api/app:/app/app
-    # 1.7. Política de reinicio
     restart: unless-stopped
+    depends_on:
+      - db
+
+  # Servicio de Base de Datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: newsradar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devops2026
+      POSTGRES_DB: newsradar
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
