@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from newsradar_api.app.models.user import User
+from newsradar_api.app.models.user import User, UserRole
 
 
 def is_verification_expired(user: User) -> bool:
@@ -38,3 +38,15 @@ def verify_user_email(user: User, db: Session) -> tuple[bool, str]:
     db.commit()
     db.refresh(user)
     return True, "Email verificado con éxito."
+
+
+def update_user_role(db: Session, user_id: int, new_role: UserRole) -> bool:
+    """Permite al administrador asignar un nuevo rol a un usuario existente."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return False
+
+    user.role = new_role
+    db.commit()
+    db.refresh(user)
+    return True
