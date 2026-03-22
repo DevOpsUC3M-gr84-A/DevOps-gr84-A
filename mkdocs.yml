@@ -1,0 +1,36 @@
+# 1. Información General del Sitio
+site_name: Proyecto Podcastify # Adaptado al ejemplo de la P5, cámbialo a NEWSRADAR si lo prefieres
+site_description: Documentación técnica y de requisitos del proyecto DevOps-gr84-A
+site_author: Equipo DevOps-gr84-A
+use_directory_urls: false
+
+# 2. Configuración del Tema Visual
+theme:
+  name: material
+  language: es
+  palette:
+    primary: indigo
+    accent: deep purple
+
+# 3. Estructura del Menú de Navegación
+nav:
+  - Inicio: index.md
+  - Requisitos: spec.md
+  - Arquitectura (ADRs): 
+    - ADR-001 (5 Capas): ADRs/ADR-001-arquitectura-5-capas.md
+  - Trazabilidad de IA: prompts.md
+
+# 4. Plugins
+plugins:
+  - search
+
+# 5. Extensiones Markdown Avanzadas
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      check_paths: true
+      base_path: docs
