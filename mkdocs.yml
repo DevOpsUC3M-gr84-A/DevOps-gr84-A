@@ -1,5 +1,5 @@
 # 1. Información General del Sitio
-site_name: Proyecto Podcastify # Adaptado al ejemplo de la P5, cámbialo a NEWSRADAR si lo prefieres
+site_name: NEWSRADAR
 site_description: Documentación técnica y de requisitos del proyecto DevOps-gr84-A
 site_author: Equipo DevOps-gr84-A
 use_directory_urls: false
@@ -18,6 +18,12 @@ nav:
   - Requisitos: spec.md
   - Arquitectura (ADRs): 
     - ADR-001 (5 Capas): ADRs/ADR-001-arquitectura-5-capas.md
+    - ADR-002 (Docker): ADRs/ADR-002-docker.md
+    - ADR-003 (CI Actions): ADRs/ADR-003-ci-actions.md
+    - ADR-004 (MkDocs): ADRs/ADR-004-mkdocs.md
+    - ADR-005 (Estrategia de Ramas): ADRs/ADR-005-estrategia-ramas.md
+    - ADR-006 (API REST y Usuarios): ADRs/ADR-006-api-rest-usuarios.md
+    - ADR-007 (SonarCloud): ADRs/ADR-007-sonarcloud.md
   - Trazabilidad de IA: prompts.md
 
 # 4. Plugins
