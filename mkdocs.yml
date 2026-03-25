@@ -21,9 +21,10 @@ nav:
     - ADR-002 (Docker): ADRs/ADR-002-docker.md
     - ADR-003 (CI Actions): ADRs/ADR-003-ci-actions.md
     - ADR-004 (MkDocs): ADRs/ADR-004-mkdocs.md
-    - ADR-005 (Estrategia de Ramas): ADRs/ADR-005-estrategia-ramas.md
+    - ADR-005 (Estrategia Ramas): ADRs/ADR-005-estrategia-ramas.md
     - ADR-006 (API REST y Usuarios): ADRs/ADR-006-api-rest-usuarios.md
     - ADR-007 (SonarCloud): ADRs/ADR-007-sonarcloud.md
+    - ADR-008 (Seed RSS): ADRs/ADR-008-seed-datos-rss.md
   - Trazabilidad de IA: prompts.md
 
 # 4. Plugins
