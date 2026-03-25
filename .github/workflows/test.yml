@@ -41,7 +41,7 @@ jobs:
         pytest --cov=newsradar_api/app --cov-report=xml --cov-report=html --cov-report=term-missing
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         files: ./coverage.xml
         flags: unittests
@@ -50,7 +50,7 @@ jobs:
     
     - name: Archive coverage reports
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-report-${{ matrix.python-version }}
         path: htmlcov/
@@ -64,5 +64,5 @@ jobs:
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: '✅ Tests completed! Check the workflow logs for details.'
+            body: 'Tests completed! Check the workflow logs for details.'
           })
