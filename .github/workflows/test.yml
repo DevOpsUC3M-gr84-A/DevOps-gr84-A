@@ -54,15 +54,3 @@ jobs:
       with:
         name: coverage-report-${{ matrix.python-version }}
         path: htmlcov/
-    
-    - name: Comment PR with test results
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: 'Tests completed! Check the workflow logs for details.'
-          })
