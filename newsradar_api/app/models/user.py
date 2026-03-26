@@ -3,7 +3,7 @@
 import enum
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
 from sqlalchemy.sql import func
-from newsradar_api.app.database.database import Base
+from app.database.database import Base
 
 
 class UserRole(str, enum.Enum):
