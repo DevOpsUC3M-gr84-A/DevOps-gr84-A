@@ -48,7 +48,7 @@ jobs:
       # Paso 5: Ejecución de pruebas automatizadas con generación de cobertura
       - name: Run unit tests (Pytest) with coverage report
         run: |
-          pytest newsradar_api/app --cov=newsradar_api/app --cov-report=xml || true
+          pytest tests/ --cov=newsradar_api/app --cov-report=xml || true
       
       # Paso 6: Análisis de calidad y métricas (SonarCloud)
       - name: Run SonarCloud Scan
