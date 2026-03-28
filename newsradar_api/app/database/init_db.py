@@ -7,7 +7,7 @@ import os
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.database.database import SessionLocal, engine, Base
-from newsradar_api.app.models.user import User, UserRole
+from app.models.user import User, UserRole
 
 # Configuración de passlib para generar hashes con bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
