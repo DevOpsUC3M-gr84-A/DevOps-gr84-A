@@ -7,35 +7,26 @@ from app.utils.deps import get_current_user
 from app.core.iptc_categories import IPTC_FIRST_LEVEL, VALID_IPTC_CODES
 
 
-categories_router = APIRouter()
-API_PREFIX = "/api/v1"
+categories_router = APIRouter(prefix="/api/v1")
 
-# Alias para no repetir Annotated en cada función
 CurrentUser = Annotated[UserInDB, Depends(get_current_user)]
 
 
-@categories_router.get(
-    f"{API_PREFIX}/iptc-categories",
-    tags=["categories"],
-)
+@categories_router.get("/iptc-categories", tags=["categories"])
 def list_iptc_categories():
     return [{"code": code, "label": label} for code, label in IPTC_FIRST_LEVEL.items()]
 
 
-@categories_router.get(
-    f"{API_PREFIX}/categories",
-    response_model=List[Category],
-    tags=["categories"],
-)
+@categories_router.get("/categories", tags=["categories"])
 def list_categories(_: CurrentUser) -> List[Category]:
     return list(categories_store.values())
 
 
 @categories_router.post(
-    f"{API_PREFIX}/categories",
-    response_model=Category,
+    "/categories",
     status_code=201,
     tags=["categories"],
+    responses={422: {"description": "Código IPTC no válido"}},
 )
 def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
     if payload.iptc_code is not None and payload.iptc_code not in VALID_IPTC_CODES:
@@ -46,11 +37,7 @@ def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
     return category
 
 
-@categories_router.get(
-    f"{API_PREFIX}/categories/{{category_id}}",
-    response_model=Category,
-    tags=["categories"],
-)
+@categories_router.get("/categories/{category_id}", tags=["categories"])
 def get_category(category_id: int, _: CurrentUser) -> Category:
     category = categories_store.get(category_id)
     if not category:
@@ -59,9 +46,9 @@ def get_category(category_id: int, _: CurrentUser) -> Category:
 
 
 @categories_router.put(
-    f"{API_PREFIX}/categories/{{category_id}}",
-    response_model=Category,
+    "/categories/{category_id}",
     tags=["categories"],
+    responses={422: {"description": "Código IPTC no válido"}},
 )
 def update_category(
     category_id: int,
@@ -79,9 +66,9 @@ def update_category(
 
 
 @categories_router.delete(
-    f"{API_PREFIX}/categories/{{category_id}}",
+    "/categories/{category_id}",
     status_code=204,
-    response_model=None,
+    response_model=None, 
     response_class=Response,
     tags=["categories"],
 )
