@@ -16,30 +16,37 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. Convertimos el string "IA, chips, robots" en un array real: ["IA", "chips", "robots"]
+    // Convertir string en un array real
     const descriptoresArray = descriptors
       .split(',')
       .map(palabra => palabra.trim())
       .filter(palabra => palabra !== '');
 
-    // 2. Preparamos el payload exacto que pide Pydantic en router.py
+    // Preparar payload
     const payload = {
       name: name,
       descriptors: descriptoresArray,
-      cron_expression: "0 * * * *" // Valor por defecto obligatorio para que no falle. El RF01 ya lo cambiará.
+      cron_expression: "0 * * * *" // Valor por defecto 
     };
 
+    // Obtener el token y el ID del usuario logueado desde el localStorage
+    const token = localStorage.getItem('token');
+    const userIdStr = localStorage.getItem('userId');
+    const userId = userIdStr ? parseInt(userIdStr, 10) : null;
+
+    // Validación de una sesión activa antes de enviar nada
+    if (!userId || !token) {
+      alert("No estás logueado o falta tu ID. Por favor, inicia sesión.");
+      return;
+    }
+
     try {
-      // OJO: Asumo que el user_id es 1 (el admin inicial) para esta prueba. 
-      // En el futuro deberías coger el ID del usuario logueado.
-      const userId = 1; 
-      
+      // Enviar la petición con el ID dinámico y el token de autorización
       const response = await fetch(`http://localhost:8000/api/v1/users/${userId}/alerts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Descomenta esto y ajusta cómo guardáis el token si te da un error 401 Unauthorized
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify(payload)
       });
@@ -50,13 +57,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
       console.log("¡Alerta creada con éxito!");
       
+      // Limpiar el formulario y cerrar el modal
       onSubmit(payload);
       setName('');
       setDescriptors('');
       
     } catch (error) {
       console.error("Hubo un problema de conexión:", error);
-      alert("No se pudo crear la alerta. Revisa tu backend.");
+      alert("No se pudo crear la alerta. Revisa tu backend o tu conexión.");
     }
   };
 
