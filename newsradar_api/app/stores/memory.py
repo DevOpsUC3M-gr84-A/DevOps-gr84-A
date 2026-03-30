@@ -5,9 +5,13 @@ from app.schemas.user import UserInDB
 from app.schemas.roles import Role
 from app.schemas.alert import Alert
 from app.schemas.notification import Notification
+from app.schemas.category import Category
+from app.schemas.rss import RSSChannel
 
 users_store: Dict[int, UserInDB] = {}
 active_tokens: Dict[str, int] = {}
 roles_store: Dict[int, Role] = {}
 alerts_store: Dict[int, Alert] = {}
+categories_store: Dict[int, Category] = {}
 notifications_store: Dict[int, Notification] = {}
+rss_channels_store: Dict[int, RSSChannel] = {}

@@ -11,10 +11,16 @@ from app.schemas.roles import Role
 from app.stores.memory import users_store, roles_store
 from app.schemas.alert import Alert
 from app.schemas.user import UserInDB
-from app.schemas.notification import (
-    Notification,
-    NotificationCreate,
-    NotificationUpdate,
+from app.schemas.notification import Notification
+from app.schemas.rss import RSSChannel, RSSChannelCreate, RSSChannelUpdate
+
+from app.stores.memory import (
+    users_store,
+    roles_store,
+    alerts_store,
+    categories_store,
+    notifications_store,
+    rss_channels_store,
 )
 
 from app.utils.user_utils import ensure_role_ids_exist, sanitize_user
@@ -23,12 +29,16 @@ from .routes.auth import api_auth_router
 from .routes.users import users_router
 from .routes.roles import roles_router
 from .routes.alerts import api_alerts_router
+from .routes.notifications import notifications_router
+from .routes.categories import categories_router
 
 api_router = APIRouter()
 api_router.include_router(api_auth_router)
 api_router.include_router(users_router)
 api_router.include_router(roles_router)
 api_router.include_router(api_alerts_router)
+api_router.include_router(notifications_router)
+api_router.include_router(categories_router)
 
 API_PREFIX = "/api/v1"
 security = HTTPBearer(auto_error=False)
@@ -37,24 +47,6 @@ security = HTTPBearer(auto_error=False)
 class Metric(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     value: float
-
-
-class CategoryBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=120)
-    source: str = Field(default="IPTC", pattern="^IPTC$")
-
-
-class CategoryCreate(CategoryBase):
-    pass
-
-
-class CategoryUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=120)
-    source: Optional[str] = Field(None, pattern="^IPTC$")
-
-
-class Category(CategoryBase):
-    id: int
 
 
 class InformationSourceBase(BaseModel):
@@ -75,25 +67,6 @@ class InformationSource(InformationSourceBase):
     id: int
 
 
-class RSSChannelBase(BaseModel):
-    url: HttpUrl
-    category_id: int
-
-
-class RSSChannelCreate(RSSChannelBase):
-    pass
-
-
-class RSSChannelUpdate(BaseModel):
-    url: Optional[HttpUrl] = None
-    category_id: Optional[int] = None
-
-
-class RSSChannel(RSSChannelBase):
-    id: int
-    information_source_id: int
-
-
 class StatsBase(BaseModel):
     metrics: List[Metric] = Field(default_factory=list)
 
@@ -110,12 +83,7 @@ class Stats(StatsBase):
     id: int
 
 
-roles_store: Dict[int, Role] = {}
-alerts_store: Dict[int, Alert] = {}
-categories_store: Dict[int, Category] = {}
-notifications_store: Dict[int, Notification] = {}
 information_sources_store: Dict[int, InformationSource] = {}
-rss_channels_store: Dict[int, RSSChannel] = {}
 stats_store: Dict[int, Stats] = {}
 
 counters = {
@@ -210,163 +178,6 @@ def on_startup() -> None:
 @api_router.get(f"{API_PREFIX}/health", tags=["system"])
 def health() -> dict:
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
-
-
-@api_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications",
-    response_model=List[Notification],
-    tags=["notifications"],
-)
-def list_alert_notifications(
-    user_id: int,
-    alert_id: int,
-    _: UserInDB = Depends(get_current_user),
-) -> List[Notification]:
-    ensure_alert_for_user(user_id, alert_id)
-    return [item for item in notifications_store.values() if item.alert_id == alert_id]
-
-
-@api_router.post(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications",
-    response_model=Notification,
-    status_code=201,
-    tags=["notifications"],
-)
-def create_alert_notification(
-    user_id: int,
-    alert_id: int,
-    payload: NotificationCreate,
-    _: UserInDB = Depends(get_current_user),
-) -> Notification:
-    ensure_alert_for_user(user_id, alert_id)
-    notification_id = next_id("notifications")
-    notification = Notification(
-        id=notification_id, alert_id=alert_id, **payload.model_dump()
-    )
-    notifications_store[notification_id] = notification
-    return notification
-
-
-@api_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
-    response_model=Notification,
-    tags=["notifications"],
-)
-def get_alert_notification(
-    user_id: int,
-    alert_id: int,
-    notification_id: int,
-    _: UserInDB = Depends(get_current_user),
-) -> Notification:
-    ensure_alert_for_user(user_id, alert_id)
-    return ensure_notification_for_alert(alert_id, notification_id)
-
-
-@api_router.put(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
-    response_model=Notification,
-    tags=["notifications"],
-)
-def update_alert_notification(
-    user_id: int,
-    alert_id: int,
-    notification_id: int,
-    payload: NotificationUpdate,
-    _: UserInDB = Depends(get_current_user),
-) -> Notification:
-    ensure_alert_for_user(user_id, alert_id)
-    notification = ensure_notification_for_alert(alert_id, notification_id)
-    updated = notification.model_copy(update=payload.model_dump(exclude_unset=True))
-    notifications_store[notification_id] = updated
-    return updated
-
-
-@api_router.delete(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
-    status_code=204,
-    response_model=None,
-    response_class=Response,
-    tags=["notifications"],
-)
-def delete_alert_notification(
-    user_id: int,
-    alert_id: int,
-    notification_id: int,
-    _: UserInDB = Depends(get_current_user),
-) -> None:
-    ensure_alert_for_user(user_id, alert_id)
-    ensure_notification_for_alert(alert_id, notification_id)
-    notifications_store.pop(notification_id, None)
-
-
-@api_router.get(
-    f"{API_PREFIX}/categories", response_model=List[Category], tags=["categories"]
-)
-def list_categories(_: UserInDB = Depends(get_current_user)) -> List[Category]:
-    return list(categories_store.values())
-
-
-@api_router.post(
-    f"{API_PREFIX}/categories",
-    response_model=Category,
-    status_code=201,
-    tags=["categories"],
-)
-def create_category(
-    payload: CategoryCreate, _: UserInDB = Depends(get_current_user)
-) -> Category:
-    category_id = next_id("categories")
-    category = Category(id=category_id, **payload.model_dump())
-    categories_store[category_id] = category
-    return category
-
-
-@api_router.get(
-    f"{API_PREFIX}/categories/{{category_id}}",
-    response_model=Category,
-    tags=["categories"],
-)
-def get_category(category_id: int, _: UserInDB = Depends(get_current_user)) -> Category:
-    category = categories_store.get(category_id)
-    if not category:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    return category
-
-
-@api_router.put(
-    f"{API_PREFIX}/categories/{{category_id}}",
-    response_model=Category,
-    tags=["categories"],
-)
-def update_category(
-    category_id: int, payload: CategoryUpdate, _: UserInDB = Depends(get_current_user)
-) -> Category:
-    category = categories_store.get(category_id)
-    if not category:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    updated = category.model_copy(update=payload.model_dump(exclude_unset=True))
-    categories_store[category_id] = updated
-    return updated
-
-
-@api_router.delete(
-    f"{API_PREFIX}/categories/{{category_id}}",
-    status_code=204,
-    response_model=None,
-    response_class=Response,
-    tags=["categories"],
-)
-def delete_category(category_id: int, _: UserInDB = Depends(get_current_user)) -> None:
-    if category_id not in categories_store:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
-
-    for channel in rss_channels_store.values():
-        if channel.category_id == category_id:
-            raise HTTPException(
-                status_code=409, detail="Categoría asociada a canales RSS"
-            )
-
-    categories_store.pop(category_id, None)
 
 
 @api_router.get(
