@@ -1,5 +1,4 @@
 import json
-import os
 from unittest.mock import patch
 # ¡ESTA ES LA LÍNEA MÁGICA QUE DA COBERTURA!
 from app.database.generate_rss_seed import generate_seed_data
