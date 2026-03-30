@@ -37,32 +37,3 @@ def fetch_and_filter_rss(rss_url: str, keywords: List[str]) -> List[Dict]:
             })
             
     return matched_news
-
-
-# =====================================================================
-# BLOQUE DE PRUEBA (Se ejecuta al lanzar el script directamente)
-# =====================================================================
-if __name__ == "__main__":
-    # URL de prueba real (Portada de El País)
-    test_url = "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada"
-    
-    # Palabras clave que queremos buscar (Simulando una Alerta)
-    test_keywords = ["gobierno", "españa", "tecnología", "madrid", "ley", "fútbol"]
-    
-    print("\n" + "="*55)
-    print("🚀 INICIANDO PRUEBA DE CONCEPTO (PoC) - GESTIÓN DE ALERTAS (RF01)")
-    print("="*55)
-    
-    try:
-        resultados = fetch_and_filter_rss(test_url, test_keywords)
-        
-        print(f"\n✅ ¡Éxito! Se encontraron {len(resultados)} noticias coincidentes:\n")
-        
-        for i, noticia in enumerate(resultados, 1):
-            print(f"{i}. {noticia['title']}")
-            print(f"   📅 Fecha: {noticia['published']}")
-            print(f"   🔗 Link: {noticia['link']}")
-            print("-" * 55)
-            
-    except Exception as e:
-        print(f"❌ Error durante la ejecución de la PoC: {e}")
