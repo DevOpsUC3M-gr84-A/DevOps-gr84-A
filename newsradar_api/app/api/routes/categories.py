@@ -1,18 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
-from typing import List
+from typing import Annotated, List
 from app.schemas.category import Category, CategoryCreate, CategoryUpdate
 from app.schemas.user import UserInDB
 from app.stores.memory import categories_store, rss_channels_store
 from app.utils.deps import get_current_user
+from app.core.iptc_categories import IPTC_FIRST_LEVEL, VALID_IPTC_CODES
+
 
 categories_router = APIRouter()
 API_PREFIX = "/api/v1"
 
+# Alias para no repetir Annotated en cada función
+CurrentUser = Annotated[UserInDB, Depends(get_current_user)]
+
 
 @categories_router.get(
-    f"{API_PREFIX}/categories", response_model=List[Category], tags=["categories"]
+    f"{API_PREFIX}/iptc-categories",
+    tags=["categories"],
 )
-def list_categories(_: UserInDB = Depends(get_current_user)) -> List[Category]:
+def list_iptc_categories():
+    return [{"code": code, "label": label} for code, label in IPTC_FIRST_LEVEL.items()]
+
+
+@categories_router.get(
+    f"{API_PREFIX}/categories",
+    response_model=List[Category],
+    tags=["categories"],
+)
+def list_categories(_: CurrentUser) -> List[Category]:
     return list(categories_store.values())
 
 
@@ -22,9 +37,9 @@ def list_categories(_: UserInDB = Depends(get_current_user)) -> List[Category]:
     status_code=201,
     tags=["categories"],
 )
-def create_category(
-    payload: CategoryCreate, _: UserInDB = Depends(get_current_user)
-) -> Category:
+def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
+    if payload.iptc_code is not None and payload.iptc_code not in VALID_IPTC_CODES:
+        raise HTTPException(status_code=422, detail="Código IPTC no válido")
     category_id = max(categories_store.keys(), default=0) + 1
     category = Category(id=category_id, **payload.model_dump())
     categories_store[category_id] = category
@@ -36,7 +51,7 @@ def create_category(
     response_model=Category,
     tags=["categories"],
 )
-def get_category(category_id: int, _: UserInDB = Depends(get_current_user)) -> Category:
+def get_category(category_id: int, _: CurrentUser) -> Category:
     category = categories_store.get(category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
@@ -49,11 +64,15 @@ def get_category(category_id: int, _: UserInDB = Depends(get_current_user)) -> C
     tags=["categories"],
 )
 def update_category(
-    category_id: int, payload: CategoryUpdate, _: UserInDB = Depends(get_current_user)
+    category_id: int,
+    payload: CategoryUpdate,
+    _: CurrentUser,
 ) -> Category:
     category = categories_store.get(category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    if payload.iptc_code is not None and payload.iptc_code not in VALID_IPTC_CODES:
+        raise HTTPException(status_code=422, detail="Código IPTC no válido")
     updated = category.model_copy(update=payload.model_dump(exclude_unset=True))
     categories_store[category_id] = updated
     return updated
@@ -66,7 +85,7 @@ def update_category(
     response_class=Response,
     tags=["categories"],
 )
-def delete_category(category_id: int, _: UserInDB = Depends(get_current_user)) -> None:
+def delete_category(category_id: int, _: CurrentUser) -> None:
     if category_id not in categories_store:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     for channel in rss_channels_store.values():
