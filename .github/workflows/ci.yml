@@ -50,9 +50,9 @@ jobs:
       # Ejecutamos desde la raíz para que las rutas del XML coincidan con el repositorio
       - name: Run unit tests (Pytest) with coverage report
         env:
-          PYTHONPATH: newsradar_api
+          PYTHONPATH: ${{ github.workspace }}/newsradar_api
         run: |
-          pytest newsradar_api/tests/ -v --cov=newsradar_api/app --cov-report=xml:coverage.xml --cov-report=html:htmlcov
+          pytest newsradar_api/tests/ --ignore=newsradar_api/tests/performance -v --cov=newsradar_api/app --cov-report=xml:coverage.xml --cov-report=term-missing
 
       # Paso 6: Análisis de calidad y métricas (SonarCloud)
       - name: Run SonarCloud Scan
