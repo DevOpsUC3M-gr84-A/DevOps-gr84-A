@@ -3,18 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr, Field, HttpUrl
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.security import HTTPBearer
+from pydantic import BaseModel, Field, HttpUrl
 
 from app.schemas.roles import Role
 from app.stores.memory import users_store, roles_store
-from app.schemas.alert import (
-    Alert,
-    AlertCreate,
-    AlertUpdate,
-)
-from app.schemas.user import User, UserInDB
+from app.schemas.alert import Alert
+from app.schemas.user import UserInDB
 from app.schemas.notification import (
     Notification,
     NotificationCreate,
@@ -26,11 +22,13 @@ from app.utils.deps import get_current_user
 from .routes.auth import api_auth_router
 from .routes.users import users_router
 from .routes.roles import roles_router
+from .routes.alerts import api_alerts_router
 
 api_router = APIRouter()
 api_router.include_router(api_auth_router)
 api_router.include_router(users_router)
 api_router.include_router(roles_router)
+api_router.include_router(api_alerts_router)
 
 API_PREFIX = "/api/v1"
 security = HTTPBearer(auto_error=False)
@@ -138,15 +136,6 @@ def next_id(counter_key: str) -> int:
     return value
 
 
-def ensure_role_ids_exist(role_ids: List[int]) -> None:
-    missing = [role_id for role_id in role_ids if role_id not in roles_store]
-    if missing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Roles no encontrados: {missing}",
-        )
-
-
 def ensure_user_exists(user_id: int) -> None:
     if user_id not in users_store:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -191,34 +180,6 @@ def ensure_rss_for_source(source_id: int, channel_id: int) -> RSSChannel:
     return channel
 
 
-def sanitize_user(user: UserInDB) -> User:
-    return User(
-        id=user.id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        organization=user.organization,
-        role_ids=user.role_ids,
-    )
-
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> UserInDB:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Token inválido o ausente")
-
-    user_id = active_tokens.get(credentials.credentials)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
-
-    user = users_store.get(user_id)
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuario inválido")
-
-    return user
-
-
 def create_seed_data() -> None:
     if roles_store:
         return
@@ -249,81 +210,6 @@ def on_startup() -> None:
 @api_router.get(f"{API_PREFIX}/health", tags=["system"])
 def health() -> dict:
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
-
-
-@api_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts",
-    response_model=List[Alert],
-    tags=["alerts"],
-)
-def list_user_alerts(
-    user_id: int, _: UserInDB = Depends(get_current_user)
-) -> List[Alert]:
-    ensure_user_exists(user_id)
-    return [alert for alert in alerts_store.values() if alert.user_id == user_id]
-
-
-@api_router.post(
-    f"{API_PREFIX}/users/{{user_id}}/alerts",
-    response_model=Alert,
-    status_code=201,
-    tags=["alerts"],
-)
-def create_user_alert(
-    user_id: int, payload: AlertCreate, _: UserInDB = Depends(get_current_user)
-) -> Alert:
-    ensure_user_exists(user_id)
-    alert_id = next_id("alerts")
-    alert = Alert(id=alert_id, user_id=user_id, **payload.model_dump())
-    alerts_store[alert_id] = alert
-    return alert
-
-
-@api_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}",
-    response_model=Alert,
-    tags=["alerts"],
-)
-def get_user_alert(
-    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_user)
-) -> Alert:
-    return ensure_alert_for_user(user_id, alert_id)
-
-
-@api_router.put(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}",
-    response_model=Alert,
-    tags=["alerts"],
-)
-def update_user_alert(
-    user_id: int,
-    alert_id: int,
-    payload: AlertUpdate,
-    _: UserInDB = Depends(get_current_user),
-) -> Alert:
-    alert = ensure_alert_for_user(user_id, alert_id)
-    updated = alert.model_copy(update=payload.model_dump(exclude_unset=True))
-    alerts_store[alert_id] = updated
-    return updated
-
-
-@api_router.delete(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}",
-    status_code=204,
-    response_model=None,
-    response_class=Response,
-    tags=["alerts"],
-)
-def delete_user_alert(
-    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_user)
-) -> None:
-    ensure_alert_for_user(user_id, alert_id)
-    notification_ids = [
-        n.id for n in notifications_store.values() if n.alert_id == alert_id
-    ]
-    for notification_id in notification_ids:
-        notifications_store.pop(notification_id, None)
-    alerts_store.pop(alert_id, None)
 
 
 @api_router.get(
