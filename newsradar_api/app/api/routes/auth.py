@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.schemas.user import UserCreate, User, UserInDB
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.stores.memory import users_store, active_tokens
-from ..router import sanitize_user
+from app.utils.user_utils import sanitize_user
 from app.utils.user_utils import ensure_role_ids_exist
 
 api_auth_router = APIRouter()
