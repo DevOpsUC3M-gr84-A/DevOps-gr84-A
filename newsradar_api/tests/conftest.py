@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 # Add newsradar_api directory to Python path for imports
-newsradar_path = Path(__file__).parent.parent / "newsradar_api"
+newsradar_path = Path(__file__).parent.parent
 if str(newsradar_path) not in sys.path:
     sys.path.insert(0, str(newsradar_path))
 
