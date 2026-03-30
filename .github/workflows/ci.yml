@@ -52,7 +52,7 @@ jobs:
         env:
           PYTHONPATH: newsradar_api
         run: |
-          pytest newsradar_api/tests/ --cov=newsradar_api/app --cov-report=xml:coverage.xml --cov-report=html:htmlcov
+          pytest newsradar_api/tests/ -v --cov=newsradar_api/app --cov-report=xml:coverage.xml --cov-report=html:htmlcov
 
       # Paso 6: Análisis de calidad y métricas (SonarCloud)
       - name: Run SonarCloud Scan
