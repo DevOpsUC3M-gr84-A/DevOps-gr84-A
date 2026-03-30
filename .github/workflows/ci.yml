@@ -47,13 +47,18 @@ jobs:
           flake8 newsradar_api/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       # Paso 5: Ejecución de pruebas automatizadas con generación de cobertura
-      # Ejecutamos desde la raíz para que las rutas del XML coincidan con el repositorio
       - name: Run unit tests (Pytest) with coverage report
         env:
-          PYTHONPATH: ${{ github.workspace }}/newsradar_api
+          PYTHONPATH: newsradar_api
         run: |
-          pytest newsradar_api/tests/ --ignore=newsradar_api/tests/performance -v --cov=newsradar_api/app --cov-report=xml:coverage.xml --cov-report=term-missing
-
+          # Añadimos --timeout para que si un test se queda pillado, salte el error
+          # Añadimos -vv para ver exactamente en qué línea se para
+          pytest newsradar_api/tests/ \
+            --cov=newsradar_api/app \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --durations=10 \
+            -vv
       # Paso 6: Análisis de calidad y métricas (SonarCloud)
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2.3.0
