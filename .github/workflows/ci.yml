@@ -1,30 +1,38 @@
+# 1. Nombre del pipeline
 name: Continuous Integration (CI)
 
+# 2. Disparadores (Triggers): Cuándo se ejecuta este pipeline
 on:
+  # 2.1. Al integrar código en la rama principal
   push:
     branches: ["main"]
+  # 2.2. Al abrir o actualizar una Pull Request hacia la rama principal
   pull_request:
     branches: ["main"]
 
+# 3. Definición de los trabajos (Jobs)
 jobs:
+  # 3.1. Trabajo de construcción y validación
   build-and-test:
+    # 3.1.1. Entorno de ejecución (Servidor virtual proporcionado por GitHub)
     runs-on: ubuntu-latest
 
+    # 3.1.2. Secuencia de pasos a ejecutar
     steps:
-      # Descargar el código del repositorio al servidor virtual
+      # Paso 1: Descargar el código del repositorio al servidor virtual
       - name: Checkout repository code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Configurar el entorno de ejecución
+      # Paso 2: Configurar el entorno de ejecución
       - name: Setup Python 3.11 environment
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: "pip" # Habilita la caché de dependencias para acelerar ejecuciones futuras
 
-      # Instalación de dependencias del proyecto y herramientas de QA
+      # Paso 3: Instalación de dependencias del proyecto y herramientas de QA
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -32,22 +40,26 @@ jobs:
           pip install -r newsradar_api/requirements-test.txt
           pip install flake8 pytest pytest-cov
 
-      # Análisis estático de código (Linting)
+      # Paso 4: Análisis estático de código (Linting)
       - name: Run static code analysis (Flake8)
         run: |
           flake8 newsradar_api/app --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 newsradar_api/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      # Ejecución de pruebas automatizadas con generación de cobertura
+      # Paso 5: Ejecución de pruebas automatizadas con generación de cobertura
+      # Se accede al directorio de la API, se ejecutan los tests y se mueven los reportes a la raíz
       - name: Run unit tests (Pytest) with coverage report
         env:
-          PYTHONPATH: newsradar_api
+          PYTHONPATH: .
         run: |
-          pytest newsradar_api/tests/unit/ newsradar_api/tests/integration/ --cov=app --cov-report=xml || true
+          cd newsradar_api
+          pytest tests/unit/ tests/integration/ --cov=app --cov-report=xml --cov-report=html || true
+          mv -f coverage.xml ../coverage.xml || true
+          mv -f htmlcov ../htmlcov || true
 
-      # Análisis de calidad y métricas (SonarCloud)
+      # Paso 6: Análisis de calidad y métricas (SonarCloud)
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Proporcionado automáticamente por GitHub
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # El secreto que configuraste en tu repositorio
