@@ -2,15 +2,25 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field, HttpUrl
 
-from app.schemas.auth import LoginRequest, TokenResponse
-from app.schemas.roles import Role, RoleCreate, RoleUpdate, RoleBase
+from app.schemas.roles import Role
 from app.stores.memory import users_store, roles_store
+from app.schemas.alert import (
+    Alert,
+    AlertCreate,
+    AlertUpdate,
+)
+from app.schemas.user import User, UserInDB
+from app.schemas.notification import (
+    Notification,
+    NotificationCreate,
+    NotificationUpdate,
+)
+
 from app.utils.user_utils import ensure_role_ids_exist, sanitize_user
 from app.utils.deps import get_current_user
 from .routes.auth import api_auth_router
@@ -31,79 +41,6 @@ class Metric(BaseModel):
     value: float
 
 
-class RoleBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-
-
-class RoleCreate(RoleBase):
-    pass
-
-
-class RoleUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-
-
-class Role(RoleBase):
-    id: int
-
-
-class UserBase(BaseModel):
-    email: EmailStr
-    first_name: str = Field(..., min_length=1, max_length=120)
-    last_name: str = Field(..., min_length=1, max_length=120)
-    organization: str = Field(..., min_length=1, max_length=180)
-    role_ids: List[int] = Field(default_factory=list)
-
-
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=128)
-
-
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    first_name: Optional[str] = Field(None, min_length=1, max_length=120)
-    last_name: Optional[str] = Field(None, min_length=1, max_length=120)
-    organization: Optional[str] = Field(None, min_length=1, max_length=180)
-    role_ids: Optional[List[int]] = None
-    password: Optional[str] = Field(None, min_length=6, max_length=128)
-
-
-class User(UserBase):
-    id: int
-
-
-class UserInDB(User):
-    password: str
-
-
-class AlertCategoryItem(BaseModel):
-    code: str = Field(..., min_length=1, max_length=60)
-    label: str = Field(..., min_length=1, max_length=120)
-
-
-class AlertBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=200)
-    descriptors: List[str] = Field(default_factory=list)
-    categories: List[AlertCategoryItem] = Field(default_factory=list)
-    cron_expression: str = Field(..., min_length=1, max_length=120)
-
-
-class AlertCreate(AlertBase):
-    pass
-
-
-class AlertUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    descriptors: Optional[List[str]] = None
-    categories: Optional[List[AlertCategoryItem]] = None
-    cron_expression: Optional[str] = Field(None, min_length=1, max_length=120)
-
-
-class Alert(AlertBase):
-    id: int
-    user_id: int
-
-
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     source: str = Field(default="IPTC", pattern="^IPTC$")
@@ -120,25 +57,6 @@ class CategoryUpdate(BaseModel):
 
 class Category(CategoryBase):
     id: int
-
-
-class NotificationBase(BaseModel):
-    timestamp: datetime
-    metrics: List[Metric] = Field(default_factory=list)
-
-
-class NotificationCreate(NotificationBase):
-    pass
-
-
-class NotificationUpdate(BaseModel):
-    timestamp: Optional[datetime] = None
-    metrics: Optional[List[Metric]] = None
-
-
-class Notification(NotificationBase):
-    id: int
-    alert_id: int
 
 
 class InformationSourceBase(BaseModel):
@@ -192,16 +110,6 @@ class StatsUpdate(BaseModel):
 
 class Stats(StatsBase):
     id: int
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
 
 
 roles_store: Dict[int, Role] = {}

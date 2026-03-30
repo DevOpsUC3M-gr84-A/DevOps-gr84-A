@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
 from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Response
 from app.schemas.user import User, UserCreate, UserUpdate, UserInDB
 from app.stores.memory import users_store, alerts_store, notifications_store
 from app.utils.user_utils import sanitize_user, ensure_role_ids_exist
