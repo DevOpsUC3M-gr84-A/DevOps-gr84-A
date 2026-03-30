@@ -9,15 +9,18 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field, HttpUrl
 
 from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.roles import Role, RoleCreate, RoleUpdate, RoleBase
 from app.stores.memory import users_store, roles_store
 from app.utils.user_utils import ensure_role_ids_exist, sanitize_user
+from app.utils.deps import get_current_user
+from .routes.auth import api_auth_router
+from .routes.users import users_router
+from .routes.roles import roles_router
 
 api_router = APIRouter()
-
-# Importar e incluir el submódulo de autenticación
-from .routes.auth import api_auth_router
-
 api_router.include_router(api_auth_router)
+api_router.include_router(users_router)
+api_router.include_router(roles_router)
 
 API_PREFIX = "/api/v1"
 security = HTTPBearer(auto_error=False)
