@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from typing import List
 from app.schemas.user import User, UserCreate, UserUpdate, UserInDB
-from app.stores.memory import users_store
+from app.stores.memory import users_store, alerts_store, notifications_store
 from app.utils.user_utils import sanitize_user, ensure_role_ids_exist
 from app.utils.deps import get_current_user
 
@@ -69,4 +69,17 @@ def update_user(
 def delete_user(user_id: int, _: UserInDB = Depends(get_current_user)) -> None:
     if user_id not in users_store:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Eliminar alertas y notificaciones asociadas al usuario (como en router.py)
+    alert_ids = [
+        alert.id for alert in alerts_store.values() if alert.user_id == user_id
+    ]
+    for alert_id in alert_ids:
+        notification_ids = [
+            n.id for n in notifications_store.values() if n.alert_id == alert_id
+        ]
+        for notification_id in notification_ids:
+            notifications_store.pop(notification_id, None)
+        alerts_store.pop(alert_id, None)
+
     users_store.pop(user_id, None)
