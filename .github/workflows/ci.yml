@@ -19,20 +19,26 @@ jobs:
 
     # 3.1.2. Secuencia de pasos a ejecutar
     steps:
+      # ==========================================
+      # FASE 1: PREPARACIÓN GENERAL
+      # ==========================================
       # Paso 1: Descargar el código del repositorio al servidor virtual
       - name: Checkout repository code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Paso 2: Configurar el entorno de ejecución
+      # ==========================================
+      # FASE 2: BACKEND (PYTHON / FASTAPI)
+      # ==========================================
+      # Paso 2: [Backend] Configurar el entorno de ejecución Python
       - name: Setup Python 3.11 environment
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip" # Habilita la caché de dependencias para acelerar ejecuciones futuras
 
-      # Paso 3: Instalación de dependencias del proyecto y herramientas de QA
+      # Paso 3: [Backend] Instalación de dependencias del proyecto y herramientas de QA
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -40,13 +46,13 @@ jobs:
           pip install -r newsradar_api/requirements-test.txt
           pip install flake8 pytest pytest-cov
 
-      # Paso 4: Análisis estático de código (Linting)
+      # Paso 4: [Backend] Análisis estático de código (Linting)
       - name: Run static code analysis (Flake8)
         run: |
           flake8 newsradar_api/app --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 newsradar_api/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      # Paso 5: Ejecución de pruebas automatizadas con generación de cobertura
+      # Paso 5: [Backend] Ejecución de pruebas automatizadas con generación de cobertura
       # Se accede al directorio de la API, se ejecutan los tests y se mueven los reportes a la raíz
       - name: Run unit tests (Pytest) with coverage report
         env:
@@ -57,7 +63,34 @@ jobs:
           mv -f coverage.xml ../coverage.xml || true
           mv -f htmlcov ../htmlcov || true
 
-      # Paso 6: Análisis de calidad y métricas (SonarCloud)
+      # ==========================================
+      # FASE 3: FRONTEND (NODE.JS / REACT)
+      # ==========================================
+      # Paso 6: [Frontend] Configurar el entorno Node.js
+      - name: Setup Node.js for Frontend
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ./newsradar_ui/package-lock.json
+
+      # Paso 7: [Frontend] Instalación de dependencias
+      - name: Install Frontend Dependencies
+        working-directory: ./newsradar_ui
+        run: npm ci
+
+      # Paso 8: [Frontend] Ejecución de pruebas con generación de cobertura
+      # El flag --coverage genera la carpeta /coverage con el lcov.info necesario para SonarCloud
+      - name: Run Frontend Tests with Coverage
+        working-directory: ./newsradar_ui
+        env:
+          CI: true
+        run: npm test -- --coverage --watchAll=false
+
+      # ==========================================
+      # FASE 4: ANÁLISIS DE CALIDAD UNIFICADO
+      # ==========================================
+      # Paso 9: Análisis conjunto de métricas (SonarCloud consolida Front y Back)
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
