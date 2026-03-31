@@ -1,5 +1,4 @@
 from fastapi import HTTPException, status, Depends
-from typing import Callable
 
 # Asumimos que más adelante tendrás una dependencia real que extrae al usuario actual
 # a partir del token JWT en la cabecera de la petición.
@@ -30,6 +29,6 @@ def get_current_gestor(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.GESTOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes los permisos necesarios (requiere rol de Gestor) para realizar esta acción.",
+            detail="No tienes los permisos necesarios (rol de Gestor) para realizar esta acción.",
         )
     return current_user
