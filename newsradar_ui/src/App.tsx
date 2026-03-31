@@ -26,17 +26,20 @@ function App() {
         <nav>
           <ul className="nav-links">
             <li>
-              <a href="#" className="nav-item">
+              {/* Cambiado href="#" por href="/" */}
+              <a href="/" className="nav-item">
                 <Radar size={20} /><span>Dashboard</span>
               </a>
             </li>
             <li>
-              <a href="#" className="nav-item active">
+              {/* Cambiado href="#" por href="/alertas" */}
+              <a href="/alertas" className="nav-item active">
                 <Bell size={20} /><span>Mis Alertas</span>
               </a>
             </li>
             <li>
-              <a href="#" className="nav-item">
+              {/* Cambiado href="#" por href="/configuracion" */}
+              <a href="/configuracion" className="nav-item">
                 <Settings size={20} /><span>Configuración</span>
               </a>
             </li>
