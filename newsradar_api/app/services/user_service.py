@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from newsradar_api.app.models.user import User, UserRole
+from app.models.user import User, UserRole
 
 
 def is_verification_expired(user: User) -> bool:

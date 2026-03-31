@@ -10,7 +10,6 @@ from app.stores.memory import notifications_store, alerts_store
 from app.utils.deps import get_current_user
 
 notifications_router = APIRouter()
-API_PREFIX = "/api/v1"
 
 
 def ensure_alert_for_user(user_id: int, alert_id: int):
@@ -32,7 +31,7 @@ def ensure_notification_for_alert(alert_id: int, notification_id: int):
 
 
 @notifications_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications",
+    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications",
     response_model=List[Notification],
     tags=["notifications"],
 )
@@ -44,7 +43,7 @@ def list_alert_notifications(
 
 
 @notifications_router.post(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications",
+    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications",
     response_model=Notification,
     status_code=201,
     tags=["notifications"],
@@ -65,7 +64,7 @@ def create_alert_notification(
 
 
 @notifications_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
+    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
     response_model=Notification,
     tags=["notifications"],
 )
@@ -80,7 +79,7 @@ def get_alert_notification(
 
 
 @notifications_router.put(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
+    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
     response_model=Notification,
     tags=["notifications"],
 )
@@ -99,7 +98,7 @@ def update_alert_notification(
 
 
 @notifications_router.delete(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
+    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
     status_code=204,
     response_model=None,
     response_class=Response,

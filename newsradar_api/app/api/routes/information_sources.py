@@ -10,11 +10,10 @@ from app.stores.memory import information_sources_store, rss_channels_store
 from app.utils.deps import get_current_user
 
 information_sources_router = APIRouter()
-API_PREFIX = "/api/v1"
 
 
 @information_sources_router.get(
-    f"{API_PREFIX}/information-sources",
+    "/information-sources",
     response_model=List[InformationSource],
     tags=["information-sources"],
 )
@@ -25,7 +24,7 @@ def list_information_sources(
 
 
 @information_sources_router.post(
-    f"{API_PREFIX}/information-sources",
+    "/information-sources",
     response_model=InformationSource,
     status_code=201,
     tags=["information-sources"],
@@ -40,7 +39,7 @@ def create_information_source(
 
 
 @information_sources_router.get(
-    f"{API_PREFIX}/information-sources/{{source_id}}",
+    f"/information-sources/{{source_id}}",
     response_model=InformationSource,
     tags=["information-sources"],
 )
@@ -56,7 +55,7 @@ def get_information_source(
 
 
 @information_sources_router.put(
-    f"{API_PREFIX}/information-sources/{{source_id}}",
+    f"/information-sources/{{source_id}}",
     response_model=InformationSource,
     tags=["information-sources"],
 )
@@ -76,7 +75,7 @@ def update_information_source(
 
 
 @information_sources_router.delete(
-    f"{API_PREFIX}/information-sources/{{source_id}}",
+    f"/information-sources/{{source_id}}",
     status_code=204,
     response_model=None,
     response_class=Response,

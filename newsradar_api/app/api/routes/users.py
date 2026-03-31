@@ -7,17 +7,13 @@ from app.utils.deps import get_current_user
 
 users_router = APIRouter()
 
-API_PREFIX = "/api/v1"
 
-
-@users_router.get(f"{API_PREFIX}/users", response_model=List[User], tags=["users"])
+@users_router.get("/users", response_model=List[User], tags=["users"])
 def list_users(_: UserInDB = Depends(get_current_user)) -> List[User]:
     return [sanitize_user(user) for user in users_store.values()]
 
 
-@users_router.post(
-    f"{API_PREFIX}/users", response_model=User, status_code=201, tags=["users"]
-)
+@users_router.post("/users", response_model=User, status_code=201, tags=["users"])
 def create_user(payload: UserCreate, _: UserInDB = Depends(get_current_user)) -> User:
     if any(user.email == payload.email for user in users_store.values()):
         raise HTTPException(status_code=409, detail="El email ya está registrado")
@@ -28,9 +24,7 @@ def create_user(payload: UserCreate, _: UserInDB = Depends(get_current_user)) ->
     return sanitize_user(user_db)
 
 
-@users_router.get(
-    f"{API_PREFIX}/users/{{user_id}}", response_model=User, tags=["users"]
-)
+@users_router.get("/users/{user_id}", response_model=User, tags=["users"])
 def get_user(user_id: int, _: UserInDB = Depends(get_current_user)) -> User:
     user = users_store.get(user_id)
     if not user:
@@ -38,9 +32,7 @@ def get_user(user_id: int, _: UserInDB = Depends(get_current_user)) -> User:
     return sanitize_user(user)
 
 
-@users_router.put(
-    f"{API_PREFIX}/users/{{user_id}}", response_model=User, tags=["users"]
-)
+@users_router.put(f"/users/{{user_id}}", response_model=User, tags=["users"])
 def update_user(
     user_id: int, payload: UserUpdate, _: UserInDB = Depends(get_current_user)
 ) -> User:
@@ -60,7 +52,7 @@ def update_user(
 
 
 @users_router.delete(
-    f"{API_PREFIX}/users/{{user_id}}",
+    f"/users/{{user_id}}",
     status_code=204,
     response_model=None,
     response_class=Response,

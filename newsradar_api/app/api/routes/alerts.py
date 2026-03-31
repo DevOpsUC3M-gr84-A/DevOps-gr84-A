@@ -12,11 +12,10 @@ def ensure_user_exists(user_id: int, users_store):
 
 
 api_alerts_router = APIRouter()
-API_PREFIX = "/api/v1"
 
 
 @api_alerts_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts",
+    "/users/{user_id}/alerts",
     response_model=List[Alert],
     tags=["alerts"],
 )
@@ -30,7 +29,7 @@ def list_user_alerts(
 
 
 @api_alerts_router.post(
-    f"{API_PREFIX}/users/{{user_id}}/alerts",
+    "/users/{user_id}/alerts",
     response_model=Alert,
     status_code=201,
     tags=["alerts"],
@@ -45,7 +44,7 @@ def create_user_alert(
 
 
 @api_alerts_router.get(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}",
+    f"/users/{{user_id}}/alerts/{{alert_id}}",
     response_model=Alert,
     tags=["alerts"],
 )
@@ -61,7 +60,7 @@ def get_user_alert(
 
 
 @api_alerts_router.put(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}",
+    f"/users/{{user_id}}/alerts/{{alert_id}}",
     response_model=Alert,
     tags=["alerts"],
 )
@@ -82,7 +81,7 @@ def update_user_alert(
 
 
 @api_alerts_router.delete(
-    f"{API_PREFIX}/users/{{user_id}}/alerts/{{alert_id}}",
+    f"/users/{{user_id}}/alerts/{{alert_id}}",
     status_code=204,
     response_model=None,
     response_class=Response,

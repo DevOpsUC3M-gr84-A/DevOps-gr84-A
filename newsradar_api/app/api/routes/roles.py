@@ -7,17 +7,13 @@ from app.schemas.roles import Role, RoleCreate, RoleUpdate
 
 roles_router = APIRouter()
 
-API_PREFIX = "/api/v1"
 
-
-@roles_router.get(f"{API_PREFIX}/roles", response_model=List[Role], tags=["roles"])
+@roles_router.get("/roles", response_model=List[Role], tags=["roles"])
 def list_roles(_: UserInDB = Depends(get_current_user)) -> List[Role]:
     return list(roles_store.values())
 
 
-@roles_router.post(
-    f"{API_PREFIX}/roles", response_model=Role, status_code=201, tags=["roles"]
-)
+@roles_router.post("/roles", response_model=Role, status_code=201, tags=["roles"])
 def create_role(payload: RoleCreate, _: UserInDB = Depends(get_current_user)) -> Role:
     role_id = max(roles_store.keys(), default=0) + 1
     role = Role(id=role_id, **payload.model_dump())
@@ -25,9 +21,7 @@ def create_role(payload: RoleCreate, _: UserInDB = Depends(get_current_user)) ->
     return role
 
 
-@roles_router.get(
-    f"{API_PREFIX}/roles/{{role_id}}", response_model=Role, tags=["roles"]
-)
+@roles_router.get("/roles/{role_id}", response_model=Role, tags=["roles"])
 def get_role(role_id: int, _: UserInDB = Depends(get_current_user)) -> Role:
     role = roles_store.get(role_id)
     if not role:
@@ -35,9 +29,7 @@ def get_role(role_id: int, _: UserInDB = Depends(get_current_user)) -> Role:
     return role
 
 
-@roles_router.put(
-    f"{API_PREFIX}/roles/{{role_id}}", response_model=Role, tags=["roles"]
-)
+@roles_router.put("/roles/{role_id}", response_model=Role, tags=["roles"])
 def update_role(
     role_id: int, payload: RoleUpdate, _: UserInDB = Depends(get_current_user)
 ) -> Role:
@@ -50,7 +42,7 @@ def update_role(
 
 
 @roles_router.delete(
-    f"{API_PREFIX}/roles/{{role_id}}",
+    f"/roles/{{role_id}}",
     status_code=204,
     response_model=None,
     response_class=Response,
