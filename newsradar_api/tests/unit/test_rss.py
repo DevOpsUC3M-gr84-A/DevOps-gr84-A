@@ -22,6 +22,7 @@ class TestRssService:
             media_name="El País",
             url="https://elpais.com/rss/technology.xml",
             iptc_category=CategoriaIPTC.TECNOLOGIA,
+            category_id=1,
         )
         # Simula el objeto devuelto por la BD
         db.add.return_value = None
@@ -56,6 +57,7 @@ class TestRssSchemas:
             "media_name": "El Mundo",
             "url": "https://elmundo.es/rss.xml",
             "iptc_category": CategoriaIPTC.ECONOMIA,
+            "category_id": 2,
         }
         schema = RSSChannelCreate(**data)
         assert schema.media_name == "El Mundo"
@@ -68,6 +70,7 @@ class TestRssSchemas:
             "media_name": "BBC",
             "url": "https://bbc.com/rss.xml",
             "iptc_category": CategoriaIPTC.CIENCIA,
+            "category_id": 3,
             "id": 10,
             "created_at": datetime.now(),
         }
