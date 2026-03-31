@@ -1,7 +1,7 @@
 """Este módulo define los modelos de base de datos relacionados con los canales RSS."""
 
 import enum
-from sqlalchemy import Column, Integer, String, Enum, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, Enum, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.database.database import Base
 
@@ -26,8 +26,27 @@ class RSSChannel(Base):
     __tablename__ = "rss_channels"
 
     id = Column(Integer, primary_key=True, index=True)
+    information_source_id = Column(
+        Integer,
+        ForeignKey("information_sources.id"),
+        nullable=True,
+        index=True,
+    )
     media_name = Column(String, index=True, nullable=False)
     url = Column(String, unique=True, index=True, nullable=False)
+    category_id = Column(Integer, nullable=True)
     iptc_category = Column(Enum(CategoriaIPTC), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
 
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class InformationSource(Base):
+    """Modelo de base de datos para las fuentes de informacion."""
+
+    __tablename__ = "information_sources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False, unique=True, index=True)
+    url = Column(String(1000), nullable=False, unique=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

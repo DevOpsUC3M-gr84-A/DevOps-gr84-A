@@ -1,12 +1,17 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.database.database import get_db
+from app.models.rss import InformationSource as DBInformationSource
+from app.models.rss import RSSChannel as DBRSSChannel
 from app.schemas.information_sources import (
     InformationSource,
     InformationSourceCreate,
     InformationSourceUpdate,
 )
 from app.schemas.user import UserInDB
-from app.stores.memory import information_sources_store, rss_channels_store
 from app.utils.deps import get_current_user
 
 information_sources_router = APIRouter()
@@ -19,8 +24,10 @@ information_sources_router = APIRouter()
 )
 def list_information_sources(
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> List[InformationSource]:
-    return list(information_sources_store.values())
+    items = db.query(DBInformationSource).all()
+    return [InformationSource(id=item.id, name=item.name, url=item.url) for item in items]
 
 
 @information_sources_router.post(
@@ -30,12 +37,23 @@ def list_information_sources(
     tags=["information-sources"],
 )
 def create_information_source(
-    payload: InformationSourceCreate, _: UserInDB = Depends(get_current_user)
+    payload: InformationSourceCreate,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> InformationSource:
-    source_id = max(information_sources_store.keys(), default=0) + 1
-    source = InformationSource(id=source_id, **payload.model_dump())
-    information_sources_store[source_id] = source
-    return source
+    db_source = DBInformationSource(name=payload.name, url=str(payload.url))
+    db.add(db_source)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="La fuente ya existe (nombre o URL duplicada)",
+        ) from exc
+
+    db.refresh(db_source)
+    return InformationSource(id=db_source.id, name=db_source.name, url=db_source.url)
 
 
 @information_sources_router.get(
@@ -44,14 +62,20 @@ def create_information_source(
     tags=["information-sources"],
 )
 def get_information_source(
-    source_id: int, _: UserInDB = Depends(get_current_user)
+    source_id: int,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> InformationSource:
-    source = information_sources_store.get(source_id)
-    if not source:
+    source = (
+        db.query(DBInformationSource)
+        .filter(DBInformationSource.id == source_id)
+        .first()
+    )
+    if source is None:
         raise HTTPException(
             status_code=404, detail="Fuente de información no encontrada"
         )
-    return source
+    return InformationSource(id=source.id, name=source.name, url=source.url)
 
 
 @information_sources_router.put(
@@ -63,15 +87,35 @@ def update_information_source(
     source_id: int,
     payload: InformationSourceUpdate,
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> InformationSource:
-    source = information_sources_store.get(source_id)
-    if not source:
+    source = (
+        db.query(DBInformationSource)
+        .filter(DBInformationSource.id == source_id)
+        .first()
+    )
+    if source is None:
         raise HTTPException(
             status_code=404, detail="Fuente de información no encontrada"
         )
-    updated = source.model_copy(update=payload.model_dump(exclude_unset=True))
-    information_sources_store[source_id] = updated
-    return updated
+
+    update_data = payload.model_dump(exclude_unset=True)
+    if "name" in update_data:
+        source.name = update_data["name"]
+    if "url" in update_data:
+        source.url = str(update_data["url"])
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se pudo actualizar la fuente por conflicto de datos",
+        ) from exc
+
+    db.refresh(source)
+    return InformationSource(id=source.id, name=source.name, url=source.url)
 
 
 @information_sources_router.delete(
@@ -82,17 +126,24 @@ def update_information_source(
     tags=["information-sources"],
 )
 def delete_information_source(
-    source_id: int, _: UserInDB = Depends(get_current_user)
+    source_id: int,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> None:
-    if source_id not in information_sources_store:
+    source = (
+        db.query(DBInformationSource)
+        .filter(DBInformationSource.id == source_id)
+        .first()
+    )
+    if source is None:
         raise HTTPException(
             status_code=404, detail="Fuente de información no encontrada"
         )
-    channel_ids = [
-        channel.id
-        for channel in rss_channels_store.values()
-        if channel.information_source_id == source_id
-    ]
-    for channel_id in channel_ids:
-        rss_channels_store.pop(channel_id, None)
-    information_sources_store.pop(source_id, None)
+
+    (
+        db.query(DBRSSChannel)
+        .filter(DBRSSChannel.information_source_id == source_id)
+        .delete(synchronize_session=False)
+    )
+    db.delete(source)
+    db.commit()

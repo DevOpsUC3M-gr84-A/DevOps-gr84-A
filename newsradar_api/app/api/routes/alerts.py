@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from typing import List
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.database.database import get_db
+from app.models.alert_monitoring import AlertRule
+from app.models.user import User as DBUser
 from app.schemas.alert import Alert, AlertCreate, AlertUpdate
 from app.schemas.user import UserInDB
-from app.stores.memory import alerts_store, notifications_store
 from app.utils.deps import get_current_user
-
-
-def ensure_user_exists(user_id: int, users_store):
-    if user_id not in users_store:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
 
 api_alerts_router = APIRouter()
@@ -21,11 +21,26 @@ api_alerts_router = APIRouter()
 )
 def list_user_alerts(
     user_id: int,
-    users_store=Depends(lambda: alerts_store),
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> List[Alert]:
-    # users_store is not used here, but kept for signature compatibility
-    return [alert for alert in alerts_store.values() if alert.user_id == user_id]
+    db_alerts = (
+        db.query(AlertRule)
+        .filter(AlertRule.user_id == user_id, AlertRule.is_active.is_(True))
+        .all()
+    )
+
+    return [
+        Alert(
+            id=item.id,
+            user_id=item.user_id,
+            name=item.name,
+            descriptors=item.descriptors or [],
+            categories=item.categories or [],
+            cron_expression=item.cron_expression,
+        )
+        for item in db_alerts
+    ]
 
 
 @api_alerts_router.post(
@@ -35,12 +50,42 @@ def list_user_alerts(
     tags=["alerts"],
 )
 def create_user_alert(
-    user_id: int, payload: AlertCreate, _: UserInDB = Depends(get_current_user)
+    user_id: int,
+    payload: AlertCreate,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Alert:
-    alert_id = max(alerts_store.keys(), default=0) + 1
-    alert = Alert(id=alert_id, user_id=user_id, **payload.model_dump())
-    alerts_store[alert_id] = alert
-    return alert
+    owner = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if owner is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    db_alert = AlertRule(
+        user_id=user_id,
+        name=payload.name,
+        descriptors=payload.descriptors,
+        categories=[category.model_dump() for category in payload.categories],
+        cron_expression=payload.cron_expression,
+        is_active=True,
+    )
+    db.add(db_alert)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo crear la alerta en la base de datos",
+        ) from exc
+
+    db.refresh(db_alert)
+    return Alert(
+        id=db_alert.id,
+        user_id=user_id,
+        name=payload.name,
+        descriptors=payload.descriptors,
+        categories=payload.categories,
+        cron_expression=payload.cron_expression,
+    )
 
 
 @api_alerts_router.get(
@@ -49,14 +94,31 @@ def create_user_alert(
     tags=["alerts"],
 )
 def get_user_alert(
-    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_user)
+    user_id: int,
+    alert_id: int,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Alert:
-    alert = alerts_store.get(alert_id)
-    if not alert or alert.user_id != user_id:
-        raise HTTPException(
-            status_code=404, detail="Alerta no encontrada para el usuario"
+    db_alert = (
+        db.query(AlertRule)
+        .filter(
+            AlertRule.id == alert_id,
+            AlertRule.user_id == user_id,
+            AlertRule.is_active.is_(True),
         )
-    return alert
+        .first()
+    )
+    if db_alert is None:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada para el usuario")
+
+    return Alert(
+        id=db_alert.id,
+        user_id=db_alert.user_id,
+        name=db_alert.name,
+        descriptors=db_alert.descriptors or [],
+        categories=db_alert.categories or [],
+        cron_expression=db_alert.cron_expression,
+    )
 
 
 @api_alerts_router.put(
@@ -69,15 +131,45 @@ def update_user_alert(
     alert_id: int,
     payload: AlertUpdate,
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Alert:
-    alert = alerts_store.get(alert_id)
-    if not alert or alert.user_id != user_id:
-        raise HTTPException(
-            status_code=404, detail="Alerta no encontrada para el usuario"
+    db_alert = (
+        db.query(AlertRule)
+        .filter(
+            AlertRule.id == alert_id,
+            AlertRule.user_id == user_id,
+            AlertRule.is_active.is_(True),
         )
-    updated = alert.model_copy(update=payload.model_dump(exclude_unset=True))
-    alerts_store[alert_id] = updated
-    return updated
+        .first()
+    )
+
+    if db_alert is None:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada para el usuario")
+
+    update_data = payload.model_dump(exclude_unset=True)
+    if "name" in update_data:
+        db_alert.name = update_data["name"]
+    if "descriptors" in update_data:
+        db_alert.descriptors = update_data["descriptors"]
+    if "categories" in update_data:
+        db_alert.categories = [
+            item.model_dump() if hasattr(item, "model_dump") else item
+            for item in update_data["categories"]
+        ]
+    if "cron_expression" in update_data:
+        db_alert.cron_expression = update_data["cron_expression"]
+
+    db.commit()
+    db.refresh(db_alert)
+
+    return Alert(
+        id=db_alert.id,
+        user_id=db_alert.user_id,
+        name=db_alert.name,
+        descriptors=db_alert.descriptors or [],
+        categories=db_alert.categories or [],
+        cron_expression=db_alert.cron_expression,
+    )
 
 
 @api_alerts_router.delete(
@@ -88,16 +180,18 @@ def update_user_alert(
     tags=["alerts"],
 )
 def delete_user_alert(
-    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_user)
+    user_id: int,
+    alert_id: int,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> None:
-    alert = alerts_store.get(alert_id)
-    if not alert or alert.user_id != user_id:
-        raise HTTPException(
-            status_code=404, detail="Alerta no encontrada para el usuario"
-        )
-    notification_ids = [
-        n_id for n_id, n in notifications_store.items() if n.alert_id == alert_id
-    ]
-    for notification_id in notification_ids:
-        notifications_store.pop(notification_id, None)
-    alerts_store.pop(alert_id, None)
+    db_alert = (
+        db.query(AlertRule)
+        .filter(AlertRule.id == alert_id, AlertRule.user_id == user_id)
+        .first()
+    )
+    if db_alert is None:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada para el usuario")
+
+    db_alert.is_active = False
+    db.commit()

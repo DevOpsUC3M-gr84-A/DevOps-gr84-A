@@ -2,8 +2,11 @@
 
 from typing import List
 from fastapi import APIRouter, Depends, Response, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.rss import InformationSource as DBInformationSource
+from app.models.rss import RSSChannel as DBRSSChannel
 from app.schemas.rss import (
     RSSChannel,
     RSSChannelCreate,
@@ -11,17 +14,10 @@ from app.schemas.rss import (
     RSSChannelResponse,
 )
 from app.schemas.user import UserInDB
-from app.stores.memory import rss_channels_store
 from app.database.database import get_db
 from app.services.rss_service import create_rss_channel, get_all_rss_channels
-from app.api.dependencies import get_current_gestor, get_current_user
+from app.api.dependencies import get_current_gestor
 from app.utils.deps import get_current_user
-from app.utils.rss_utils import (
-    ensure_information_source_exists,
-    ensure_category_exists,
-    ensure_rss_for_source,
-    next_id,
-)
 
 
 router = APIRouter()
@@ -42,7 +38,6 @@ def crear_canal_rss(rss_in: RSSChannelCreate, db: Session = Depends(get_db)):
         nuevo_canal = create_rss_channel(db, rss_in)
         return nuevo_canal
     except Exception as e:
-        # Aquí podrías capturar IntegrateError si la URL ya existe en BD, por ejemplo
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"No se pudo crear el canal RSS: {str(e)}",
@@ -55,10 +50,7 @@ def crear_canal_rss(rss_in: RSSChannelCreate, db: Session = Depends(get_db)):
     dependencies=[Depends(get_current_user)],
 )
 def listar_canales_rss(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """
-    Obtiene todos los canales RSS registrados.
-    Este endpoint sí es accesible por Lectores, el control de acceso es solo de creación.
-    """
+    """Obtiene todos los canales RSS registrados."""
     canales = get_all_rss_channels(db, skip=skip, limit=limit)
     return canales
 
@@ -69,13 +61,31 @@ def listar_canales_rss(skip: int = 0, limit: int = 100, db: Session = Depends(ge
     tags=["rss-channels"],
 )
 def list_source_channels(
-    source_id: int, _: UserInDB = Depends(get_current_user)
+    source_id: int,
+    _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> List[RSSChannel]:
-    ensure_information_source_exists(source_id)
+    source = (
+        db.query(DBInformationSource)
+        .filter(DBInformationSource.id == source_id)
+        .first()
+    )
+    if source is None:
+        raise HTTPException(status_code=404, detail="Fuente de información no encontrada")
+
+    channels = (
+        db.query(DBRSSChannel)
+        .filter(DBRSSChannel.information_source_id == source_id)
+        .all()
+    )
     return [
-        channel
-        for channel in rss_channels_store.values()
-        if channel.information_source_id == source_id
+        RSSChannel(
+            id=channel.id,
+            information_source_id=channel.information_source_id,
+            url=channel.url,
+            category_id=channel.category_id or 0,
+        )
+        for channel in channels
     ]
 
 
@@ -89,18 +99,41 @@ def create_source_channel(
     source_id: int,
     payload: RSSChannelCreate,
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> RSSChannel:
-    ensure_information_source_exists(source_id)
-    ensure_category_exists(payload.category_id)
-
-    channel_id = next_id("rss_channels")
-    channel = RSSChannel(
-        id=channel_id,
-        information_source_id=source_id,
-        **payload.model_dump(),
+    source = (
+        db.query(DBInformationSource)
+        .filter(DBInformationSource.id == source_id)
+        .first()
     )
-    rss_channels_store[channel_id] = channel
-    return channel
+    if source is None:
+        raise HTTPException(status_code=404, detail="Fuente de información no encontrada")
+
+    channel = DBRSSChannel(
+        information_source_id=source_id,
+        media_name=payload.media_name,
+        url=str(payload.url),
+        category_id=payload.category_id,
+        iptc_category=payload.iptc_category,
+        is_active=True,
+    )
+    db.add(channel)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Canal RSS duplicado o inválido para la fuente",
+        ) from exc
+
+    db.refresh(channel)
+    return RSSChannel(
+        id=channel.id,
+        information_source_id=channel.information_source_id,
+        url=channel.url,
+        category_id=channel.category_id or 0,
+    )
 
 
 @router.get(
@@ -112,9 +145,25 @@ def get_source_channel(
     source_id: int,
     channel_id: int,
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> RSSChannel:
-    ensure_information_source_exists(source_id)
-    return ensure_rss_for_source(source_id, channel_id)
+    channel = (
+        db.query(DBRSSChannel)
+        .filter(
+            DBRSSChannel.id == channel_id,
+            DBRSSChannel.information_source_id == source_id,
+        )
+        .first()
+    )
+    if channel is None:
+        raise HTTPException(status_code=404, detail="Canal RSS no encontrado para la fuente")
+
+    return RSSChannel(
+        id=channel.id,
+        information_source_id=channel.information_source_id,
+        url=channel.url,
+        category_id=channel.category_id or 0,
+    )
 
 
 @router.put(
@@ -127,17 +176,41 @@ def update_source_channel(
     channel_id: int,
     payload: RSSChannelUpdate,
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> RSSChannel:
-    ensure_information_source_exists(source_id)
-    channel = ensure_rss_for_source(source_id, channel_id)
+    channel = (
+        db.query(DBRSSChannel)
+        .filter(
+            DBRSSChannel.id == channel_id,
+            DBRSSChannel.information_source_id == source_id,
+        )
+        .first()
+    )
+    if channel is None:
+        raise HTTPException(status_code=404, detail="Canal RSS no encontrado para la fuente")
 
     update_data = payload.model_dump(exclude_unset=True)
     if "category_id" in update_data:
-        ensure_category_exists(update_data["category_id"])
+        channel.category_id = update_data["category_id"]
+    if "url" in update_data:
+        channel.url = str(update_data["url"])
 
-    updated = channel.model_copy(update=update_data)
-    rss_channels_store[channel_id] = updated
-    return updated
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se pudo actualizar el canal RSS por conflicto de datos",
+        ) from exc
+
+    db.refresh(channel)
+    return RSSChannel(
+        id=channel.id,
+        information_source_id=channel.information_source_id,
+        url=channel.url,
+        category_id=channel.category_id or 0,
+    )
 
 
 @router.delete(
@@ -151,7 +224,18 @@ def delete_source_channel(
     source_id: int,
     channel_id: int,
     _: UserInDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> None:
-    ensure_information_source_exists(source_id)
-    ensure_rss_for_source(source_id, channel_id)
-    rss_channels_store.pop(channel_id, None)
+    channel = (
+        db.query(DBRSSChannel)
+        .filter(
+            DBRSSChannel.id == channel_id,
+            DBRSSChannel.information_source_id == source_id,
+        )
+        .first()
+    )
+    if channel is None:
+        raise HTTPException(status_code=404, detail="Canal RSS no encontrado para la fuente")
+
+    db.delete(channel)
+    db.commit()

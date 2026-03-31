@@ -7,11 +7,12 @@ from app.schemas.rss import RSSChannelCreate
 
 def create_rss_channel(db: Session, rss_in: RSSChannelCreate) -> RSSChannel:
     """Crea un nuevo canal RSS en la base de datos."""
-    # Convertir la URL de HttpUrl a string para guardarla en BD
     db_rss = RSSChannel(
         media_name=rss_in.media_name,
         url=str(rss_in.url),
+        category_id=rss_in.category_id,
         iptc_category=rss_in.iptc_category,
+        is_active=True,
     )
 
     db.add(db_rss)
