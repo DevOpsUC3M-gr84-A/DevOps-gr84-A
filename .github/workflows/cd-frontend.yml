@@ -1,0 +1,56 @@
+name: CD Frontend - Deploy to GitHub Pages
+
+# Trigger: Solo cuando hay push a main Y cambios en newsradar_ui/
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'newsradar_ui/**'
+      - '.github/workflows/cd-frontend.yml'  # Redeploy si cambias este workflow
+  # Permite ejecutar manualmente desde GitHub Actions (opcional)
+  workflow_dispatch:
+
+# Permisos necesarios para GitHub Pages
+permissions:
+  contents: write # Necesario para push a gh-pages
+  id-token: write
+  pages: write
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout del código
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'newsradar_ui/package-lock.json'
+
+      # 3. Instalar dependencias (npm ci es más seguro que npm install en CI)
+      - name: Install dependencies
+        working-directory: newsradar_ui
+        run: npm ci
+
+      # 4. Build del proyecto React
+      - name: Build React app
+        working-directory: newsradar_ui
+        run: npm run build
+
+      # 5. Deploy a GitHub Pages usando peaceiris/actions-gh-pages
+      # (Más robusto para subcarpetas que actions/deploy-pages)
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./newsradar_ui/build
+          cname: ''  # Vacío: usa el dominio default de GitHub Pages
+          force_orphan: true  # Limpia historiales antiguos en gh-pages (opcional)
