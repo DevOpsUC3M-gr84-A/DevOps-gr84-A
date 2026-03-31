@@ -16,9 +16,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router)
 
-# Añadimos un endpoint raíz para saber que el motor funciona
 @app.get("/", tags=["system"])
 def root():
     return {"message": "Motor API REST de NewsRadar activo. Visita /docs"}
+
+
+app.include_router(api_router, prefix="/api/v1")

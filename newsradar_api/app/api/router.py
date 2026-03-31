@@ -15,6 +15,7 @@ from .routes.information_sources import information_sources_router
 from .routes.stats import stats_router
 from .routes.rss_channels import router as rss_channels_router
 
+
 api_router = APIRouter()
 api_router.include_router(api_auth_router)
 api_router.include_router(users_router)
