@@ -7,7 +7,7 @@ from app.utils.deps import get_current_user
 from app.core.iptc_categories import IPTC_FIRST_LEVEL, VALID_IPTC_CODES
 
 
-categories_router = APIRouter(prefix="/api/v1")
+categories_router = APIRouter()
 
 CurrentUser = Annotated[UserInDB, Depends(get_current_user)]
 
@@ -68,7 +68,7 @@ def update_category(
 @categories_router.delete(
     "/categories/{category_id}",
     status_code=204,
-    response_model=None, 
+    response_model=None,
     response_class=Response,
     tags=["categories"],
 )

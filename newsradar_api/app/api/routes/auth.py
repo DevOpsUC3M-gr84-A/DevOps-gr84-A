@@ -7,14 +7,11 @@ from app.stores.memory import users_store, active_tokens
 from app.utils.user_utils import sanitize_user
 from app.utils.user_utils import ensure_role_ids_exist
 
+
 api_auth_router = APIRouter()
 
-API_PREFIX = "/api/v1"
 
-
-@api_auth_router.post(
-    f"{API_PREFIX}/auth/login", response_model=TokenResponse, tags=["auth"]
-)
+@api_auth_router.post("/auth/login", response_model=TokenResponse, tags=["auth"])
 def login(payload: LoginRequest) -> TokenResponse:
     user = next((u for u in users_store.values() if u.email == payload.email), None)
     if user is None or user.password != payload.password:
@@ -27,7 +24,7 @@ def login(payload: LoginRequest) -> TokenResponse:
     return TokenResponse(access_token=token)
 
 
-@api_auth_router.post(f"{API_PREFIX}/auth/register", response_model=User, tags=["auth"])
+@api_auth_router.post("/auth/register", response_model=User, tags=["auth"])
 def register(payload: UserCreate) -> User:
     if any(user.email == payload.email for user in users_store.values()):
         raise HTTPException(

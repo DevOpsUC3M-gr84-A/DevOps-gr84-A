@@ -23,7 +23,6 @@ from app.utils.rss_utils import (
     next_id,
 )
 
-API_PREFIX = "/api/v1"
 
 router = APIRouter()
 
@@ -65,7 +64,7 @@ def listar_canales_rss(skip: int = 0, limit: int = 100, db: Session = Depends(ge
 
 
 @router.get(
-    f"{API_PREFIX}/information-sources/{{source_id}}/rss-channels",
+    "/information-sources/{source_id}/rss-channels",
     response_model=List[RSSChannel],
     tags=["rss-channels"],
 )
@@ -81,7 +80,7 @@ def list_source_channels(
 
 
 @router.post(
-    f"{API_PREFIX}/information-sources/{{source_id}}/rss-channels",
+    "/information-sources/{source_id}/rss-channels",
     response_model=RSSChannel,
     status_code=201,
     tags=["rss-channels"],
@@ -105,7 +104,7 @@ def create_source_channel(
 
 
 @router.get(
-    f"{API_PREFIX}/information-sources/{{source_id}}/rss-channels/{{channel_id}}",
+    "/information-sources/{source_id}/rss-channels/{channel_id}",
     response_model=RSSChannel,
     tags=["rss-channels"],
 )
@@ -119,7 +118,7 @@ def get_source_channel(
 
 
 @router.put(
-    f"{API_PREFIX}/information-sources/{{source_id}}/rss-channels/{{channel_id}}",
+    "/information-sources/{source_id}/rss-channels/{channel_id}",
     response_model=RSSChannel,
     tags=["rss-channels"],
 )
@@ -142,7 +141,7 @@ def update_source_channel(
 
 
 @router.delete(
-    f"{API_PREFIX}/information-sources/{{source_id}}/rss-channels/{{channel_id}}",
+    "/information-sources/{source_id}/rss-channels/{channel_id}",
     status_code=204,
     response_model=None,
     response_class=Response,
