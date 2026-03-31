@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
-from app.schemas.rss import RssChannelCreate, RssChannelResponse
+from app.schemas.rss import RSSChannelCreate, RSSChannelResponse
 from app.services.rss_service import create_rss_channel, get_all_rss_channels
 from app.api.dependencies import get_current_gestor, get_current_user
 
@@ -14,11 +14,11 @@ router = APIRouter(prefix="/rss", tags=["Canales RSS"])
 
 @router.post(
     "/",
-    response_model=RssChannelResponse,
+    response_model=RSSChannelResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(get_current_gestor)],
 )
-def crear_canal_rss(rss_in: RssChannelCreate, db: Session = Depends(get_db)):
+def crear_canal_rss(rss_in: RSSChannelCreate, db: Session = Depends(get_db)):
     """
     Crea un nuevo canal RSS en el sistema.
     [SOLO GESTORES] - Bloqueado a Lector usando la dependencia get_current_gestor.
@@ -36,7 +36,7 @@ def crear_canal_rss(rss_in: RssChannelCreate, db: Session = Depends(get_db)):
 
 @router.get(
     "/",
-    response_model=List[RssChannelResponse],
+    response_model=List[RSSChannelResponse],
     dependencies=[Depends(get_current_user)],
 )
 def listar_canales_rss(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

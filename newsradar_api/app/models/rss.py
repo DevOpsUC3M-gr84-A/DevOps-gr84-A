@@ -20,7 +20,7 @@ class CategoriaIPTC(str, enum.Enum):
     OTROS = "00000000"
 
 
-class RssChannel(Base):
+class RSSChannel(Base):
     """Modelo de base de datos para los canales RSS."""
 
     __tablename__ = "rss_channels"
