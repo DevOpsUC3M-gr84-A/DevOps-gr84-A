@@ -9,8 +9,8 @@ from passlib.context import CryptContext
 from app.database.database import SessionLocal, engine, Base
 from app.models.user import User, UserRole
 
-# Configuración de passlib para generar hashes con bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Configuración de passlib para generar hashes con argon2
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def get_password_hash(password: str) -> str:
