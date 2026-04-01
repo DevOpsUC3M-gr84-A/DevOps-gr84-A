@@ -1,3 +1,4 @@
+from app.config import admin_password, lector_password
 from app.schemas.roles import Role
 from app.schemas.user import UserInDB
 from app.stores.memory import roles_store, users_store
@@ -22,7 +23,7 @@ def create_seed_data() -> None:
         last_name="NewsRadar",
         organization="NewsRadar",
         role_ids=[admin_role_id],
-        password="admin123",
+        password=admin_password,
     )
 
     lector_user_id = next_id("users")
@@ -33,5 +34,5 @@ def create_seed_data() -> None:
         last_name="NewsRadar",
         organization="NewsRadar",
         role_ids=[lector_role_id],
-        password="lector123",
+        password=lector_password,
     )

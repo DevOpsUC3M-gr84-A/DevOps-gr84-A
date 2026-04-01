@@ -18,6 +18,16 @@ if str(newsradar_path) not in sys.path:
     sys.path.insert(0, str(newsradar_path))
 
 
+# 2.2. Inject this path at the very beginning (index 0) of Python's system path.
+# This ensures that statements like 'from app.models import User' resolve correctly.
+if str(newsradar_path) not in sys.path:
+    sys.path.insert(0, str(newsradar_path))
+
+# 2.3. Establecer contraseñas de entorno de prueba para evitar hard-coded credentials
+os.environ.setdefault("NEWSRADAR_ADMIN_PASSWORD", "admin123")
+os.environ.setdefault("NEWSRADAR_LECTOR_PASSWORD", "lector123")
+
+
 # 3. Shared Test Fixtures
 # The @pytest.fixture decorator creates reusable pieces of data or configurations
 # that can be injected into any test simply by adding the function name as a parameter.
