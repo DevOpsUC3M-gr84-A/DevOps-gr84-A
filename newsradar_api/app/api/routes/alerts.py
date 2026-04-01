@@ -3,7 +3,7 @@ from typing import List
 from app.schemas.alert import Alert, AlertCreate, AlertUpdate
 from app.schemas.user import UserInDB
 from app.stores.memory import alerts_store, notifications_store
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_gestor, get_current_user
 
 
 def ensure_user_exists(user_id: int, users_store):
@@ -35,7 +35,7 @@ def list_user_alerts(
     tags=["alerts"],
 )
 def create_user_alert(
-    user_id: int, payload: AlertCreate, _: UserInDB = Depends(get_current_user)
+    user_id: int, payload: AlertCreate, _: UserInDB = Depends(get_current_gestor)
 ) -> Alert:
     alert_id = max(alerts_store.keys(), default=0) + 1
     alert = Alert(id=alert_id, user_id=user_id, **payload.model_dump())
@@ -68,7 +68,7 @@ def update_user_alert(
     user_id: int,
     alert_id: int,
     payload: AlertUpdate,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
 ) -> Alert:
     alert = alerts_store.get(alert_id)
     if not alert or alert.user_id != user_id:
@@ -88,7 +88,7 @@ def update_user_alert(
     tags=["alerts"],
 )
 def delete_user_alert(
-    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_user)
+    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_gestor)
 ) -> None:
     alert = alerts_store.get(alert_id)
     if not alert or alert.user_id != user_id:
