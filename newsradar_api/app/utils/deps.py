@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -35,3 +35,12 @@ def get_current_user(
         role_ids=role_ids_from_role(user.role),
         password=user.hashed_password,
     )
+
+
+def get_current_gestor(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
+    if 1 not in current_user.role_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes los permisos necesarios para realizar esta acción.",
+        )
+    return current_user

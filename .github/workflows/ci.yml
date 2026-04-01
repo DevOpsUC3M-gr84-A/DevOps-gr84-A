@@ -16,6 +16,10 @@ jobs:
   build-and-test:
     # 3.1.1. Entorno de ejecución (Servidor virtual proporcionado por GitHub)
     runs-on: ubuntu-latest
+    # Se definen variables de entorno necesarias para las pruebas, utilizando secretos para proteger información sensible
+    env:
+      NEWSRADAR_ADMIN_PASSWORD: ${{ secrets.NEWSRADAR_ADMIN_PASSWORD }}
+      NEWSRADAR_LECTOR_PASSWORD: ${{ secrets.NEWSRADAR_LECTOR_PASSWORD }}
 
     # 3.1.2. Secuencia de pasos a ejecutar
     steps:
@@ -57,6 +61,8 @@ jobs:
       - name: Run unit tests (Pytest) with coverage report
         env:
           PYTHONPATH: .
+          NEWSRADAR_ADMIN_PASSWORD: ${{ secrets.NEWSRADAR_ADMIN_PASSWORD }}
+          NEWSRADAR_LECTOR_PASSWORD: ${{ secrets.NEWSRADAR_LECTOR_PASSWORD }}
         run: |
           cd newsradar_api
           pytest tests/unit/ tests/integration/ --cov=app --cov-report=xml --cov-report=html || true

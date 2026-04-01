@@ -1,11 +1,17 @@
+import pytest
+
 from fastapi.testclient import TestClient
 from app.main import app
 
-# Creamos un cliente de pruebas que simula un navegador/Postman
-# ¡Esto es lo que tus compañeros deben usar para probar sus endpoints!
-client = TestClient(app)
 
-def test_read_root():
+
+@pytest.fixture
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+def test_read_root(client):
     """Prueba que el endpoint raíz (/) responde correctamente y devuelve un 200 OK"""
     response = client.get("/")
     assert response.status_code == 200

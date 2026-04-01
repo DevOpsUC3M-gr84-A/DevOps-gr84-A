@@ -1,25 +1,21 @@
 """
 Pytest configuration and shared fixtures for all tests
 """
-# 1. Required Libraries
-import pytest
-import sys
 import os
+import sys
 from pathlib import Path
-from tempfile import mkstemp
+
+# 1. Required Libraries
+os.environ.setdefault("NEWSRADAR_ADMIN_PASSWORD", "admin123")
+os.environ.setdefault("NEWSRADAR_LECTOR_PASSWORD", "lector123")
+
+import pytest
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
-
-import app.models  # noqa: F401
-from app.api.router import api_router
-from app.database.database import Base, get_db
-from app.models.user import User, UserRole
-from app.schemas.user import UserInDB
-from app.services.user_service import get_password_hash, role_ids_from_role
-from app.utils import deps as deps_module
 
 # 2. Python Path Configuration (Module Resolution)
 # This is the crucial fix we made earlier to avoid 'ModuleNotFoundError'
@@ -30,6 +26,14 @@ newsradar_path = Path(__file__).parent.parent
 # This ensures that statements like 'from app.models import User' resolve correctly.
 if str(newsradar_path) not in sys.path:
     sys.path.insert(0, str(newsradar_path))
+
+import app.models  # noqa: F401
+from app.api.router import api_router
+from app.database.database import Base, get_db
+from app.models.user import User, UserRole
+from app.schemas.user import UserInDB
+from app.services.user_service import get_password_hash
+from app.utils import deps as deps_module
 
 
 # 3. Shared Test Fixtures
@@ -74,13 +78,12 @@ def sample_rss_item():
 
 @pytest.fixture
 def test_engine():
-    """Creates an isolated SQLite DB file for each test and destroys it afterwards."""
-    fd, db_path = mkstemp(prefix="newsradar_test_", suffix=".db")
-    os.close(fd)
+    """Creates an isolated in-memory SQLite DB shared across test sessions."""
 
     engine = create_engine(
-        f"sqlite:///{db_path}",
+        "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
 
@@ -89,8 +92,6 @@ def test_engine():
     finally:
         Base.metadata.drop_all(bind=engine)
         engine.dispose()
-        if os.path.exists(db_path):
-            os.remove(db_path)
 
 
 @pytest.fixture
@@ -129,6 +130,27 @@ def seeded_user(test_session_factory):
 
 
 @pytest.fixture
+def seeded_lector_user(test_session_factory):
+    session = test_session_factory()
+    try:
+        db_user = User(
+            email="rf01-lector@test.com",
+            name="RF01",
+            surname="Reader",
+            organization="QA",
+            hashed_password=get_password_hash("lector123"),
+            role=UserRole.LECTOR,
+            is_verified=True,
+        )
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+        return db_user
+    finally:
+        session.close()
+
+
+@pytest.fixture
 def api_client(test_session_factory, seeded_user):
     app = FastAPI()
     app.include_router(api_router, prefix="/api/v1")
@@ -138,6 +160,7 @@ def api_client(test_session_factory, seeded_user):
         try:
             yield db
         finally:
+            db.rollback()
             db.close()
 
     def _override_current_user() -> UserInDB:
@@ -147,7 +170,7 @@ def api_client(test_session_factory, seeded_user):
             first_name=seeded_user.name,
             last_name=seeded_user.surname,
             organization=seeded_user.organization or "",
-            role_ids=role_ids_from_role(seeded_user.role),
+            role_ids=[1],
             password=seeded_user.hashed_password,
         )
 
@@ -158,3 +181,79 @@ def api_client(test_session_factory, seeded_user):
         yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def api_client_no_auth(test_session_factory):
+    app = FastAPI()
+    app.include_router(api_router, prefix="/api/v1")
+
+    def _override_get_db():
+        db = test_session_factory()
+        try:
+            yield db
+        finally:
+            db.rollback()
+            db.close()
+
+    app.dependency_overrides[get_db] = _override_get_db
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def api_client_lector(test_session_factory, seeded_lector_user):
+    app = FastAPI()
+    app.include_router(api_router, prefix="/api/v1")
+
+    def _override_get_db():
+        db = test_session_factory()
+        try:
+            yield db
+        finally:
+            db.rollback()
+            db.close()
+
+    def _override_current_user() -> UserInDB:
+        return UserInDB(
+            id=seeded_lector_user.id,
+            email=seeded_lector_user.email,
+            first_name=seeded_lector_user.name,
+            last_name=seeded_lector_user.surname,
+            organization=seeded_lector_user.organization or "",
+            role_ids=[2],
+            password=seeded_lector_user.hashed_password,
+        )
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[deps_module.get_current_user] = _override_current_user
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers(api_client):
+    response = api_client.post(
+        "/api/v1/auth/login",
+        json={"email": "rf01-user@test.com", "password": "secret123"},
+    )
+    assert response.status_code == 200, response.text
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def lector_auth_headers(api_client_lector):
+    response = api_client_lector.post(
+        "/api/v1/auth/login",
+        json={"email": "rf01-lector@test.com", "password": "lector123"},
+    )
+    assert response.status_code == 200, response.text
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

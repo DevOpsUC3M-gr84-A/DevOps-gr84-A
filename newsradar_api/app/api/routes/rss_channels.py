@@ -16,8 +16,7 @@ from app.schemas.rss import (
 from app.schemas.user import UserInDB
 from app.database.database import get_db
 from app.services.rss_service import create_rss_channel, get_all_rss_channels
-from app.api.dependencies import get_current_gestor
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_gestor, get_current_user
 
 
 router = APIRouter()
@@ -94,6 +93,7 @@ def list_source_channels(
     response_model=RSSChannel,
     status_code=201,
     tags=["rss-channels"],
+    dependencies=[Depends(get_current_gestor)],
 )
 def create_source_channel(
     source_id: int,
@@ -170,6 +170,7 @@ def get_source_channel(
     "/information-sources/{source_id}/rss-channels/{channel_id}",
     response_model=RSSChannel,
     tags=["rss-channels"],
+    dependencies=[Depends(get_current_gestor)],
 )
 def update_source_channel(
     source_id: int,
@@ -219,6 +220,7 @@ def update_source_channel(
     response_model=None,
     response_class=Response,
     tags=["rss-channels"],
+    dependencies=[Depends(get_current_gestor)],
 )
 def delete_source_channel(
     source_id: int,

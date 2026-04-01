@@ -8,7 +8,7 @@ from app.models.alert_monitoring import AlertRule
 from app.models.user import User as DBUser
 from app.schemas.alert import Alert, AlertCreate, AlertUpdate
 from app.schemas.user import UserInDB
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_gestor, get_current_user
 
 
 api_alerts_router = APIRouter()
@@ -52,7 +52,7 @@ def list_user_alerts(
 def create_user_alert(
     user_id: int,
     payload: AlertCreate,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
     db: Session = Depends(get_db),
 ) -> Alert:
     owner = db.query(DBUser).filter(DBUser.id == user_id).first()
@@ -130,7 +130,7 @@ def update_user_alert(
     user_id: int,
     alert_id: int,
     payload: AlertUpdate,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
     db: Session = Depends(get_db),
 ) -> Alert:
     db_alert = (
@@ -182,7 +182,7 @@ def update_user_alert(
 def delete_user_alert(
     user_id: int,
     alert_id: int,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
     db: Session = Depends(get_db),
 ) -> None:
     db_alert = (

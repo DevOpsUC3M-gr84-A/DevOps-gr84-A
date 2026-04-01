@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
@@ -12,7 +12,7 @@ from app.schemas.information_sources import (
     InformationSourceUpdate,
 )
 from app.schemas.user import UserInDB
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_gestor, get_current_user
 
 information_sources_router = APIRouter()
 
@@ -38,7 +38,7 @@ def list_information_sources(
 )
 def create_information_source(
     payload: InformationSourceCreate,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
     db: Session = Depends(get_db),
 ) -> InformationSource:
     db_source = DBInformationSource(name=payload.name, url=str(payload.url))
@@ -50,6 +50,12 @@ def create_information_source(
         raise HTTPException(
             status_code=409,
             detail="La fuente ya existe (nombre o URL duplicada)",
+        ) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Error interno al guardar la fuente",
         ) from exc
 
     db.refresh(db_source)
@@ -86,7 +92,7 @@ def get_information_source(
 def update_information_source(
     source_id: int,
     payload: InformationSourceUpdate,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
     db: Session = Depends(get_db),
 ) -> InformationSource:
     source = (
@@ -127,7 +133,7 @@ def update_information_source(
 )
 def delete_information_source(
     source_id: int,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
     db: Session = Depends(get_db),
 ) -> None:
     source = (
