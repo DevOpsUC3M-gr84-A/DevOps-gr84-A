@@ -7,7 +7,7 @@ from app.schemas.information_sources import (
 )
 from app.schemas.user import UserInDB
 from app.stores.memory import information_sources_store, rss_channels_store
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_gestor, get_current_user
 
 information_sources_router = APIRouter()
 
@@ -30,7 +30,7 @@ def list_information_sources(
     tags=["information-sources"],
 )
 def create_information_source(
-    payload: InformationSourceCreate, _: UserInDB = Depends(get_current_user)
+    payload: InformationSourceCreate, _: UserInDB = Depends(get_current_gestor)
 ) -> InformationSource:
     source_id = max(information_sources_store.keys(), default=0) + 1
     source = InformationSource(id=source_id, **payload.model_dump())
@@ -62,7 +62,7 @@ def get_information_source(
 def update_information_source(
     source_id: int,
     payload: InformationSourceUpdate,
-    _: UserInDB = Depends(get_current_user),
+    _: UserInDB = Depends(get_current_gestor),
 ) -> InformationSource:
     source = information_sources_store.get(source_id)
     if not source:
@@ -82,7 +82,7 @@ def update_information_source(
     tags=["information-sources"],
 )
 def delete_information_source(
-    source_id: int, _: UserInDB = Depends(get_current_user)
+    source_id: int, _: UserInDB = Depends(get_current_gestor)
 ) -> None:
     if source_id not in information_sources_store:
         raise HTTPException(
