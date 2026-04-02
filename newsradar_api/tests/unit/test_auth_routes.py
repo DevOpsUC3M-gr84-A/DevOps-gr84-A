@@ -142,7 +142,6 @@ def test_register_success_returns_user_schema(monkeypatch):
 
     monkeypatch.setattr("app.api.routes.auth.ensure_role_ids_exist", lambda _role_ids: None)
     monkeypatch.setattr("app.api.routes.auth.create_db_user", lambda _db, _payload: fake_db_user)
-    monkeypatch.setattr("app.api.routes.auth.role_ids_from_role", lambda _role: [1])
 
     db = MagicMock()
     response = register(payload=payload, db=db)

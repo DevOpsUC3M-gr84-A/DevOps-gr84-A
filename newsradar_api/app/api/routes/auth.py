@@ -7,38 +7,14 @@ from app.models.user import User as DBUser
 from app.schemas.user import UserCreate, User, UserInDB
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.stores.memory import users_store, active_tokens
-from app.utils.user_utils import ensure_role_ids_exist
+from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
 from app.services.user_service import (
     create_db_user,
-    role_ids_from_role,
     verify_password,
 )
 
 
 api_auth_router = APIRouter()
-
-
-def _to_user_schema(user: DBUser) -> User:
-    return User(
-        id=user.id,
-        email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
-        organization=user.organization or "",
-        role_ids=role_ids_from_role(user.role),
-    )
-
-
-def _sync_memory_user(user: DBUser) -> None:
-    users_store[user.id] = UserInDB(
-        id=user.id,
-        email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
-        organization=user.organization or "",
-        role_ids=role_ids_from_role(user.role),
-        password=user.hashed_password,
-    )
 
 
 def _issue_token(user_id: int) -> TokenResponse:
@@ -59,7 +35,7 @@ def _find_legacy_user_by_email(email: str) -> UserInDB | None:
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     db_user = _find_db_user_by_email(payload.email, db)
     if db_user is not None and verify_password(payload.password, db_user.hashed_password):
-        _sync_memory_user(db_user)
+        sync_memory_user(db_user)
         return _issue_token(db_user.id)
 
     user = _find_legacy_user_by_email(payload.email)
@@ -85,5 +61,5 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    _sync_memory_user(user_db)
-    return _to_user_schema(user_db)
+    sync_memory_user(user_db)
+    return to_user_schema(user_db)

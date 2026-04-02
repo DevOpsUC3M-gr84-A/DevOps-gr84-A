@@ -8,36 +8,12 @@ from app.schemas.user import User, UserCreate, UserUpdate, UserInDB
 from app.stores.memory import users_store, alerts_store, notifications_store
 from app.services.user_service import (
     create_db_user,
-    role_ids_from_role,
     update_db_user,
 )
-from app.utils.user_utils import ensure_role_ids_exist
+from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
 from app.utils.deps import get_current_user
 
 users_router = APIRouter()
-
-
-def _to_user_schema(user: DBUser) -> User:
-    return User(
-        id=user.id,
-        email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
-        organization=user.organization or "",
-        role_ids=role_ids_from_role(user.role),
-    )
-
-
-def _sync_memory_user(user: DBUser) -> None:
-    users_store[user.id] = UserInDB(
-        id=user.id,
-        email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
-        organization=user.organization or "",
-        role_ids=role_ids_from_role(user.role),
-        password=user.hashed_password,
-    )
 
 
 def _get_user_or_404(user_id: int, db: Session) -> DBUser:
@@ -55,8 +31,8 @@ def list_users(
     db_users = db.query(DBUser).all()
     if db_users:
         for user in db_users:
-            _sync_memory_user(user)
-        return [_to_user_schema(user) for user in db_users]
+            sync_memory_user(user)
+        return [to_user_schema(user) for user in db_users]
     return []
 
 
@@ -68,8 +44,8 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    _sync_memory_user(user_db)
-    return _to_user_schema(user_db)
+    sync_memory_user(user_db)
+    return to_user_schema(user_db)
 
 
 @users_router.get("/users/{user_id}", response_model=User, tags=["users"])
@@ -80,8 +56,8 @@ def get_user(
 ) -> User:
     user = _get_user_or_404(user_id, db)
 
-    _sync_memory_user(user)
-    return _to_user_schema(user)
+    sync_memory_user(user)
+    return to_user_schema(user)
 
 
 @users_router.put("/users/{user_id}", response_model=User, tags=["users"])
@@ -101,8 +77,8 @@ def update_user(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    _sync_memory_user(updated)
-    return _to_user_schema(updated)
+    sync_memory_user(updated)
+    return to_user_schema(updated)
 
 
 @users_router.delete("/users/{user_id}",
