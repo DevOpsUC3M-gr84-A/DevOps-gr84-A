@@ -1,14 +1,19 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from app.stores.memory import users_store, active_tokens, roles_store
+from sqlalchemy.orm import Session
+
+from app.database.database import get_db
+from app.models.user import User as DBUser
+from app.services.user_service import role_ids_from_role
+from app.stores.memory import active_tokens
 from app.schemas.user import UserInDB
 
 security = HTTPBearer(auto_error=False)
-MANAGEMENT_ROLE_NAMES = {"Gestor", "admin", "manager"}
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
 ) -> UserInDB:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Token inválido o ausente")
@@ -17,23 +22,23 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
-    user = users_store.get(user_id)
-    if not user:
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if user is None:
         raise HTTPException(status_code=401, detail="Usuario inválido")
 
-    return user
-
-
-def get_user_role_names(user: UserInDB) -> set[str]:
-    return {
-        roles_store[role_id].name
-        for role_id in user.role_ids
-        if role_id in roles_store
-    }
+    return UserInDB(
+        id=user.id,
+        email=user.email,
+        first_name=user.name,
+        last_name=user.surname,
+        organization=user.organization or "",
+        role_ids=role_ids_from_role(user.role),
+        password=user.hashed_password,
+    )
 
 
 def get_current_gestor(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
-    if not get_user_role_names(current_user).intersection(MANAGEMENT_ROLE_NAMES):
+    if 1 not in current_user.role_ids:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes los permisos necesarios para realizar esta acción.",
