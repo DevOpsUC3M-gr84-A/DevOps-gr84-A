@@ -41,16 +41,28 @@ def _sync_memory_user(user: DBUser) -> None:
     )
 
 
+def _issue_token(user_id: int) -> TokenResponse:
+    token = str(uuid4())
+    active_tokens[token] = user_id
+    return TokenResponse(access_token=token)
+
+
+def _find_db_user_by_email(email: str, db: Session) -> DBUser | None:
+    return db.query(DBUser).filter(DBUser.email == email).first()
+
+
+def _find_legacy_user_by_email(email: str) -> UserInDB | None:
+    return next((u for u in users_store.values() if u.email == email), None)
+
+
 @api_auth_router.post("/auth/login", response_model=TokenResponse, tags=["auth"])
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    db_user = db.query(DBUser).filter(DBUser.email == payload.email).first()
+    db_user = _find_db_user_by_email(payload.email, db)
     if db_user is not None and verify_password(payload.password, db_user.hashed_password):
         _sync_memory_user(db_user)
-        token = str(uuid4())
-        active_tokens[token] = db_user.id
-        return TokenResponse(access_token=token)
+        return _issue_token(db_user.id)
 
-    user = next((u for u in users_store.values() if u.email == payload.email), None)
+    user = _find_legacy_user_by_email(payload.email)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas"
@@ -62,9 +74,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas"
         )
 
-    token = str(uuid4())
-    active_tokens[token] = user.id
-    return TokenResponse(access_token=token)
+    return _issue_token(user.id)
 
 
 @api_auth_router.post("/auth/register", response_model=User, tags=["auth"])

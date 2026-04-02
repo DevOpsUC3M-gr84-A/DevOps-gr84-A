@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import json
 from typing import List
+from urllib.parse import urlparse, urlunparse
 
 import feedparser
 from pydantic import BaseModel, ConfigDict
@@ -80,11 +81,14 @@ def _parse_feed(channel_url: str):
     if getattr(parsed, "entries", None):
         return parsed
 
-    # Algunos feeds rechazan HTTP o user-agent por defecto.
-    if channel_url.startswith("http://"):
-        https_url = "https://" + channel_url[len("http://") :]
+    # Forma profesional de actualizar el protocolo a seguro
+    parsed_url = urlparse(channel_url)
+    if parsed_url.scheme == "http":
+        # Cambiamos el esquema de forma segura y reconstruimos la URL
+        secure_url = urlunparse(parsed_url._replace(scheme="https"))
+
         parsed_https = feedparser.parse(
-            https_url,
+            secure_url,
             request_headers={"User-Agent": RSS_USER_AGENT},
         )
         if getattr(parsed_https, "entries", None):

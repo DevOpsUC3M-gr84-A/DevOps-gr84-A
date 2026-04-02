@@ -40,6 +40,13 @@ def _sync_memory_user(user: DBUser) -> None:
     )
 
 
+def _get_user_or_404(user_id: int, db: Session) -> DBUser:
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return user
+
+
 @users_router.get("/users", response_model=List[User], tags=["users"])
 def list_users(
     _: UserInDB = Depends(get_current_user),
@@ -71,24 +78,20 @@ def get_user(
     _: UserInDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user = _get_user_or_404(user_id, db)
 
     _sync_memory_user(user)
     return _to_user_schema(user)
 
 
-@users_router.put(f"/users/{{user_id}}", response_model=User, tags=["users"])
+@users_router.put("/users/{user_id}", response_model=User, tags=["users"])
 def update_user(
     user_id: int,
     payload: UserUpdate,
     _: UserInDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user = _get_user_or_404(user_id, db)
     data = payload.model_dump(exclude_unset=True)
     if "role_ids" in data and data["role_ids"] is not None:
         ensure_role_ids_exist(data["role_ids"])
@@ -102,8 +105,7 @@ def update_user(
     return _to_user_schema(updated)
 
 
-@users_router.delete(
-    f"/users/{{user_id}}",
+@users_router.delete("/users/{user_id}",
     status_code=204,
     response_model=None,
     response_class=Response,
@@ -114,9 +116,7 @@ def delete_user(
     _: UserInDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> None:
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user = _get_user_or_404(user_id, db)
 
     # Eliminar alertas y notificaciones asociadas al usuario (como en router.py)
     alert_ids = [
