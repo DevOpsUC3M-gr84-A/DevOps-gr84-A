@@ -179,7 +179,7 @@ def _index_article_document(
     entry: ParsedEntry,
 ) -> str | None:
     document = _build_article_document(alert=alert, channel=channel, entry=entry)
-    document_id = hashlib.sha1(f"{alert.id}:{entry.link}".encode("utf-8")).hexdigest()
+    document_id = hashlib.sha256(f"{alert.id}:{entry.link}".encode("utf-8")).hexdigest()
 
     try:
         response = es_client.index(
