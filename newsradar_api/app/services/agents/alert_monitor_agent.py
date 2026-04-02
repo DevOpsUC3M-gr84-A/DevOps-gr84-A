@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import json
@@ -10,16 +12,17 @@ from typing import List
 from urllib.parse import urlparse, urlunparse
 
 import feedparser
+from elasticsearch import Elasticsearch
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models.alert_monitoring import AlertRule, Article
+from app.models.alert_monitoring import AlertRule
 from app.models.rss import RSSChannel
 from app.services.workflows.classification_workflow import classify_article
 
 logger = logging.getLogger("uvicorn.error")
 RSS_USER_AGENT = "NewsRadar/1.0 (+https://localhost)"
+ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
 
 
 class ParsedEntry(BaseModel):
@@ -142,46 +145,66 @@ def _descriptor_matches(entry: ParsedEntry, descriptors: list[str]) -> bool:
     return any(descriptor.casefold() in haystack for descriptor in descriptors if descriptor)
 
 
-def _persist_article(
-    db: Session,
+
+def _create_elasticsearch_client() -> Elasticsearch:
+    return Elasticsearch(ELASTICSEARCH_URL)
+
+
+def _build_article_document(
     *,
     alert: AlertRule,
     channel: RSSChannel,
     entry: ParsedEntry,
-) -> Article | None:
-    article = Article(
-        alert_id=alert.id,
-        rss_channel_id=channel.id,
-        title=entry.title,
-        summary=entry.summary,
-        content=entry.content,
-        url=entry.link,
-        published_at=entry.published_at,
-        source=channel.media_name,
-    )
-    db.add(article)
+) -> dict[str, object | None]:
+    published_at = entry.published_at.isoformat() if entry.published_at else None
+    return {
+        "title": entry.title,
+        "link": entry.link,
+        "summary": entry.summary,
+        "content": entry.content,
+        "published_at": published_at,
+        "date": published_at,
+        "alert_id": alert.id,
+        "user_id": alert.user_id,
+        "channel_id": channel.id,
+        "source": channel.media_name,
+    }
+
+
+def _index_article_document(
+    *,
+    es_client: Elasticsearch,
+    alert: AlertRule,
+    channel: RSSChannel,
+    entry: ParsedEntry,
+) -> str | None:
+    document = _build_article_document(alert=alert, channel=channel, entry=entry)
+    document_id = hashlib.sha1(f"{alert.id}:{entry.link}".encode("utf-8")).hexdigest()
 
     try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
+        response = es_client.index(
+            index="articles",
+            id=document_id,
+            document=document,
+            op_type="create",
+        )
+    except Exception as exc:  # noqa: BLE001
         logger.debug(
-            "Articulo descartado para alert_id=%s url=%s por IntegrityError: %s",
+            "Documento descartado para alert_id=%s url=%s por Elasticsearch: %s",
             alert.id,
             entry.link,
             exc,
         )
         return None
 
-    db.refresh(article)
     logger.info(
-        "Articulo persistido id=%s alert_id=%s channel_id=%s url=%s",
-        article.id,
+        "Documento indexado id=%s alert_id=%s user_id=%s url=%s",
+        response.get("_id", document_id),
         alert.id,
-        channel.id,
-        article.url,
+        alert.user_id,
+        entry.link,
     )
-    return article
+    return str(response.get("_id", document_id))
 
 
 def run_alert_monitoring_cycle(db: Session) -> int:
@@ -200,49 +223,56 @@ def run_alert_monitoring_cycle(db: Session) -> int:
         return 0
 
     created_articles = 0
+    es_client = _create_elasticsearch_client()
 
-    for channel in channels:
-        feed = _parse_feed(channel.url)
-        raw_entries = getattr(feed, "entries", [])
-        logger.info(
-            "Canal RSS id=%s media=%s entries=%s bozo=%s",
-            channel.id,
-            channel.media_name,
-            len(raw_entries),
-            getattr(feed, "bozo", False),
-        )
+    try:
+        for channel in channels:
+            feed = _parse_feed(channel.url)
+            raw_entries = getattr(feed, "entries", [])
+            logger.info(
+                "Canal RSS id=%s media=%s entries=%s bozo=%s",
+                channel.id,
+                channel.media_name,
+                len(raw_entries),
+                getattr(feed, "bozo", False),
+            )
 
-        normalized_entries = [
-            normalized
-            for normalized in (_normalize_feed_entry(item) for item in raw_entries)
-            if normalized is not None
-        ]
+            normalized_entries = [
+                normalized
+                for normalized in (_normalize_feed_entry(item) for item in raw_entries)
+                if normalized is not None
+            ]
 
-        for entry in normalized_entries:
-            for alert in alerts:
-                normalized_descriptors = _normalize_descriptors(alert.descriptors)
-                if not _descriptor_matches(entry, normalized_descriptors):
-                    continue
+            for entry in normalized_entries:
+                for alert in alerts:
+                    normalized_descriptors = _normalize_descriptors(alert.descriptors)
+                    if not _descriptor_matches(entry, normalized_descriptors):
+                        continue
 
-                article = _persist_article(db, alert=alert, channel=channel, entry=entry)
-                if article is None:
-                    continue
-
-                created_articles += 1
-
-                try:
-                    classify_article(article.id)
-                    article.is_classified = True
-                    db.commit()
-                except Exception as exc:  # noqa: BLE001
-                    db.rollback()
-                    logger.exception(
-                        "Error clasificando article_id=%s: %s", article.id, exc
+                    article_id = _index_article_document(
+                        es_client=es_client,
+                        alert=alert,
+                        channel=channel,
+                        entry=entry,
                     )
+                    if article_id is None:
+                        continue
 
-    check_time = datetime.now(timezone.utc)
-    for alert in alerts:
-        alert.last_checked_at = check_time
-    db.commit()
+                    created_articles += 1
+
+                    try:
+                        classify_article(article_id)
+                    except Exception as exc:  # noqa: BLE001
+                        db.rollback()
+                        logger.exception(
+                            "Error clasificando article_id=%s: %s", article_id, exc
+                        )
+
+        check_time = datetime.now(timezone.utc)
+        for alert in alerts:
+            alert.last_checked_at = check_time
+        db.commit()
+    finally:
+        es_client.close()
 
     return created_articles
