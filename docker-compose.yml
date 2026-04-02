@@ -10,26 +10,26 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=development
-      - DATABASE_URL=postgresql://postgres:devops2026@db:5432/newsradar
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
     volumes:
       - ./newsradar_api/app:/app/app
     restart: unless-stopped
     depends_on:
-      - db
+      - elasticsearch
 
-  # Servicio de Base de Datos PostgreSQL
-  db:
-    image: postgres:15-alpine
-    container_name: newsradar_postgres
+  # Motor documental para noticias y artículos
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: newsradar_elasticsearch
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: devops2026
-      POSTGRES_DB: newsradar
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
     ports:
-      - "5432:5432"
+      - "9200:9200"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - elasticsearch_data:/usr/share/elasticsearch/data
 
 volumes:
-  postgres_data:
+  elasticsearch_data:

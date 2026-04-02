@@ -1,11 +1,12 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.models.alert_monitoring import AlertRule, Article
+from app.models.alert_monitoring import AlertRule
 from app.models.rss import CategoriaIPTC, InformationSource, RSSChannel
 from app.services.agents.alert_monitor_agent import (
+    _build_article_document,
     _normalize_descriptors,
     _normalize_feed_entry,
     _parse_feed,
@@ -46,9 +47,18 @@ def _seed_monitor_entities(db_session, seeded_user, descriptors):
     return alert, channel
 
 
+def _make_es_client(index_side_effect=None, index_return_value=None):
+    client = MagicMock()
+    if index_side_effect is not None:
+        client.index.side_effect = index_side_effect
+    else:
+        client.index.return_value = index_return_value or {"result": "created", "_id": "doc-1"}
+    return client
+
+
 @pytest.mark.unit
-def test_monitor_match_inserts_article(db_session, seeded_user):
-    _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
+def test_monitor_match_indexes_document(db_session, seeded_user):
+    alert, channel = _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(
         entries=[
@@ -61,21 +71,30 @@ def test_monitor_match_inserts_article(db_session, seeded_user):
         ],
         bozo=False,
     )
+    es_client = _make_es_client(index_return_value={"result": "created", "_id": "doc-1"})
 
     with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
-        "app.services.agents.alert_monitor_agent.classify_article"
-    ):
+        "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
+        return_value=es_client,
+    ), patch("app.services.agents.alert_monitor_agent.classify_article") as classify_mock:
         created = run_alert_monitoring_cycle(db_session)
 
-    assert created > 0
-
-    saved_articles = db_session.query(Article).all()
-    assert len(saved_articles) == 1
-    assert saved_articles[0].url == "https://example.test/article-1"
+    assert created == 1
+    es_client.index.assert_called_once()
+    assert es_client.index.call_args.kwargs["index"] == "articles"
+    assert es_client.index.call_args.kwargs["op_type"] == "create"
+    document = es_client.index.call_args.kwargs["document"]
+    assert document["title"] == "Technology market update"
+    assert document["link"] == "https://example.test/article-1"
+    assert document["summary"] == "A story that matches the descriptor"
+    assert document["alert_id"] == alert.id
+    assert document["user_id"] == seeded_user.id
+    assert document["channel_id"] == channel.id
+    classify_mock.assert_called_once_with("doc-1")
 
 
 @pytest.mark.unit
-def test_monitor_no_match_inserts_nothing(db_session, seeded_user):
+def test_monitor_no_match_indexes_nothing(db_session, seeded_user):
     _seed_monitor_entities(db_session, seeded_user, descriptors=["economy"])
 
     fake_feed = SimpleNamespace(
@@ -89,18 +108,20 @@ def test_monitor_no_match_inserts_nothing(db_session, seeded_user):
         ],
         bozo=False,
     )
+    es_client = _make_es_client()
 
     with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
-        "app.services.agents.alert_monitor_agent.classify_article"
-    ):
+        "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
+        return_value=es_client,
+    ), patch("app.services.agents.alert_monitor_agent.classify_article"):
         created = run_alert_monitoring_cycle(db_session)
 
     assert created == 0
-    assert db_session.query(Article).count() == 0
+    es_client.index.assert_not_called()
 
 
 @pytest.mark.unit
-def test_monitor_duplicate_article_is_not_inserted_twice(db_session, seeded_user):
+def test_monitor_duplicate_article_is_not_indexed_twice(db_session, seeded_user):
     _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(
@@ -114,43 +135,48 @@ def test_monitor_duplicate_article_is_not_inserted_twice(db_session, seeded_user
         ],
         bozo=False,
     )
+    es_client = _make_es_client(
+        index_side_effect=[{"result": "created", "_id": "doc-dup"}, Exception("conflict")]
+    )
 
     with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
-        "app.services.agents.alert_monitor_agent.classify_article"
-    ):
+        "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
+        return_value=es_client,
+    ), patch("app.services.agents.alert_monitor_agent.classify_article"):
         first_created = run_alert_monitoring_cycle(db_session)
         second_created = run_alert_monitoring_cycle(db_session)
 
     assert first_created == 1
     assert second_created == 0
-    assert db_session.query(Article).count() == 1
+    assert es_client.index.call_count == 2
 
 
 @pytest.mark.unit
-def test_monitor_duplicate_article_triggers_rollback(db_session, seeded_user):
+def test_monitor_es_index_error_is_handled(db_session, seeded_user):
     _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(
         entries=[
             {
-                "title": "Technology duplicate rollback",
-                "summary": "Duplicate scenario with rollback",
-                "link": "https://example.test/article-rollback",
+                "title": "Technology index failure",
+                "summary": "Elasticsearch should fail",
+                "link": "https://example.test/article-es-error",
                 "published": "Tue, 31 Mar 2026 10:20:00 GMT",
             }
         ],
         bozo=False,
     )
+    es_client = _make_es_client(index_side_effect=RuntimeError("es down"))
 
     with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
-        "app.services.agents.alert_monitor_agent.classify_article"
-    ), patch.object(db_session, "rollback", wraps=db_session.rollback) as rollback_mock:
-        first_created = run_alert_monitoring_cycle(db_session)
-        second_created = run_alert_monitoring_cycle(db_session)
+        "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
+        return_value=es_client,
+    ), patch("app.services.agents.alert_monitor_agent.classify_article") as classify_mock:
+        created = run_alert_monitoring_cycle(db_session)
 
-    assert first_created == 1
-    assert second_created == 0
-    assert rollback_mock.called is True
+    assert created == 0
+    es_client.index.assert_called_once()
+    classify_mock.assert_not_called()
 
 
 @pytest.mark.unit
@@ -158,14 +184,16 @@ def test_monitor_handles_bozo_feed_with_no_entries(db_session, seeded_user):
     _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(entries=[], bozo=True)
+    es_client = _make_es_client()
 
     with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
-        "app.services.agents.alert_monitor_agent.classify_article"
-    ):
+        "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
+        return_value=es_client,
+    ), patch("app.services.agents.alert_monitor_agent.classify_article"):
         created = run_alert_monitoring_cycle(db_session)
 
     assert created == 0
-    assert db_session.query(Article).count() == 0
+    es_client.index.assert_not_called()
 
 
 @pytest.mark.unit
@@ -183,15 +211,42 @@ def test_monitor_rolls_back_when_classification_fails(db_session, seeded_user):
         ],
         bozo=False,
     )
+    es_client = _make_es_client(index_return_value={"result": "created", "_id": "doc-rollback"})
 
     with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
+        "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
+        return_value=es_client,
+    ), patch(
         "app.services.agents.alert_monitor_agent.classify_article",
         side_effect=RuntimeError("classification failed"),
-    ):
+    ), patch.object(db_session, "rollback", wraps=db_session.rollback) as rollback_mock:
         created = run_alert_monitoring_cycle(db_session)
 
     assert created == 1
-    assert db_session.query(Article).count() == 1
+    es_client.index.assert_called_once()
+    assert rollback_mock.called is True
+
+
+@pytest.mark.unit
+def test_build_article_document_includes_required_fields(db_session, seeded_user):
+    alert, channel = _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
+    entry = _normalize_feed_entry(
+        {
+            "title": "Technology headline",
+            "summary": "Some summary",
+            "link": "https://example.test/article-doc",
+            "published": "Tue, 31 Mar 2026 10:30:00 GMT",
+        }
+    )
+    assert entry is not None
+
+    document = _build_article_document(alert=alert, channel=channel, entry=entry)
+
+    assert document["title"] == "Technology headline"
+    assert document["link"] == "https://example.test/article-doc"
+    assert document["summary"] == "Some summary"
+    assert document["alert_id"] == alert.id
+    assert document["user_id"] == seeded_user.id
 
 
 @pytest.mark.unit

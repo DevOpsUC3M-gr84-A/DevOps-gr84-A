@@ -25,6 +25,13 @@ nav:
     - ADR-006 (API REST y Usuarios): ADRs/ADR-006-api-rest-usuarios.md
     - ADR-007 (SonarCloud): ADRs/ADR-007-sonarcloud.md
     - ADR-008 (Seed RSS): ADRs/ADR-008-seed-datos-rss.md
+    - ADR-009 (Frontend Stack): ADRs/ADR-009-frontend-stack.md
+    - ADR-010 (Arquitectura Frontend): ADRs/ADR-010-arquitectura-frontend.md
+    - ADR-011 (Frontend Testing): ADRs/ADR-011-frontend-testing.md
+    - ADR-012 (Clasificación IPTC): ADRs/ADR-012-clasificacion-iptc.md
+    - ADR-013 (RBAC Lector): ADRs/ADR-013-rbac-lector.md
+    - ADR-014 (Gestión Alertas): ADRs/ADR-014-gestion-alertas.md
+    - ADR-015 (Migración Elasticsearch): ADRs/ADR-015-migracion-elasticsearch.md
   - Trazabilidad de IA: prompts.md
 
 # 4. Plugins

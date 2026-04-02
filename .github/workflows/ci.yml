@@ -47,7 +47,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r newsradar_api/requirements.txt
-          pip install -r newsradar_api/requirements-test.txt
+          pip install -r newsradar_api/requirements-dev.txt
           pip install flake8 pytest pytest-cov
 
       # Paso 4: [Backend] Análisis estático de código (Linting)
