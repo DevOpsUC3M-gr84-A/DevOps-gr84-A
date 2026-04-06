@@ -4,10 +4,13 @@ crear un usuario administrador inicial si no existe ninguno.
 """
 
 import os
+import logging
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.database.database import SessionLocal, engine, Base
 from app.models.user import User, UserRole
+
+logger = logging.getLogger(__name__)
 
 # Configuración de passlib para generar hashes con argon2
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -26,10 +29,16 @@ def create_initial_admin(db: Session) -> None:
 
     # Si no existe, crearlo
     if not admin:
-        print("No se encontró ningún administrador. Creando Gestor inicial...")
+        logger.info("No se encontró ningún administrador. Creando Gestor inicial...")
 
-        admin_email = os.getenv("FIRST_SUPERUSER_EMAIL", "admin@newsradar.com")
-        admin_password = os.getenv("FIRST_SUPERUSER_PASSWORD", "admin1234")
+        admin_email = os.getenv("FIRST_SUPERUSER_EMAIL")
+        admin_password = os.getenv("FIRST_SUPERUSER_PASSWORD")
+
+        if not admin_email or not admin_password:
+            raise RuntimeError(
+                "Debes definir FIRST_SUPERUSER_EMAIL y FIRST_SUPERUSER_PASSWORD "
+                "para crear el Gestor inicial de forma segura."
+            )
 
         new_admin = User(
             email=admin_email,
@@ -45,15 +54,17 @@ def create_initial_admin(db: Session) -> None:
         db.commit()
         db.refresh(new_admin)
 
-        print(f"Gestor inicial creado exitosamente con el email: {admin_email}")
+        logger.info("Gestor inicial creado exitosamente con el email: %s", admin_email)
     else:
-        print(
-            f"El Gestor inicial {admin.email} ya existe. No se ha realizado ninguna acción."
+        logger.info(
+            "El Gestor inicial %s ya existe. No se ha realizado ninguna acción.",
+            admin.email,
         )
 
 
 if __name__ == "__main__":
-    print("Iniciando conexión con la base de datos...")
+    logging.basicConfig(level=logging.INFO)
+    logger.info("Iniciando conexión con la base de datos...")
     # Asegurarnos de que las tablas existen (equivalente a una migración inicial sencilla)
     Base.metadata.create_all(bind=engine)
 

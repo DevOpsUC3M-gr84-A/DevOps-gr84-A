@@ -1,12 +1,26 @@
 // src/components/AlertsManagement.tsx
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { AlertForm } from '../components/AlertForm';
+import { AlertForm, AlertFormPayload } from '../components/AlertForm';
 import { useAlertModal } from '../hooks/useAlertModal';
+
+interface ApiAlert {
+  id: number;
+  name: string;
+  descriptors: string[];
+}
+
+interface AlertTableItem {
+  id: number;
+  nombre: string;
+  descriptores: string;
+}
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
 export const AlertsManagement = () => {
   const { isOpen, open, close } = useAlertModal();
-  const [alertas, setAlertas] = useState<any[]>([]);
+  const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
 
   // Carga inicial de datos desde la API
   useEffect(() => {
@@ -17,14 +31,14 @@ export const AlertsManagement = () => {
       if (!userId || !token) return;
 
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/users/${userId}/alerts`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data: ApiAlert[] = await response.json();
           // Formateamos descriptores de Array a String para la tabla
-          setAlertas(data.map((a: any) => ({
+          setAlertas(data.map((a) => ({
             ...a,
             nombre: a.name,
             descriptores: a.descriptors.join(', ')
@@ -38,7 +52,7 @@ export const AlertsManagement = () => {
   }, []);
 
   // Actualización de la tabla tras crear una alerta
-  const handleAlertSubmit = (datos: any) => {
+  const handleAlertSubmit = (datos: AlertFormPayload) => {
     setAlertas([...alertas, {
       id: Date.now(),
       nombre: datos.name,
@@ -69,7 +83,7 @@ export const AlertsManagement = () => {
             <tbody>
               {alertas.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={3} className="empty-state-cell">
                     No hay alertas todavía.
                   </td>
                 </tr>
@@ -80,8 +94,8 @@ export const AlertsManagement = () => {
                     <td>{alerta.descriptores}</td>
                     <td>
                       <div className="action-buttons">
-                        <button className="btn-icon edit"><Pencil size={20} /></button>
-                        <button className="btn-icon delete"><Trash2 size={20} /></button>
+                        <button className="btn-icon edit" aria-label="Editar alerta" title="Editar alerta"><Pencil size={20} /></button>
+                        <button className="btn-icon delete" aria-label="Eliminar alerta" title="Eliminar alerta"><Trash2 size={20} /></button>
                       </div>
                     </td>
                   </tr>
