@@ -21,7 +21,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     
     // Convertir string en un array real
