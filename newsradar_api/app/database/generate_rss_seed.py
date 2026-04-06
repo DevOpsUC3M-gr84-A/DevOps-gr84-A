@@ -1,7 +1,10 @@
 import json
 import os
+import logging
 
-def generate_seed_data():
+logger = logging.getLogger(__name__)
+
+def generate_seed_data() -> None:
     """Genera un dataset inicial (Seed) cumpliendo el RF14: 
     10 medios, categorías IPTC completas, >100 canales."""
     
@@ -54,7 +57,14 @@ def generate_seed_data():
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(seed_data, f, indent=4, ensure_ascii=False)
 
-    print(f"¡Éxito! Generados {len(medios)} medios y {len(rss_channels)} canales RSS en: {output_path}")
+    logger.info(
+        "Seed generado: %s medios y %s canales RSS en %s",
+        len(medios),
+        len(rss_channels),
+        output_path,
+    )
 
+# pragma: no cover
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     generate_seed_data()

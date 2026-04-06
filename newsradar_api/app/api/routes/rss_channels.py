@@ -1,6 +1,6 @@
 """Este módulo define los endpoints relacionados con la gestión de canales RSS."""
 
-from typing import List
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, Response, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -24,11 +24,14 @@ router = APIRouter()
 
 @router.post(
     "/",
-    response_model=RSSChannelResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(get_current_gestor)],
+    responses={404: {"description": "Fuente de información no encontrada"}},
 )
-def crear_canal_rss(rss_in: RSSChannelCreate, db: Session = Depends(get_db)):
+def crear_canal_rss(
+    rss_in: RSSChannelCreate,
+    db: Annotated[Session, Depends(get_db)],
+) -> RSSChannelResponse:
     """
     Crea un nuevo canal RSS en el sistema.
     [SOLO GESTORES] - Bloqueado a Lector usando la dependencia get_current_gestor.
@@ -45,10 +48,13 @@ def crear_canal_rss(rss_in: RSSChannelCreate, db: Session = Depends(get_db)):
 
 @router.get(
     "/",
-    response_model=List[RSSChannelResponse],
     dependencies=[Depends(get_current_user)],
 )
-def listar_canales_rss(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def listar_canales_rss(
+    db: Annotated[Session, Depends(get_db)],
+    skip: int = 0,
+    limit: int = 100,
+) -> List[RSSChannelResponse]:
     """Obtiene todos los canales RSS registrados."""
     canales = get_all_rss_channels(db, skip=skip, limit=limit)
     return canales
@@ -56,13 +62,13 @@ def listar_canales_rss(skip: int = 0, limit: int = 100, db: Session = Depends(ge
 
 @router.get(
     "/information-sources/{source_id}/rss-channels",
-    response_model=List[RSSChannel],
     tags=["rss-channels"],
+    responses={404: {"description": "Fuente de información no encontrada"}},
 )
 def list_source_channels(
     source_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> List[RSSChannel]:
     source = (
         db.query(DBInformationSource)
@@ -90,16 +96,16 @@ def list_source_channels(
 
 @router.post(
     "/information-sources/{source_id}/rss-channels",
-    response_model=RSSChannel,
     status_code=201,
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
+    responses={404: {"description": "Fuente de información no encontrada"}},
 )
 def create_source_channel(
     source_id: int,
     payload: RSSChannelCreate,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
     source = (
         db.query(DBInformationSource)
@@ -138,14 +144,14 @@ def create_source_channel(
 
 @router.get(
     "/information-sources/{source_id}/rss-channels/{channel_id}",
-    response_model=RSSChannel,
     tags=["rss-channels"],
+    responses={404: {"description": "Canal RSS no encontrado para la fuente"}},
 )
 def get_source_channel(
     source_id: int,
     channel_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
     channel = (
         db.query(DBRSSChannel)
@@ -168,16 +174,16 @@ def get_source_channel(
 
 @router.put(
     "/information-sources/{source_id}/rss-channels/{channel_id}",
-    response_model=RSSChannel,
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
+    responses={404: {"description": "Canal RSS no encontrado para la fuente"}},
 )
 def update_source_channel(
     source_id: int,
     channel_id: int,
     payload: RSSChannelUpdate,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
     channel = (
         db.query(DBRSSChannel)
@@ -217,16 +223,16 @@ def update_source_channel(
 @router.delete(
     "/information-sources/{source_id}/rss-channels/{channel_id}",
     status_code=204,
-    response_model=None,
     response_class=Response,
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
+    responses={404: {"description": "Canal RSS no encontrado para la fuente"}},
 )
 def delete_source_channel(
     source_id: int,
     channel_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> None:
     channel = (
         db.query(DBRSSChannel)

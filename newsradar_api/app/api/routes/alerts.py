@@ -1,5 +1,6 @@
+from typing import Annotated, List
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from typing import List
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,15 +15,11 @@ from app.utils.deps import get_current_gestor, get_current_user
 api_alerts_router = APIRouter()
 
 
-@api_alerts_router.get(
-    "/users/{user_id}/alerts",
-    response_model=List[Alert],
-    tags=["alerts"],
-)
+@api_alerts_router.get("/users/{user_id}/alerts", tags=["alerts"])
 def list_user_alerts(
     user_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> List[Alert]:
     db_alerts = (
         db.query(AlertRule)
@@ -45,15 +42,18 @@ def list_user_alerts(
 
 @api_alerts_router.post(
     "/users/{user_id}/alerts",
-    response_model=Alert,
     status_code=201,
     tags=["alerts"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not found"},
+    },
 )
 def create_user_alert(
     user_id: int,
     payload: AlertCreate,
-    _: UserInDB = Depends(get_current_gestor),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> Alert:
     owner = db.query(DBUser).filter(DBUser.id == user_id).first()
     if owner is None:
@@ -89,15 +89,15 @@ def create_user_alert(
 
 
 @api_alerts_router.get(
-    f"/users/{{user_id}}/alerts/{{alert_id}}",
-    response_model=Alert,
+    "/users/{user_id}/alerts/{alert_id}",
     tags=["alerts"],
+    responses={404: {"description": "Not found"}},
 )
 def get_user_alert(
     user_id: int,
     alert_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> Alert:
     db_alert = (
         db.query(AlertRule)
@@ -122,16 +122,16 @@ def get_user_alert(
 
 
 @api_alerts_router.put(
-    f"/users/{{user_id}}/alerts/{{alert_id}}",
-    response_model=Alert,
+    "/users/{user_id}/alerts/{alert_id}",
     tags=["alerts"],
+    responses={404: {"description": "Not found"}},
 )
 def update_user_alert(
     user_id: int,
     alert_id: int,
     payload: AlertUpdate,
-    _: UserInDB = Depends(get_current_gestor),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> Alert:
     db_alert = (
         db.query(AlertRule)
@@ -173,17 +173,17 @@ def update_user_alert(
 
 
 @api_alerts_router.delete(
-    f"/users/{{user_id}}/alerts/{{alert_id}}",
+    "/users/{user_id}/alerts/{alert_id}",
     status_code=204,
-    response_model=None,
     response_class=Response,
     tags=["alerts"],
+    responses={404: {"description": "Not found"}},
 )
 def delete_user_alert(
     user_id: int,
     alert_id: int,
-    _: UserInDB = Depends(get_current_gestor),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> None:
     db_alert = (
         db.query(AlertRule)

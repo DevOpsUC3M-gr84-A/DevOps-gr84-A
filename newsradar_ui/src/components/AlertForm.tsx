@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
+export interface AlertFormPayload {
+  name: string;
+  descriptors: string[];
+  cron_expression: string;
+}
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
+
 interface AlertFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (datos: any) => void;
+  onSubmit: (datos: AlertFormPayload) => void;
 }
 
 export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -42,7 +50,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
     try {
       // Enviar la petición con el ID dinámico y el token de autorización
-      const response = await fetch(`http://localhost:8000/api/v1/users/${userId}/alerts`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,8 +63,6 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
         throw new Error(`Error del servidor: ${response.status}`);
       }
 
-      console.log("¡Alerta creada con éxito!");
-      
       // Limpiar el formulario y cerrar el modal
       onSubmit(payload);
       setName('');
@@ -73,7 +79,12 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
       <div className="modal-content">
         <div className="modal-header">
           <h2>CREAR NUEVA ALERTA</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+          <button
+            onClick={onClose}
+            className="modal-close-btn"
+            aria-label="Cerrar formulario de alerta"
+            title="Cerrar"
+          >
             <X size={24} />
           </button>
         </div>
@@ -101,7 +112,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
               onChange={e => setDescriptors(e.target.value)}
               required
             />
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-gray)', marginTop: '0.25rem' }}>
+            <p className="form-hint-text">
               Las palabras clave se separan por comas
             </p>
           </div>

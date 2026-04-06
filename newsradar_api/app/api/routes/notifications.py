@@ -1,4 +1,4 @@
-from typing import List
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Response
 from app.schemas.notification import (
     Notification,
@@ -31,28 +31,30 @@ def ensure_notification_for_alert(alert_id: int, notification_id: int):
 
 
 @notifications_router.get(
-    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications",
-    response_model=List[Notification],
+    "/users/{user_id}/alerts/{alert_id}/notifications",
     tags=["notifications"],
+    responses={404: {"description": "Alerta no encontrada para el usuario"}},
 )
 def list_alert_notifications(
-    user_id: int, alert_id: int, _: UserInDB = Depends(get_current_user)
+    user_id: int,
+    alert_id: int,
+    _: Annotated[UserInDB, Depends(get_current_user)],
 ) -> List[Notification]:
     ensure_alert_for_user(user_id, alert_id)
     return [item for item in notifications_store.values() if item.alert_id == alert_id]
 
 
 @notifications_router.post(
-    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications",
-    response_model=Notification,
+    "/users/{user_id}/alerts/{alert_id}/notifications",
     status_code=201,
     tags=["notifications"],
+    responses={404: {"description": "Alerta no encontrada para el usuario"}},
 )
 def create_alert_notification(
     user_id: int,
     alert_id: int,
     payload: NotificationCreate,
-    _: UserInDB = Depends(get_current_user),
+    _: Annotated[UserInDB, Depends(get_current_user)],
 ) -> Notification:
     ensure_alert_for_user(user_id, alert_id)
     notification_id = max(notifications_store.keys(), default=0) + 1
@@ -64,31 +66,31 @@ def create_alert_notification(
 
 
 @notifications_router.get(
-    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
-    response_model=Notification,
+    "/users/{user_id}/alerts/{alert_id}/notifications/{notification_id}",
     tags=["notifications"],
+    responses={404: {"description": "Notificación no encontrada para la alerta"}},
 )
 def get_alert_notification(
     user_id: int,
     alert_id: int,
     notification_id: int,
-    _: UserInDB = Depends(get_current_user),
+    _: Annotated[UserInDB, Depends(get_current_user)],
 ) -> Notification:
     ensure_alert_for_user(user_id, alert_id)
     return ensure_notification_for_alert(alert_id, notification_id)
 
 
 @notifications_router.put(
-    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
-    response_model=Notification,
+    "/users/{user_id}/alerts/{alert_id}/notifications/{notification_id}",
     tags=["notifications"],
+    responses={404: {"description": "Notificación no encontrada para la alerta"}},
 )
 def update_alert_notification(
     user_id: int,
     alert_id: int,
     notification_id: int,
     payload: NotificationUpdate,
-    _: UserInDB = Depends(get_current_user),
+    _: Annotated[UserInDB, Depends(get_current_user)],
 ) -> Notification:
     ensure_alert_for_user(user_id, alert_id)
     notification = ensure_notification_for_alert(alert_id, notification_id)
@@ -98,17 +100,17 @@ def update_alert_notification(
 
 
 @notifications_router.delete(
-    f"/users/{{user_id}}/alerts/{{alert_id}}/notifications/{{notification_id}}",
+    "/users/{user_id}/alerts/{alert_id}/notifications/{notification_id}",
     status_code=204,
-    response_model=None,
     response_class=Response,
     tags=["notifications"],
+    responses={404: {"description": "Notificación no encontrada para la alerta"}},
 )
 def delete_alert_notification(
     user_id: int,
     alert_id: int,
     notification_id: int,
-    _: UserInDB = Depends(get_current_user),
+    _: Annotated[UserInDB, Depends(get_current_user)],
 ) -> None:
     ensure_alert_for_user(user_id, alert_id)
     ensure_notification_for_alert(alert_id, notification_id)

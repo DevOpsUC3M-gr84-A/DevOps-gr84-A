@@ -140,6 +140,11 @@
   color: var(--text-dark);
 }
 
+.empty-state-cell {
+  text-align: center;
+  padding: 2rem;
+}
+
 .management-table tr:last-child td {
   border-bottom: none;
 }
@@ -221,6 +226,7 @@
   width: 100vw;
   height: 100vh;
   background-color: rgba(15, 23, 42, 0.4); /* Fondo oscuro semitransparente */
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px); /* Efecto cristal desenfocado */
   display: flex;
   justify-content: center;
@@ -253,12 +259,25 @@
   letter-spacing: 0.05em;
 }
 
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
 .modal-body {
   padding: 1.5rem;
 }
 
 .form-group {
   margin-bottom: 1.25rem;
+}
+
+.form-hint-text {
+  font-size: 0.75rem;
+  color: var(--text-gray);
+  margin-top: 0.25rem;
 }
 
 .form-group label {

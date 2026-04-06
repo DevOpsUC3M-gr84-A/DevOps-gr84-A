@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
 from typing import Annotated, List
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from app.schemas.category import Category, CategoryCreate, CategoryUpdate
 from app.schemas.user import UserInDB
 from app.stores.memory import categories_store, rss_channels_store
@@ -37,7 +38,11 @@ def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
     return category
 
 
-@categories_router.get("/categories/{category_id}", tags=["categories"])
+@categories_router.get(
+    "/categories/{category_id}",
+    tags=["categories"],
+    responses={404: {"description": "Categoría no encontrada"}},
+)
 def get_category(category_id: int, _: CurrentUser) -> Category:
     category = categories_store.get(category_id)
     if not category:
@@ -48,7 +53,10 @@ def get_category(category_id: int, _: CurrentUser) -> Category:
 @categories_router.put(
     "/categories/{category_id}",
     tags=["categories"],
-    responses={422: {"description": "Código IPTC no válido"}},
+    responses={
+        404: {"description": "Categoría no encontrada"},
+        422: {"description": "Código IPTC no válido"},
+    },
 )
 def update_category(
     category_id: int,
@@ -68,9 +76,9 @@ def update_category(
 @categories_router.delete(
     "/categories/{category_id}",
     status_code=204,
-    response_model=None,
     response_class=Response,
     tags=["categories"],
+    responses={404: {"description": "Categoría no encontrada"}},
 )
 def delete_category(category_id: int, _: CurrentUser) -> None:
     if category_id not in categories_store:
