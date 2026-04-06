@@ -40,7 +40,15 @@ def list_user_alerts(
     ]
 
 
-@api_alerts_router.post("/users/{user_id}/alerts", status_code=201, tags=["alerts"])
+@api_alerts_router.post(
+    "/users/{user_id}/alerts",
+    status_code=201,
+    tags=["alerts"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not found"},
+    },
+)
 def create_user_alert(
     user_id: int,
     payload: AlertCreate,
@@ -83,7 +91,7 @@ def create_user_alert(
 @api_alerts_router.get(
     "/users/{user_id}/alerts/{alert_id}",
     tags=["alerts"],
-    responses={404: {"description": "Alerta no encontrada para el usuario"}},
+    responses={404: {"description": "Not found"}},
 )
 def get_user_alert(
     user_id: int,
@@ -116,7 +124,7 @@ def get_user_alert(
 @api_alerts_router.put(
     "/users/{user_id}/alerts/{alert_id}",
     tags=["alerts"],
-    responses={404: {"description": "Alerta no encontrada para el usuario"}},
+    responses={404: {"description": "Not found"}},
 )
 def update_user_alert(
     user_id: int,
@@ -169,7 +177,7 @@ def update_user_alert(
     status_code=204,
     response_class=Response,
     tags=["alerts"],
-    responses={404: {"description": "Alerta no encontrada para el usuario"}},
+    responses={404: {"description": "Not found"}},
 )
 def delete_user_alert(
     user_id: int,

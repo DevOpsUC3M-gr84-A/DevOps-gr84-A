@@ -64,7 +64,7 @@ def test_create_initial_admin_raises_when_env_missing():
     db.query.return_value.filter.return_value.first.return_value = None
 
     with patch.object(init_db.os, "getenv", return_value=None):
-        with pytest.raises(RuntimeError, match="FIRST_SUPERUSER_EMAIL"):
+        with pytest.raises(RuntimeError, match="Faltan credenciales de entorno"):
             init_db.create_initial_admin(db)
 
     db.add.assert_not_called()

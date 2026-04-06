@@ -35,10 +35,7 @@ def create_initial_admin(db: Session) -> None:
         admin_password = os.getenv("FIRST_SUPERUSER_PASSWORD")
 
         if not admin_email or not admin_password:
-            raise RuntimeError(
-                "Debes definir FIRST_SUPERUSER_EMAIL y FIRST_SUPERUSER_PASSWORD "
-                "para crear el Gestor inicial de forma segura."
-            )
+            raise RuntimeError("Faltan credenciales de entorno")
 
         new_admin = User(
             email=admin_email,
@@ -62,8 +59,7 @@ def create_initial_admin(db: Session) -> None:
         )
 
 
-# pragma: no cover
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.INFO)
     logger.info("Iniciando conexión con la base de datos...")
     # Asegurarnos de que las tablas existen (equivalente a una migración inicial sencilla)
