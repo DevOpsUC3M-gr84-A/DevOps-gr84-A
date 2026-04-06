@@ -37,7 +37,12 @@ def list_users(
     return []
 
 
-@users_router.post("/users", status_code=201, tags=["users"])
+@users_router.post(
+    "/users",
+    status_code=201,
+    tags=["users"],
+    responses={409: {"description": "Conflict"}},
+)
 def create_user(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
     ensure_role_ids_exist(payload.role_ids)
     try:
@@ -68,7 +73,10 @@ def get_user(
 @users_router.put(
     "/users/{user_id}",
     tags=["users"],
-    responses={404: {"description": "Usuario no encontrado"}},
+    responses={
+        404: {"description": "Usuario no encontrado"},
+        409: {"description": "Conflict"},
+    },
 )
 def update_user(
     user_id: int,
