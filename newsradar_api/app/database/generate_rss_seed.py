@@ -64,6 +64,7 @@ def generate_seed_data() -> None:
         output_path,
     )
 
+# pragma: no cover
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     generate_seed_data()

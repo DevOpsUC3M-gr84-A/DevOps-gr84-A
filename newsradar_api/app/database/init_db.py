@@ -62,6 +62,7 @@ def create_initial_admin(db: Session) -> None:
         )
 
 
+# pragma: no cover
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.info("Iniciando conexión con la base de datos...")
