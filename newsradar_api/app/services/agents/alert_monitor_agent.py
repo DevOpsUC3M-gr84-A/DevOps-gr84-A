@@ -207,6 +207,55 @@ def _index_article_document(
     return str(response.get("_id", document_id))
 
 
+def _process_channel_entries(
+    channel: RSSChannel,
+    alerts: list[AlertRule],
+    es_client: Elasticsearch,
+    db: Session,
+) -> int:
+    feed = _parse_feed(channel.url)
+    raw_entries = getattr(feed, "entries", [])
+    logger.info(
+        "Canal RSS id=%s media=%s entries=%s bozo=%s",
+        channel.id,
+        channel.media_name,
+        len(raw_entries),
+        getattr(feed, "bozo", False),
+    )
+
+    normalized_entries = [
+        normalized
+        for normalized in (_normalize_feed_entry(item) for item in raw_entries)
+        if normalized is not None
+    ]
+
+    created_articles = 0
+    for entry in normalized_entries:
+        for alert in alerts:
+            normalized_descriptors = _normalize_descriptors(alert.descriptors)
+            if not _descriptor_matches(entry, normalized_descriptors):
+                continue
+
+            article_id = _index_article_document(
+                es_client=es_client,
+                alert=alert,
+                channel=channel,
+                entry=entry,
+            )
+            if article_id is None:
+                continue
+
+            created_articles += 1
+
+            try:
+                classify_article(article_id)
+            except Exception as exc:  # noqa: BLE001
+                db.rollback()
+                logger.exception("Error clasificando article_id=%s: %s", article_id, exc)
+
+    return created_articles
+
+
 def run_alert_monitoring_cycle(db: Session) -> int:
     """Ejecuta un ciclo completo de monitorizacion y devuelve articulos nuevos."""
 
@@ -227,46 +276,7 @@ def run_alert_monitoring_cycle(db: Session) -> int:
 
     try:
         for channel in channels:
-            feed = _parse_feed(channel.url)
-            raw_entries = getattr(feed, "entries", [])
-            logger.info(
-                "Canal RSS id=%s media=%s entries=%s bozo=%s",
-                channel.id,
-                channel.media_name,
-                len(raw_entries),
-                getattr(feed, "bozo", False),
-            )
-
-            normalized_entries = [
-                normalized
-                for normalized in (_normalize_feed_entry(item) for item in raw_entries)
-                if normalized is not None
-            ]
-
-            for entry in normalized_entries:
-                for alert in alerts:
-                    normalized_descriptors = _normalize_descriptors(alert.descriptors)
-                    if not _descriptor_matches(entry, normalized_descriptors):
-                        continue
-
-                    article_id = _index_article_document(
-                        es_client=es_client,
-                        alert=alert,
-                        channel=channel,
-                        entry=entry,
-                    )
-                    if article_id is None:
-                        continue
-
-                    created_articles += 1
-
-                    try:
-                        classify_article(article_id)
-                    except Exception as exc:  # noqa: BLE001
-                        db.rollback()
-                        logger.exception(
-                            "Error clasificando article_id=%s: %s", article_id, exc
-                        )
+            created_articles += _process_channel_entries(channel, alerts, es_client, db)
 
         check_time = datetime.now(timezone.utc)
         for alert in alerts:

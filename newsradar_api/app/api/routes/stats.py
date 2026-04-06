@@ -8,6 +8,8 @@ from app.utils.deps import get_current_user
 
 stats_router = APIRouter()
 
+ERROR_STATS_NOT_FOUND = "Stats no encontrados"
+
 
 @stats_router.get("/stats", tags=["stats"])
 def list_stats(_: Annotated[UserInDB, Depends(get_current_user)] = None) -> List[Stats]:
@@ -33,7 +35,7 @@ def create_stats(
 def get_stats(stats_id: int, _: Annotated[UserInDB, Depends(get_current_user)] = None) -> Stats:
     stats = stats_store.get(stats_id)
     if not stats:
-        raise HTTPException(status_code=404, detail="Stats no encontrados")
+        raise HTTPException(status_code=404, detail=ERROR_STATS_NOT_FOUND)
     return stats
 
 
@@ -49,7 +51,7 @@ def update_stats(
 ) -> Stats:
     stats = stats_store.get(stats_id)
     if not stats:
-        raise HTTPException(status_code=404, detail="Stats no encontrados")
+        raise HTTPException(status_code=404, detail=ERROR_STATS_NOT_FOUND)
     updated = stats.model_copy(update=payload.model_dump(exclude_unset=True))
     stats_store[stats_id] = updated
     return updated
@@ -64,5 +66,5 @@ def update_stats(
 )
 def delete_stats(stats_id: int, _: Annotated[UserInDB, Depends(get_current_user)] = None) -> None:
     if stats_id not in stats_store:
-        raise HTTPException(status_code=404, detail="Stats no encontrados")
+        raise HTTPException(status_code=404, detail=ERROR_STATS_NOT_FOUND)
     stats_store.pop(stats_id, None)
