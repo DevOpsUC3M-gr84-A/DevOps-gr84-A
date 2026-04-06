@@ -1,4 +1,6 @@
 from uuid import uuid4
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -31,8 +33,11 @@ def _find_legacy_user_by_email(email: str) -> UserInDB | None:
     return next((u for u in users_store.values() if u.email == email), None)
 
 
-@api_auth_router.post("/auth/login", response_model=TokenResponse, tags=["auth"])
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+@api_auth_router.post("/auth/login", tags=["auth"])
+def login(
+    payload: LoginRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> TokenResponse:
     db_user = _find_db_user_by_email(payload.email, db)
     if db_user is not None and verify_password(payload.password, db_user.hashed_password):
         sync_memory_user(db_user)
@@ -53,8 +58,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
     return _issue_token(user.id)
 
 
-@api_auth_router.post("/auth/register", response_model=User, tags=["auth"])
-def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
+@api_auth_router.post("/auth/register", tags=["auth"])
+def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
     ensure_role_ids_exist(payload.role_ids)
     try:
         user_db = create_db_user(db, payload)

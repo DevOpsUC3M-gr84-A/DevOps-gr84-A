@@ -1,4 +1,4 @@
-from typing import List
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,14 +17,10 @@ from app.utils.deps import get_current_gestor, get_current_user
 information_sources_router = APIRouter()
 
 
-@information_sources_router.get(
-    "/information-sources",
-    response_model=List[InformationSource],
-    tags=["information-sources"],
-)
+@information_sources_router.get("/information-sources", tags=["information-sources"])
 def list_information_sources(
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> List[InformationSource]:
     items = db.query(DBInformationSource).all()
     return [InformationSource(id=item.id, name=item.name, url=item.url) for item in items]
@@ -32,14 +28,13 @@ def list_information_sources(
 
 @information_sources_router.post(
     "/information-sources",
-    response_model=InformationSource,
     status_code=201,
     tags=["information-sources"],
 )
 def create_information_source(
     payload: InformationSourceCreate,
-    _: UserInDB = Depends(get_current_gestor),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> InformationSource:
     db_source = DBInformationSource(name=payload.name, url=str(payload.url))
     db.add(db_source)
@@ -63,14 +58,14 @@ def create_information_source(
 
 
 @information_sources_router.get(
-    f"/information-sources/{{source_id}}",
-    response_model=InformationSource,
+    "/information-sources/{source_id}",
     tags=["information-sources"],
+    responses={404: {"description": "Fuente de información no encontrada"}},
 )
 def get_information_source(
     source_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> InformationSource:
     source = (
         db.query(DBInformationSource)
@@ -85,15 +80,15 @@ def get_information_source(
 
 
 @information_sources_router.put(
-    f"/information-sources/{{source_id}}",
-    response_model=InformationSource,
+    "/information-sources/{source_id}",
     tags=["information-sources"],
+    responses={404: {"description": "Fuente de información no encontrada"}},
 )
 def update_information_source(
     source_id: int,
     payload: InformationSourceUpdate,
-    _: UserInDB = Depends(get_current_gestor),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> InformationSource:
     source = (
         db.query(DBInformationSource)
@@ -125,16 +120,16 @@ def update_information_source(
 
 
 @information_sources_router.delete(
-    f"/information-sources/{{source_id}}",
+    "/information-sources/{source_id}",
     status_code=204,
-    response_model=None,
     response_class=Response,
     tags=["information-sources"],
+    responses={404: {"description": "Fuente de información no encontrada"}},
 )
 def delete_information_source(
     source_id: int,
-    _: UserInDB = Depends(get_current_gestor),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> None:
     source = (
         db.query(DBInformationSource)

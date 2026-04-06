@@ -1,4 +1,5 @@
-from typing import List
+from typing import Annotated, List
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
@@ -23,10 +24,10 @@ def _get_user_or_404(user_id: int, db: Session) -> DBUser:
     return user
 
 
-@users_router.get("/users", response_model=List[User], tags=["users"])
+@users_router.get("/users", tags=["users"])
 def list_users(
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> List[User]:
     db_users = db.query(DBUser).all()
     if db_users:
@@ -36,8 +37,8 @@ def list_users(
     return []
 
 
-@users_router.post("/users", response_model=User, status_code=201, tags=["users"])
-def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
+@users_router.post("/users", status_code=201, tags=["users"])
+def create_user(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
     ensure_role_ids_exist(payload.role_ids)
     try:
         user_db = create_db_user(db, payload)
@@ -48,11 +49,15 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     return to_user_schema(user_db)
 
 
-@users_router.get("/users/{user_id}", response_model=User, tags=["users"])
+@users_router.get(
+    "/users/{user_id}",
+    tags=["users"],
+    responses={404: {"description": "Usuario no encontrado"}},
+)
 def get_user(
     user_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> User:
     user = _get_user_or_404(user_id, db)
 
@@ -60,12 +65,16 @@ def get_user(
     return to_user_schema(user)
 
 
-@users_router.put("/users/{user_id}", response_model=User, tags=["users"])
+@users_router.put(
+    "/users/{user_id}",
+    tags=["users"],
+    responses={404: {"description": "Usuario no encontrado"}},
+)
 def update_user(
     user_id: int,
     payload: UserUpdate,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> User:
     user = _get_user_or_404(user_id, db)
     data = payload.model_dump(exclude_unset=True)
@@ -81,16 +90,17 @@ def update_user(
     return to_user_schema(updated)
 
 
-@users_router.delete("/users/{user_id}",
+@users_router.delete(
+    "/users/{user_id}",
     status_code=204,
-    response_model=None,
     response_class=Response,
     tags=["users"],
+    responses={404: {"description": "Usuario no encontrado"}},
 )
 def delete_user(
     user_id: int,
-    _: UserInDB = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> None:
     user = _get_user_or_404(user_id, db)
 
