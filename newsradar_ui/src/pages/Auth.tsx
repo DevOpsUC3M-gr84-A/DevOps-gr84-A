@@ -22,7 +22,7 @@ export const Auth = () => {
   };
 
   const validate = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!emailRegex.test(formData.email)) return "Email no válido";
     if (formData.password.length < 6) return "La contraseña debe tener al menos 6 caracteres";
     if (!isLogin && (!formData.first_name || !formData.last_name || !formData.organization)) {
@@ -54,7 +54,19 @@ export const Auth = () => {
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.detail || 'Error en la operación');
+      if (!response.ok) {
+        let mensajeError = 'Error en la operación';
+
+        if (typeof data.detail === 'string') {
+          mensajeError = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          mensajeError = data.detail.map((err: any) => `${err.loc[1]}: ${err.msg}`).join('\n');
+        } else if (data.detail && typeof data.detail === 'object') {
+           mensajeError = JSON.stringify(data.detail);
+        }
+
+        throw new Error(mensajeError);
+      }
 
       if (isLogin) {
         // Lógica del hook
