@@ -32,9 +32,12 @@ uvicorn app.main:app --reload
    - password: `admin123`
 2. Obtener token en `POST /api/v1/auth/login`
 3. Usar el token como `Bearer <token>` en el header `Authorization`.
-1. Usuario semilla en el web:
+4. Usuario semilla en el web:
   - email: `admin@newsradar.ai`
    - password: `admin123`
+5. Usuario gestor de pruebas:
+  - email: `gestor@newsradar.com`
+  - password: `gestor123`
 ## Flujo de URLs
 
 - Usuario → Alertas:

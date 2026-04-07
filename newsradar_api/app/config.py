@@ -1,5 +1,7 @@
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 ADMIN_PASSWORD_ENV = "NEWSRADAR_ADMIN_PASSWORD"
 LECTOR_PASSWORD_ENV = "NEWSRADAR_LECTOR_PASSWORD"
 
