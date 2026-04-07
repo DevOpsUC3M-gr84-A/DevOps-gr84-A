@@ -21,12 +21,22 @@ from app.utils.deps import get_current_gestor, get_current_user
 
 router = APIRouter()
 
+ERROR_SOURCE_NOT_FOUND = "Fuente de información no encontrada"
+ERROR_CHANNEL_NOT_FOUND = "Canal RSS no encontrado para la fuente"
+ERROR_CHANNEL_CREATE_FAILED = "No se pudo crear el canal RSS"
+ERROR_CHANNEL_CONFLICT = "Canal RSS duplicado o inválido para la fuente"
+ERROR_CHANNEL_UPDATE_CONFLICT = "No se pudo actualizar el canal RSS por conflicto de datos"
+
 
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(get_current_gestor)],
-    responses={404: {"description": "Fuente de información no encontrada"}},
+    responses={
+        400: {"description": "Bad Request"},
+        409: {"description": "Conflict"},
+        500: {"description": "Internal Server Error"},
+    },
 )
 def crear_canal_rss(
     rss_in: RSSChannelCreate,
@@ -42,7 +52,7 @@ def crear_canal_rss(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No se pudo crear el canal RSS: {str(e)}",
+            detail=f"{ERROR_CHANNEL_CREATE_FAILED}: {str(e)}",
         ) from e
 
 
@@ -76,7 +86,7 @@ def list_source_channels(
         .first()
     )
     if source is None:
-        raise HTTPException(status_code=404, detail="Fuente de información no encontrada")
+        raise HTTPException(status_code=404, detail=ERROR_SOURCE_NOT_FOUND)
 
     channels = (
         db.query(DBRSSChannel)
@@ -99,7 +109,10 @@ def list_source_channels(
     status_code=201,
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
-    responses={404: {"description": "Fuente de información no encontrada"}},
+    responses={
+        404: {"description": "Fuente de información no encontrada"},
+        409: {"description": "Conflict"},
+    },
 )
 def create_source_channel(
     source_id: int,
@@ -113,7 +126,7 @@ def create_source_channel(
         .first()
     )
     if source is None:
-        raise HTTPException(status_code=404, detail="Fuente de información no encontrada")
+        raise HTTPException(status_code=404, detail=ERROR_SOURCE_NOT_FOUND)
 
     channel = DBRSSChannel(
         information_source_id=source_id,
@@ -130,7 +143,7 @@ def create_source_channel(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="Canal RSS duplicado o inválido para la fuente",
+            detail=ERROR_CHANNEL_CONFLICT,
         ) from exc
 
     db.refresh(channel)
@@ -162,7 +175,7 @@ def get_source_channel(
         .first()
     )
     if channel is None:
-        raise HTTPException(status_code=404, detail="Canal RSS no encontrado para la fuente")
+        raise HTTPException(status_code=404, detail=ERROR_CHANNEL_NOT_FOUND)
 
     return RSSChannel(
         id=channel.id,
@@ -176,7 +189,10 @@ def get_source_channel(
     "/information-sources/{source_id}/rss-channels/{channel_id}",
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
-    responses={404: {"description": "Canal RSS no encontrado para la fuente"}},
+    responses={
+        404: {"description": "Canal RSS no encontrado para la fuente"},
+        409: {"description": "Conflict"},
+    },
 )
 def update_source_channel(
     source_id: int,
@@ -194,7 +210,7 @@ def update_source_channel(
         .first()
     )
     if channel is None:
-        raise HTTPException(status_code=404, detail="Canal RSS no encontrado para la fuente")
+        raise HTTPException(status_code=404, detail=ERROR_CHANNEL_NOT_FOUND)
 
     update_data = payload.model_dump(exclude_unset=True)
     if "category_id" in update_data:
@@ -208,7 +224,7 @@ def update_source_channel(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="No se pudo actualizar el canal RSS por conflicto de datos",
+            detail=ERROR_CHANNEL_UPDATE_CONFLICT,
         ) from exc
 
     db.refresh(channel)
@@ -243,7 +259,7 @@ def delete_source_channel(
         .first()
     )
     if channel is None:
-        raise HTTPException(status_code=404, detail="Canal RSS no encontrado para la fuente")
+        raise HTTPException(status_code=404, detail=ERROR_CHANNEL_NOT_FOUND)
 
     db.delete(channel)
     db.commit()

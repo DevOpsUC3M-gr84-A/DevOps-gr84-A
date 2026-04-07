@@ -12,6 +12,10 @@ categories_router = APIRouter()
 
 CurrentUser = Annotated[UserInDB, Depends(get_current_user)]
 
+ERROR_CATEGORY_NOT_FOUND = "Categoría no encontrada"
+ERROR_INVALID_IPTC_CODE = "Código IPTC no válido"
+ERROR_CATEGORY_LINKED_TO_CHANNELS = "Categoría asociada a canales RSS"
+
 
 @categories_router.get("/iptc-categories", tags=["categories"])
 def list_iptc_categories():
@@ -31,7 +35,7 @@ def list_categories(_: CurrentUser) -> List[Category]:
 )
 def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
     if payload.iptc_code is not None and payload.iptc_code not in VALID_IPTC_CODES:
-        raise HTTPException(status_code=422, detail="Código IPTC no válido")
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_IPTC_CODE)
     category_id = max(categories_store.keys(), default=0) + 1
     category = Category(id=category_id, **payload.model_dump())
     categories_store[category_id] = category
@@ -46,7 +50,7 @@ def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
 def get_category(category_id: int, _: CurrentUser) -> Category:
     category = categories_store.get(category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+        raise HTTPException(status_code=404, detail=ERROR_CATEGORY_NOT_FOUND)
     return category
 
 
@@ -55,6 +59,7 @@ def get_category(category_id: int, _: CurrentUser) -> Category:
     tags=["categories"],
     responses={
         404: {"description": "Categoría no encontrada"},
+        409: {"description": "Conflict"},
         422: {"description": "Código IPTC no válido"},
     },
 )
@@ -65,9 +70,9 @@ def update_category(
 ) -> Category:
     category = categories_store.get(category_id)
     if not category:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+        raise HTTPException(status_code=404, detail=ERROR_CATEGORY_NOT_FOUND)
     if payload.iptc_code is not None and payload.iptc_code not in VALID_IPTC_CODES:
-        raise HTTPException(status_code=422, detail="Código IPTC no válido")
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_IPTC_CODE)
     updated = category.model_copy(update=payload.model_dump(exclude_unset=True))
     categories_store[category_id] = updated
     return updated
@@ -78,14 +83,17 @@ def update_category(
     status_code=204,
     response_class=Response,
     tags=["categories"],
-    responses={404: {"description": "Categoría no encontrada"}},
+    responses={
+        404: {"description": "Categoría no encontrada"},
+        409: {"description": "Conflict"},
+    },
 )
 def delete_category(category_id: int, _: CurrentUser) -> None:
     if category_id not in categories_store:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+        raise HTTPException(status_code=404, detail=ERROR_CATEGORY_NOT_FOUND)
     for channel in rss_channels_store.values():
         if channel.category_id == category_id:
             raise HTTPException(
-                status_code=409, detail="Categoría asociada a canales RSS"
+                status_code=409, detail=ERROR_CATEGORY_LINKED_TO_CHANNELS
             )
     categories_store.pop(category_id, None)

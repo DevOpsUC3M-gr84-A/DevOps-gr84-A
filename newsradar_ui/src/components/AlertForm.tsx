@@ -21,7 +21,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     
     // Convertir string en un array real
@@ -40,7 +40,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
     // Obtener el token y el ID del usuario logueado desde el localStorage
     const token = localStorage.getItem('token');
     const userIdStr = localStorage.getItem('userId');
-    const userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    const userId = userIdStr ? Number.parseInt(userIdStr, 10) : null;
 
     // Validación de una sesión activa antes de enviar nada
     if (!userId || !token) {
@@ -91,8 +91,9 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
-            <label>NOMBRE DE LA ALERTA</label>
+            <label htmlFor="alertName">NOMBRE DE LA ALERTA</label>
             <input 
+              id="alertName"
               type="text" 
               className="form-input" 
               placeholder="Ej: TENDENCIAS TECH 2026"
@@ -103,8 +104,9 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
           </div>
 
           <div className="form-group">
-            <label>DESCRIPTORES (SEPARADOS POR COMA)</label>
+            <label htmlFor="alertDescriptors">DESCRIPTORES (SEPARADOS POR COMA)</label>
             <input 
+              id="alertDescriptors"
               type="text" 
               className="form-input" 
               placeholder="Ej: IA, ROBÓTICA, CHIPS"
