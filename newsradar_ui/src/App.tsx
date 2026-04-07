@@ -4,9 +4,11 @@ import './App.css';
 import { Bell, Settings, Radar, LogOut } from 'lucide-react'; // Añadimos LogOut
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
+import { useAuth } from './hooks/useAuth';
 
 function App() {
   const token = localStorage.getItem('token');
+  const { logout } = useAuth();
 
   // Función para cerrar sesión
   const handleLogout = () => {
@@ -16,6 +18,7 @@ function App() {
     localStorage.removeItem('userEmail');
     // Recargamos para volver a la página de Auth
     window.location.href = '/';
+    logout();
   };
 
   if (!token) {

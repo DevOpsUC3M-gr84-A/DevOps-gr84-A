@@ -21,57 +21,25 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.SyntheticEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convertir string en un array real
+    // Transformar el string de descriptores en un array limpio
     const descriptoresArray = descriptors
       .split(',')
       .map(palabra => palabra.trim())
       .filter(palabra => palabra !== '');
 
-    // Preparar payload
-    const payload = {
+    // Pasar los datos al padre sin hacer fetch aquí
+    onSubmit({
       name: name,
       descriptors: descriptoresArray,
-      cron_expression: "0 * * * *" // Valor por defecto 
-    };
+      cron_expression: "0 * * * *" 
+    });
 
-    // Obtener el token y el ID del usuario logueado desde el localStorage
-    const token = localStorage.getItem('token');
-    const userIdStr = localStorage.getItem('userId');
-    const userId = userIdStr ? Number.parseInt(userIdStr, 10) : null;
-
-    // Validación de una sesión activa antes de enviar nada
-    if (!userId || !token) {
-      alert("No estás logueado o falta tu ID. Por favor, inicia sesión.");
-      return;
-    }
-
-    try {
-      // Enviar la petición con el ID dinámico y el token de autorización
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error del servidor: ${response.status}`);
-      }
-
-      // Limpiar el formulario y cerrar el modal
-      onSubmit(payload);
-      setName('');
-      setDescriptors('');
-      
-    } catch (error) {
-      console.error("Hubo un problema de conexión:", error);
-      alert("No se pudo crear la alerta. Revisa tu backend o tu conexión.");
-    }
+    // Limpiar campos para la próxima vez
+    setName('');
+    setDescriptors('');
   };
 
   return (
@@ -79,44 +47,26 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
       <div className="modal-content">
         <div className="modal-header">
           <h2>CREAR NUEVA ALERTA</h2>
-          <button
-            onClick={onClose}
-            className="modal-close-btn"
-            aria-label="Cerrar formulario de alerta"
-            title="Cerrar"
-          >
-            <X size={24} />
-          </button>
+          <button onClick={onClose} className="modal-close-btn" title="Cerrar"><X size={24} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
             <label htmlFor="alertName">NOMBRE DE LA ALERTA</label>
             <input 
-              id="alertName"
-              type="text" 
-              className="form-input" 
+              id="alertName" type="text" className="form-input" required
               placeholder="Ej: TENDENCIAS TECH 2026"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
+              value={name} onChange={e => setName(e.target.value)}
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="alertDescriptors">DESCRIPTORES (SEPARADOS POR COMA)</label>
             <input 
-              id="alertDescriptors"
-              type="text" 
-              className="form-input" 
+              id="alertDescriptors" type="text" className="form-input" required
               placeholder="Ej: IA, ROBÓTICA, CHIPS"
-              value={descriptors}
-              onChange={e => setDescriptors(e.target.value)}
-              required
+              value={descriptors} onChange={e => setDescriptors(e.target.value)}
             />
-            <p className="form-hint-text">
-              Las palabras clave se separan por comas
-            </p>
           </div>
 
           <div className="modal-footer">

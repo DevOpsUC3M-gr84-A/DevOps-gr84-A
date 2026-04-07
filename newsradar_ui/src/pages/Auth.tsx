@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { LogIn, UserPlus, Mail, Lock, User, Radar, Building } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, User, Building } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 // @ts-ignore: CSS module declaration not found
 import './Auth.css';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
 export const Auth = () => {
+  const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -36,12 +38,11 @@ export const Auth = () => {
 
     const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
     
-    // Ajustamos el body
     const payload = isLogin 
       ? { email: formData.email, password: formData.password }
       : { 
           ...formData, 
-          role_ids: [2] // Asignamos rol Lector por defecto
+          role_ids: [2] 
         };
 
     try {
@@ -56,10 +57,12 @@ export const Auth = () => {
       if (!response.ok) throw new Error(data.detail || 'Error en la operación');
 
       if (isLogin) {
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('userId', data.user_id.toString());
-        localStorage.setItem('userRoles', JSON.stringify(data.role_ids));
-        window.location.href = '/'; 
+        // Lógica del hook
+        login({
+          access_token: data.access_token,
+          user_id: data.user_id,
+          role_ids: data.role_ids
+        });
       } else {
         alert("¡Cuenta creada! Revisa tu email para la verificación (24h) e inicia sesión.");
         setIsLogin(true);
@@ -75,15 +78,15 @@ export const Auth = () => {
         <header className="auth-header">
           <div className="auth-logo">
             <img 
-            src={process.env.PUBLIC_URL + '/newsradar-logo.png'}
-            alt="NewsRadar Logo" 
-            style={{ width: '44px', height: '44px' }} 
-          />
+              src={process.env.PUBLIC_URL + '/newsradar-logo.png'}
+              alt="NewsRadar Logo" 
+              style={{ width: '44px', height: '44px' }} 
+            />
             <span>NewsRadar</span>
           </div>
           <h2>{isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
           <p className="auth-subtitle">
-            {isLogin ? 'Accede a tu panel de control' : ''}
+            {isLogin ? 'Accede a tu panel de control' : 'Únete a la plataforma de monitoreo'}
           </p>
         </header>
 

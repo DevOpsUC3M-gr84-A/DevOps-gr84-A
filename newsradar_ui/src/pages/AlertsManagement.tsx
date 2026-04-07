@@ -64,19 +64,15 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: datos.name,
-          descriptors: datos.descriptors,
-          cron_expression: datos.cron_expression || "0 * * * *" // Valor por defecto
-        })
+        body: JSON.stringify(datos)
       });
 
-      if (!response.ok) throw new Error("No tienes permiso o el servidor falló");
+      if (!response.ok) throw new Error("Error al crear la alerta");
 
       const nuevaAlertaApi = await response.json();
 
-      // Añadir a la tabla la alerta que nos devuelve el servidor
-      setAlertas([...alertas, {
+      // ACTUALIZACIÓN SEGURA: Usa prevAlertas para evitar duplicados en UI
+      setAlertas(prevAlertas => [...prevAlertas, {
         id: nuevaAlertaApi.id,
         nombre: nuevaAlertaApi.name,
         descriptores: nuevaAlertaApi.descriptors.join(', ')
