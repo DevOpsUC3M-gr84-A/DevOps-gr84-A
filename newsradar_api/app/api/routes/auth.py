@@ -65,7 +65,11 @@ def login(
     return _issue_token(user.id, user.role_ids)
 
 
-@api_auth_router.post("/auth/register", tags=["auth"])
+@api_auth_router.post(
+    "/auth/register",
+    tags=["auth"],
+    responses={409: {"description": "Conflict"}},
+)
 def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
     ensure_role_ids_exist(payload.role_ids)
     try:

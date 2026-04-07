@@ -16,6 +16,11 @@ from app.utils.deps import get_current_gestor, get_current_user
 
 information_sources_router = APIRouter()
 
+ERROR_SOURCE_NOT_FOUND = "Fuente de información no encontrada"
+ERROR_SOURCE_CONFLICT_CREATE = "La fuente ya existe (nombre o URL duplicada)"
+ERROR_SOURCE_INTERNAL_ERROR = "Error interno al guardar la fuente"
+ERROR_SOURCE_CONFLICT_UPDATE = "No se pudo actualizar la fuente por conflicto de datos"
+
 
 @information_sources_router.get("/information-sources", tags=["information-sources"])
 def list_information_sources(
@@ -30,6 +35,10 @@ def list_information_sources(
     "/information-sources",
     status_code=201,
     tags=["information-sources"],
+    responses={
+        409: {"description": "Conflict"},
+        500: {"description": "Internal Server Error"},
+    },
 )
 def create_information_source(
     payload: InformationSourceCreate,
@@ -44,13 +53,13 @@ def create_information_source(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="La fuente ya existe (nombre o URL duplicada)",
+            detail=ERROR_SOURCE_CONFLICT_CREATE,
         ) from exc
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(
             status_code=500,
-            detail="Error interno al guardar la fuente",
+            detail=ERROR_SOURCE_INTERNAL_ERROR,
         ) from exc
 
     db.refresh(db_source)
@@ -74,7 +83,7 @@ def get_information_source(
     )
     if source is None:
         raise HTTPException(
-            status_code=404, detail="Fuente de información no encontrada"
+            status_code=404, detail=ERROR_SOURCE_NOT_FOUND
         )
     return InformationSource(id=source.id, name=source.name, url=source.url)
 
@@ -82,7 +91,10 @@ def get_information_source(
 @information_sources_router.put(
     "/information-sources/{source_id}",
     tags=["information-sources"],
-    responses={404: {"description": "Fuente de información no encontrada"}},
+    responses={
+        404: {"description": "Fuente de información no encontrada"},
+        409: {"description": "Conflict"},
+    },
 )
 def update_information_source(
     source_id: int,
@@ -97,7 +109,7 @@ def update_information_source(
     )
     if source is None:
         raise HTTPException(
-            status_code=404, detail="Fuente de información no encontrada"
+            status_code=404, detail=ERROR_SOURCE_NOT_FOUND
         )
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -112,7 +124,7 @@ def update_information_source(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="No se pudo actualizar la fuente por conflicto de datos",
+            detail=ERROR_SOURCE_CONFLICT_UPDATE,
         ) from exc
 
     db.refresh(source)
@@ -138,7 +150,7 @@ def delete_information_source(
     )
     if source is None:
         raise HTTPException(
-            status_code=404, detail="Fuente de información no encontrada"
+            status_code=404, detail=ERROR_SOURCE_NOT_FOUND
         )
 
     (
