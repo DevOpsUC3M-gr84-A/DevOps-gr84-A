@@ -69,6 +69,7 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = owner
+    db.query.return_value.filter.return_value.count.return_value = 0
     db.commit.side_effect = IntegrityError("statement", "params", Exception("orig"))
 
     payload = AlertCreate(
@@ -90,6 +91,7 @@ def test_create_user_alert_success_commits_and_returns_alert():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = owner
+    db.query.return_value.filter.return_value.count.return_value = 0
 
     def _refresh_side_effect(obj):
         obj.id = 10
@@ -139,7 +141,9 @@ def test_update_user_alert_applies_fields_and_commits():
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = db_alert
 
-    payload = AlertUpdate(name="nuevo", descriptors=["d1"], cron_expression="*/1 * * * *")
+    payload = AlertUpdate(
+        name="nuevo", descriptors=["d1"], cron_expression="*/1 * * * *"
+    )
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
@@ -206,6 +210,7 @@ def test_create_user_alert_sqlalchemy_error_propagates():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = owner
+    db.query.return_value.filter.return_value.count.return_value = 0
     db.commit.side_effect = SQLAlchemyError("connection lost")
 
     payload = AlertCreate(
@@ -217,6 +222,28 @@ def test_create_user_alert_sqlalchemy_error_propagates():
 
     with pytest.raises(SQLAlchemyError):
         create_user_alert(user_id=1, payload=payload, db=db)
+
+
+@pytest.mark.unit
+def test_create_user_alert_limit_reached_raises_400():
+    owner = SimpleNamespace(id=1)
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = owner
+    db.query.return_value.filter.return_value.count.return_value = 20
+
+    payload = AlertCreate(
+        name="RF01",
+        descriptors=["a"],
+        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        cron_expression="*/1 * * * *",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        create_user_alert(user_id=1, payload=payload, db=db)
+
+    assert exc_info.value.status_code == 400
+    db.add.assert_not_called()
+    db.commit.assert_not_called()
 
 
 @pytest.mark.unit
@@ -234,7 +261,9 @@ def test_update_user_alert_sqlalchemy_error_propagates():
     db.query.return_value.filter.return_value.first.return_value = db_alert
     db.commit.side_effect = SQLAlchemyError("connection lost")
 
-    payload = AlertUpdate(name="nuevo", descriptors=["d1"], cron_expression="*/1 * * * *")
+    payload = AlertUpdate(
+        name="nuevo", descriptors=["d1"], cron_expression="*/1 * * * *"
+    )
 
     with pytest.raises(SQLAlchemyError):
         update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
