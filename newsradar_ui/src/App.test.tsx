@@ -10,6 +10,12 @@ global.fetch = jest.fn(() =>
 ) as jest.Mock;
 
 describe('Componente Raíz App', () => {
+  beforeEach(() => {
+      localStorage.clear();
+      // Simular que el usuario está logueado
+      localStorage.setItem('token', 'fake-token');
+      localStorage.setItem('userRoles', JSON.stringify([1])); // Entrar como Gestor
+    });
 
   test('renderiza el sidebar con el logo y el nombre de la marca', () => {
     render(<App />);
@@ -38,5 +44,10 @@ describe('Componente Raíz App', () => {
     // Si aparece el título de la página, AlertsManagement se ha montado bien
     const pageTitle = screen.getByText(/Gestión de Alertas/i);
     expect(pageTitle).toBeInTheDocument();
+  });
+
+  test('renderiza el botón de Cerrar Sesión', () => {
+    render(<App />);
+    expect(screen.getByText(/Cerrar Sesión/i)).toBeInTheDocument();
   });
 });

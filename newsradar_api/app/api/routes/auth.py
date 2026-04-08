@@ -1,5 +1,6 @@
 from uuid import uuid4
 from typing import Annotated
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from app.models.user import User as DBUser
 from app.schemas.user import UserCreate, User, UserInDB
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.stores.memory import users_store, active_tokens
+from app.services.user_service import role_ids_from_role
 from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
 from app.services.user_service import (
     create_db_user,
@@ -19,10 +21,14 @@ from app.services.user_service import (
 api_auth_router = APIRouter()
 
 
-def _issue_token(user_id: int) -> TokenResponse:
+def _issue_token(user_id: int, role_ids: List[int]) -> TokenResponse:
     token = str(uuid4())
     active_tokens[token] = user_id
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token, 
+        user_id=user_id, 
+        role_ids=role_ids
+    )
 
 
 def _find_db_user_by_email(email: str, db: Session) -> DBUser | None:
@@ -41,7 +47,8 @@ def login(
     db_user = _find_db_user_by_email(payload.email, db)
     if db_user is not None and verify_password(payload.password, db_user.hashed_password):
         sync_memory_user(db_user)
-        return _issue_token(db_user.id)
+        ids = role_ids_from_role(db_user.role)
+        return _issue_token(db_user.id, ids)
 
     user = _find_legacy_user_by_email(payload.email)
     if user is None:
@@ -55,7 +62,7 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas"
         )
 
-    return _issue_token(user.id)
+    return _issue_token(user.id, user.role_ids)
 
 
 @api_auth_router.post(
