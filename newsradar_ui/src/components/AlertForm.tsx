@@ -7,7 +7,6 @@ export interface AlertFormPayload {
   cron_expression: string;
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
 interface AlertFormProps {
   isOpen: boolean;
@@ -21,7 +20,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, onSubmit 
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     
     // Transformar el string de descriptores en un array limpio
