@@ -60,7 +60,36 @@ def test_alerts_404_paths_via_api_only(api_client, seeded_user):
     )
     assert update_response.status_code == 404
 
-    delete_response = api_client.delete(
-        f"/api/v1/users/{seeded_user.id}/alerts/999999"
-    )
+    delete_response = api_client.delete(f"/api/v1/users/{seeded_user.id}/alerts/999999")
     assert delete_response.status_code == 404
+
+
+@pytest.mark.integration
+def test_manager_cannot_create_more_than_20_alerts(api_client, seeded_user):
+    for index in range(20):
+        response = api_client.post(
+            f"/api/v1/users/{seeded_user.id}/alerts",
+            json={
+                "name": f"Alerta limite {index + 1}",
+                "descriptors": [f"keyword-{index}"],
+                "categories": [{"code": "04010000", "label": "Tecnologia"}],
+                "cron_expression": "*/5 * * * *",
+            },
+        )
+        assert response.status_code == 201
+
+    response_21 = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json={
+            "name": "Alerta limite 21",
+            "descriptors": ["overflow"],
+            "categories": [{"code": "04010000", "label": "Tecnologia"}],
+            "cron_expression": "*/5 * * * *",
+        },
+    )
+
+    assert response_21.status_code == 400
+    assert (
+        response_21.json()["detail"]
+        == "El gestor ya alcanzó el máximo de 20 alertas activas"
+    )

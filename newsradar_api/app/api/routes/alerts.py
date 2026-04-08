@@ -1,6 +1,6 @@
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,8 @@ api_alerts_router = APIRouter()
 ERROR_USER_NOT_FOUND = "Usuario no encontrado"
 ERROR_ALERT_NOT_FOUND = "Alerta no encontrada para el usuario"
 ERROR_ALERT_CREATE_FAILED = "No se pudo crear la alerta en la base de datos"
+ERROR_ALERT_LIMIT_REACHED = "El gestor ya alcanzó el máximo de 20 alertas activas"
+MAX_ALERTS_PER_MANAGER = 20
 
 
 @api_alerts_router.get("/users/{user_id}/alerts", tags=["alerts"])
@@ -62,6 +64,14 @@ def create_user_alert(
     owner = db.query(DBUser).filter(DBUser.id == user_id).first()
     if owner is None:
         raise HTTPException(status_code=404, detail=ERROR_USER_NOT_FOUND)
+
+    active_alerts_count = (
+        db.query(AlertRule)
+        .filter(AlertRule.user_id == user_id, AlertRule.is_active.is_(True))
+        .count()
+    )
+    if active_alerts_count >= MAX_ALERTS_PER_MANAGER:
+        raise HTTPException(status_code=400, detail=ERROR_ALERT_LIMIT_REACHED)
 
     db_alert = AlertRule(
         user_id=user_id,
