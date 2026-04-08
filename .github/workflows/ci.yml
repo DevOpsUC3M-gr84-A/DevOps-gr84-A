@@ -76,8 +76,8 @@ jobs:
       - name: Setup Node.js for Frontend
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
           cache-dependency-path: ./newsradar_ui/package-lock.json
 
       # Paso 7: [Frontend] Instalación de dependencias
@@ -91,7 +91,7 @@ jobs:
         working-directory: ./newsradar_ui
         env:
           CI: true
-        run: npm test -- --coverage --watchAll=false
+        run: npm run test:ci
 
       # ==========================================
       # FASE 4: ANÁLISIS DE CALIDAD UNIFICADO
@@ -100,5 +100,5 @@ jobs:
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Proporcionado automáticamente por GitHub
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # El secreto que configuraste en tu repositorio
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Proporcionado automáticamente por GitHub
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # El secreto que configuraste en tu repositorio
