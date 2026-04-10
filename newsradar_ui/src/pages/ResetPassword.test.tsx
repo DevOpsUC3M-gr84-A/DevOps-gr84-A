@@ -90,7 +90,7 @@ describe('ResetPassword', () => {
   });
 
   test('muestra estado cargando mientras actualiza contraseña', async () => {
-    let resolveFetch: ((value: unknown) => void) | null = null;
+    let resolveFetch!: (value: any) => void;
     const fetchPromise = new Promise((resolve) => {
       resolveFetch = resolve;
     });
@@ -105,7 +105,7 @@ describe('ResetPassword', () => {
 
     expect(screen.getByRole('button', { name: /Actualizando.../i })).toBeDisabled();
 
-    resolveFetch?.({
+    resolveFetch({
       ok: true,
       json: async () => ({ message: 'ok' }),
     });

@@ -97,7 +97,7 @@ describe('ForgotPassword', () => {
   });
 
   test('muestra estado cargando mientras envía la petición', async () => {
-    let resolveFetch: ((value: unknown) => void) | null = null;
+    let resolveFetch!: (value: any) => void;
     const fetchPromise = new Promise((resolve) => {
       resolveFetch = resolve;
     });
@@ -111,7 +111,7 @@ describe('ForgotPassword', () => {
 
     expect(screen.getByRole('button', { name: /Enviando.../i })).toBeDisabled();
 
-    resolveFetch?.({
+    resolveFetch({
       ok: true,
       json: async () => ({ message: 'ok' }),
     });

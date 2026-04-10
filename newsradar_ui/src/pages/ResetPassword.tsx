@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { AuthLayout } from '../components/AuthLayout';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -59,57 +60,38 @@ export const ResetPassword = () => {
   };
 
   return (
-    <main className="auth-page">
-      <section className="auth-card" aria-labelledby="reset-password-title">
-        <h1 id="reset-password-title">Restablecer contraseña</h1>
-        <p>Escribe tu nueva contraseña para completar el proceso.</p>
+    <AuthLayout
+      title="Restablecer contraseña"
+      description="Escribe tu nueva contraseña para completar el proceso."
+      errorMessage={errorMessage}
+      successMessage={successMessage}
+      isSubmitting={isSubmitting}
+      submitText={isSubmitting ? 'Actualizando...' : 'Actualizar contraseña'}
+      onSubmit={handleSubmit}
+    >
+      <div className="form-group">
+        <label htmlFor="new-password">Nueva Contraseña</label>
+        <input
+          id="new-password"
+          type="password"
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          placeholder="••••••••"
+          required
+        />
+      </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="new-password">Nueva Contraseña</label>
-            <input
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirm-password">Confirmar Contraseña</label>
-            <input
-              id="confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {errorMessage && (
-            <div role="alert" aria-live="assertive" className="alert-feedback alert-feedback-error">
-              {errorMessage}
-            </div>
-          )}
-
-          {successMessage && (
-            <div role="status" aria-live="polite" className="alert-feedback alert-feedback-success">
-              {successMessage}
-            </div>
-          )}
-
-          <button type="submit" className="btn-auth-submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Actualizando...' : 'Actualizar contraseña'}
-          </button>
-
-          <a href="/" className="btn-toggle-auth">
-            Volver al Login
-          </a>
-        </form>
-      </section>
-    </main>
+      <div className="form-group">
+        <label htmlFor="confirm-password">Confirmar Contraseña</label>
+        <input
+          id="confirm-password"
+          type="password"
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          placeholder="••••••••"
+          required
+        />
+      </div>
+    </AuthLayout>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AuthLayout } from '../components/AuthLayout';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -47,46 +48,27 @@ export const ForgotPassword = () => {
   };
 
   return (
-    <main className="auth-page">
-      <section className="auth-card" aria-labelledby="forgot-password-title">
-        <h1 id="forgot-password-title">Recuperar contraseña</h1>
-        <p>Introduce tu correo corporativo y te enviaremos instrucciones.</p>
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="forgot-email">Email</label>
-            <input
-              id="forgot-email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="tu@organizacion.com"
-              required
-            />
-          </div>
-
-          {errorMessage && (
-            <div role="alert" aria-live="assertive" className="alert-feedback alert-feedback-error">
-              {errorMessage}
-            </div>
-          )}
-
-          {successMessage && (
-            <div role="status" aria-live="polite" className="alert-feedback alert-feedback-success">
-              {successMessage}
-            </div>
-          )}
-
-          <button type="submit" className="btn-auth-submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Enviando...' : 'Enviar enlace de recuperación'}
-          </button>
-
-          <a href="/" className="btn-toggle-auth">
-            Volver al Login
-          </a>
-        </form>
-      </section>
-    </main>
+    <AuthLayout
+      title="Recuperar contraseña"
+      description="Introduce tu correo corporativo y te enviaremos instrucciones."
+      errorMessage={errorMessage}
+      successMessage={successMessage}
+      isSubmitting={isSubmitting}
+      submitText={isSubmitting ? 'Enviando...' : 'Enviar enlace de recuperación'}
+      onSubmit={handleSubmit}
+    >
+      <div className="form-group">
+        <label htmlFor="forgot-email">Email</label>
+        <input
+          id="forgot-email"
+          name="email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="tu@organizacion.com"
+          required
+        />
+      </div>
+    </AuthLayout>
   );
 };
