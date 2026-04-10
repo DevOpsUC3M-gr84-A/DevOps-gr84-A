@@ -6,6 +6,8 @@ interface AlertApiItem {
   id: number;
   name: string;
   descriptors: string[];
+  categoria_iptc?: string | null;
+  fuentes_rss?: string[] | null;
 }
 
 interface AlertFeedback {
@@ -20,17 +22,44 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
   const [alertToEdit, setAlertToEdit] = useState<AlertTableItem | null>(null);
   const [alertFeedback, setAlertFeedback] = useState<AlertFeedback | null>(null);
+  const [selectedIptcCategory, setSelectedIptcCategory] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   
   const token = globalThis.localStorage.getItem('token');
   const userId = globalThis.localStorage.getItem('userId');
   const userRoles = JSON.parse(globalThis.localStorage.getItem('userRoles') || '[]');
   const isGestor = userRoles.includes(1);
+  const canManageAlerts = isGestor && Boolean(userId) && Boolean(token);
 
   const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => ({
     id: item.id,
     nombre: item.name,
-    descriptores: item.descriptors.join(', ')
+    descriptores: (item.descriptors ?? []).join(', '),
+    categoria_iptc: item.categoria_iptc ?? '',
+    fuentes_rss: item.fuentes_rss ?? []
   });
+
+  const availableIptcCategories = Array.from(
+    new Set(
+      alertas
+        .map((alerta) => (alerta.categoria_iptc || '').trim())
+        .filter((categoria) => categoria !== '')
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const normalizedSourceFilter = sourceFilter.trim().toLowerCase();
+  const filteredAlertas = alertas.filter((alerta) => {
+    const categoriaIptc = (alerta.categoria_iptc || '').trim();
+    const fuentesRss = alerta.fuentes_rss;
+
+    const matchesCategory = selectedIptcCategory === '' || categoriaIptc === selectedIptcCategory;
+    const matchesSource =
+      normalizedSourceFilter === '' ||
+      fuentesRss.some((source) => source?.toLowerCase().includes(normalizedSourceFilter));
+
+    return matchesCategory && matchesSource;
+  });
+
   const handleCloseAlertForm = () => {
     setIsAlertFormOpen(false);
     setAlertToEdit(null);
@@ -49,10 +78,6 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   };
 
   const handleDeleteAlert = async (alertId: number) => {
-    if (!userId || !token) {
-      return;
-    }
-
     const confirmed = globalThis.confirm('¿Seguro que quieres borrar esta alerta?');
     if (!confirmed) {
       return;
@@ -140,10 +165,6 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   }, [alertFeedback]);
 
   const handleSaveAlert = async (_datos: AlertFormPayload) => {
-    if (!userId || !token) {
-      return;
-    }
-
     await fetchAlertas();
     setAlertFeedback({
       type: 'success',
@@ -157,7 +178,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       <main className="main-content">
         <header className="header-actions">
           <h2>Gestión de Alertas</h2>
-          {isGestor && (
+          {canManageAlerts && (
             <button className="btn-primary" onClick={handleOpenCreateModal}>
               <Plus size={18} /> Crear Nueva Alerta
             </button>
@@ -177,27 +198,60 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         )}
 
         <section className="table-container">
+          <div className="header-actions" aria-label="Filtros de alertas">
+            <div className="form-group">
+              <label htmlFor="alertsIptcFilter">Filtrar por categoria IPTC</label>
+              <select
+                id="alertsIptcFilter"
+                className="form-input"
+                value={selectedIptcCategory}
+                onChange={(e) => setSelectedIptcCategory(e.target.value)}
+              >
+                <option value="">Todas las categorias</option>
+                {availableIptcCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="alertsSourceFilter">Filtrar por fuente RSS</label>
+              <input
+                id="alertsSourceFilter"
+                type="text"
+                className="form-input"
+                placeholder="Ej: Reuters"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+              />
+            </div>
+          </div>
+
           <table className="management-table">
             <thead>
               <tr>
                 <th>Nombre de la Alerta</th>
+                <th>Categoria IPTC</th>
                 <th>Descriptores</th>
-                {isGestor && <th>Acciones</th>}
+                {canManageAlerts && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
-              {alertas.length === 0 ? (
+              {filteredAlertas.length === 0 ? (
                 <tr>
-                  <td colSpan={isGestor ? 3 : 2} className="empty-state-cell">
+                  <td colSpan={canManageAlerts ? 4 : 3} className="empty-state-cell">
                     No hay alertas todavía.
                   </td>
                 </tr>
               ) : (
-                alertas.map((alerta) => (
+                filteredAlertas.map((alerta) => (
                   <tr key={alerta.id}>
                     <td>{alerta.nombre}</td>
+                    <td>{alerta.categoria_iptc}</td>
                     <td>{alerta.descriptores}</td>
-                    {isGestor && (
+                    {canManageAlerts && (
                       <td>
                         <div className="action-buttons">
                           <button

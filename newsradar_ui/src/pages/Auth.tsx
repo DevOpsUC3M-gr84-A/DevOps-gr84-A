@@ -96,7 +96,6 @@ export const Auth = () => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error inesperado en autenticación';
-      console.error('Error en autenticación:', error);
       globalThis.alert(message);
     }
   };
