@@ -10,11 +10,8 @@ const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockLogin = jest.fn();
 
 describe('Página de Autenticación', () => {
-  let consoleErrorSpy: jest.SpyInstance;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockedUseAuth.mockReturnValue({
       login: mockLogin,
       logout: jest.fn()
@@ -26,7 +23,6 @@ describe('Página de Autenticación', () => {
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
     jest.restoreAllMocks();
   });
 
@@ -79,9 +75,7 @@ describe('Página de Autenticación', () => {
     });
   });
 
-  test('envía registro por fetch y muestra mensaje de éxito', async () => {
-    const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
-
+  test('envía registro por fetch y muestra mensaje de confirmación de email', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
       json: async () => ({ message: 'ok' })
@@ -127,14 +121,17 @@ describe('Página de Autenticación', () => {
           })
         })
       );
-      expect(alertSpy).toHaveBeenCalledWith(
-        '¡Cuenta creada! Revisa tu email para la verificación (24h) e inicia sesión.'
-      );
+      expect(screen.getByText(/Registro exitoso/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Por favor, revisa tu bandeja de entrada para verificar tu cuenta/i)
+      ).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole('button', { name: /Ir al Login/i }));
+    expect(screen.getByText(/Iniciar Sesión/i)).toBeInTheDocument();
   });
 
   test('muestra alerta si el email no es válido', () => {
-    const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
@@ -142,12 +139,10 @@ describe('Página de Autenticación', () => {
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(alertSpy).toHaveBeenCalledWith("Email no válido");
-    alertSpy.mockRestore();
+    expect(screen.getByRole('alert')).toHaveTextContent('Email no válido');
   });
 
   test('muestra alerta si la contraseña es muy corta', () => {
-    const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
@@ -158,13 +153,10 @@ describe('Página de Autenticación', () => {
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(alertSpy).toHaveBeenCalledWith("La contraseña debe tener al menos 6 caracteres");
-    alertSpy.mockRestore();
+    expect(screen.getByRole('alert')).toHaveTextContent('La contraseña debe tener al menos 6 caracteres');
   });
 
   test('muestra el error devuelto por la API si el login falla', async () => {
-    const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
-    
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: false,
       status: 401,
@@ -180,10 +172,30 @@ describe('Página de Autenticación', () => {
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('Credenciales inválidas');
+      expect(screen.getByRole('alert')).toHaveTextContent('Credenciales inválidas');
     });
+  });
 
-    alertSpy.mockRestore();
+  test('muestra mensaje amigable cuando la cuenta no está verificada', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: 'Account not verified' })
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: 'test@test.com' }
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: 'password123' }
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Tu cuenta no está verificada. Revisa tu email.');
+    });
   });
 });
 
@@ -215,8 +227,6 @@ describe('Casos de error de API y Red (Cobertura Sonar)', () => {
         json: async () => errorData,
       } as unknown as Response);
       
-      const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
-
       render(<Auth />);
       
       fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
@@ -224,9 +234,8 @@ describe('Casos de error de API y Red (Cobertura Sonar)', () => {
       fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
       await waitFor(() => {
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('email: invalid email'));
+        expect(screen.getByRole('alert')).toHaveTextContent('email: invalid email');
       });
-      alertSpy.mockRestore();
     });
 
     test('Error 500 (Object detail): usa JSON.stringify(detail) en el alert', async () => {
@@ -237,8 +246,6 @@ describe('Casos de error de API y Red (Cobertura Sonar)', () => {
         json: async () => errorData,
       } as unknown as Response);
       
-      const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
-
       render(<Auth />);
       
       fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
@@ -246,15 +253,12 @@ describe('Casos de error de API y Red (Cobertura Sonar)', () => {
       fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
       await waitFor(() => {
-        expect(alertSpy).toHaveBeenCalledWith(JSON.stringify(errorData.detail));
+        expect(screen.getByRole('alert')).toHaveTextContent(JSON.stringify(errorData.detail));
       });
-      alertSpy.mockRestore();
     });
 
     test('Error de red (Catch): captura excepción y muestra alert con el mensaje', async () => {
       jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
-      
-      const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
 
       render(<Auth />);
       
@@ -263,9 +267,8 @@ describe('Casos de error de API y Red (Cobertura Sonar)', () => {
       fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
       await waitFor(() => {
-        expect(alertSpy).toHaveBeenCalledWith('Network Error');
+        expect(screen.getByRole('alert')).toHaveTextContent('Network Error');
       });
-      alertSpy.mockRestore();
     });
   });
 

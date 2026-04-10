@@ -2,8 +2,10 @@ import React from 'react';
 // @ts-ignore: CSS module declaration not found
 import './App.css';
 import { Bell, Settings, Radar, LogOut } from 'lucide-react';
+import { Route, Routes } from 'react-router-dom';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
+import { VerifyEmail } from './pages/VerifyEmail';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
@@ -21,11 +23,7 @@ function App() {
     logout();
   };
 
-  if (!token) {
-    return <Auth />;
-  }
-
-  return (
+  const ProtectedLayout = () => (
     <div className="app-container">
       {/* Sidebar */}
       <aside className="sidebar">
@@ -70,6 +68,13 @@ function App() {
       {/* Main Content */}
       <AlertsManagement onLogout={handleLogout} />
     </div>
+  );
+
+  return (
+    <Routes>
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      {!token ? <Route path="*" element={<Auth />} /> : <Route path="*" element={<ProtectedLayout />} />}
+    </Routes>
   );
 }
 
