@@ -122,5 +122,5 @@ def test_scheduler_run_job_handles_cancelled_error(monkeypatch):
 
     monkeypatch.setattr("app.core.scheduler.asyncio.to_thread", fake_to_thread)
 
-    # No debe propagar la excepcion durante el apagado.
-    asyncio.run(scheduler._run_job())
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(scheduler._run_job())
