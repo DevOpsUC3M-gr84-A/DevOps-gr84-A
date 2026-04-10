@@ -7,9 +7,9 @@ import { useAuth } from '../hooks/useAuth';
 jest.mock('../hooks/useAuth');
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockLogin = jest.fn();
 
 describe('Página de Autenticación', () => {
-  const mockLogin = jest.fn();
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -184,3 +184,87 @@ describe('Página de Autenticación', () => {
     alertSpy.mockRestore();
   });
 });
+
+describe('Casos de error de API y Red (Cobertura Sonar)', () => {
+    // Re-configuramos el mock para estos tests específicos
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockedUseAuth.mockReturnValue({
+        login: mockLogin,
+        logout: jest.fn()
+      });
+      jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({})
+      } as unknown as Response);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('Error 422 (FastAPI style): formatea detail[] y muestra el alert', async () => {
+      const errorData = {
+        detail: [{ loc: ['body', 'email'], msg: 'invalid email' }]
+      };
+      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        json: async () => errorData,
+      } as unknown as Response);
+      
+      const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
+
+      render(<Auth />);
+      
+      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('email: invalid email'));
+      });
+      alertSpy.mockRestore();
+    });
+
+    test('Error 500 (Object detail): usa JSON.stringify(detail) en el alert', async () => {
+      const errorData = { detail: { error: 'Internal server error' } };
+      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => errorData,
+      } as unknown as Response);
+      
+      const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
+
+      render(<Auth />);
+      
+      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(JSON.stringify(errorData.detail));
+      });
+      alertSpy.mockRestore();
+    });
+
+    test('Error de red (Catch): captura excepción y muestra alert con el mensaje', async () => {
+      jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
+      
+      const alertSpy = jest.spyOn(globalThis, 'alert').mockImplementation(() => {});
+
+      render(<Auth />);
+      
+      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('Network Error');
+      });
+      alertSpy.mockRestore();
+    });
+  });
+
+
