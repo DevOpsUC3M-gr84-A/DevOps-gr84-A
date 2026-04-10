@@ -9,15 +9,21 @@ interface AlertTableItem {
   descriptores: string;
 }
 
+interface AlertApiItem {
+  id: number;
+  name: string;
+  descriptors: string[];
+}
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
 export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const { isOpen, open, close } = useAlertModal();
   const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
   
-  const token = localStorage.getItem('token');
-  const userId = localStorage.getItem('userId');
-  const userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
+  const token = globalThis.localStorage.getItem('token');
+  const userId = globalThis.localStorage.getItem('userId');
+  const userRoles = JSON.parse(globalThis.localStorage.getItem('userRoles') || '[]');
   const isGestor = userRoles.includes(1);
 
   // Carga desde la API
@@ -39,8 +45,8 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         const data = await response.json();
         
         // Mapear los nombres de la API (name) a los de tu tabla (nombre)
-        const alertasMapeadas = Array.isArray(data) 
-          ? data.map((item: any) => ({
+        const alertasMapeadas = Array.isArray(data)
+          ? (data as AlertApiItem[]).map((item) => ({
               id: item.id,
               nombre: item.name,
               descriptores: item.descriptors.join(', ')
