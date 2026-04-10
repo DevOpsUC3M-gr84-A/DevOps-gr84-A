@@ -1,53 +1,87 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import { useAuth } from './hooks/useAuth';
 
-global.fetch = jest.fn(() =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve([]),
-  })
-) as jest.Mock;
+jest.mock('./pages/Auth', () => ({
+  Auth: () => <div>AUTH_VIEW</div>
+}));
+
+jest.mock('./pages/AlertsManagement', () => ({
+  AlertsManagement: () => <div>ALERTS_VIEW</div>
+}));
+
+jest.mock('./hooks/useAuth');
+
+const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 describe('Componente Raíz App', () => {
-  beforeEach(() => {
-      localStorage.clear();
-      // Simular que el usuario está logueado
-      localStorage.setItem('token', 'fake-token');
-      localStorage.setItem('userRoles', JSON.stringify([1])); // Entrar como Gestor
-    });
+  const getItemSpy = jest.spyOn(Storage.prototype, 'getItem');
+  const removeItemSpy = jest.spyOn(Storage.prototype, 'removeItem');
 
-  test('renderiza el sidebar con el logo y el nombre de la marca', () => {
-    render(<App />);
-    
-    // Verificar que el logo existe por su texto alternativo (alt)
-    const logo = screen.getByAltText(/NewsRadar Logo/i);
-    expect(logo).toBeInTheDocument();
-    
-    // Verificar que el nombre "NewsRadar" aparece en el sidebar
-    const brandName = screen.getByText(/NewsRadar/i);
-    expect(brandName).toBeInTheDocument();
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getItemSpy.mockReset();
+    removeItemSpy.mockReset();
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn(),
+      logout: jest.fn()
+    });
   });
 
-  test('renderiza los enlaces de navegación principales', () => {
+  test('renderiza Auth cuando no hay token', () => {
+    getItemSpy.mockReturnValueOnce(null);
+
     render(<App />);
-    
-    // Comprobar que las secciones del menú están presentes (añadir más en el futuro)
+
+    expect(screen.getByText('AUTH_VIEW')).toBeInTheDocument();
+  });
+
+  test('renderiza layout protegido cuando hay token', () => {
+    getItemSpy.mockReturnValueOnce('fake-token');
+
+    render(<App />);
+
+    expect(screen.getByText(/Cerrar Sesión/i)).toBeInTheDocument();
+    expect(screen.getByText('ALERTS_VIEW')).toBeInTheDocument();
+  });
+
+  test('al cerrar sesión elimina claves y redirige', () => {
+    getItemSpy.mockReturnValueOnce('fake-token');
+    removeItemSpy.mockImplementation(() => {});
+    const logoutSpy = jest.fn();
+    mockedUseAuth.mockReturnValue({
+      login: jest.fn(),
+      logout: logoutSpy
+    });
+
+    render(<App />);
+
+    screen.getByText(/Cerrar Sesión/i).click();
+
+    expect(removeItemSpy).toHaveBeenCalledWith('token');
+    expect(removeItemSpy).toHaveBeenCalledWith('userId');
+    expect(removeItemSpy).toHaveBeenCalledWith('userRoles');
+    expect(removeItemSpy).toHaveBeenCalledWith('userEmail');
+    expect(logoutSpy).toHaveBeenCalled();
+  });
+
+  test('renderiza los enlaces de navegación principales en modo autenticado', () => {
+    getItemSpy.mockReturnValueOnce('fake-token');
+
+    render(<App />);
+
     expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/Mis Alertas/i)).toBeInTheDocument();
     expect(screen.getByText(/Configuración/i)).toBeInTheDocument();
   });
 
-  test('renderiza el componente de gestión de alertas dentro del contenido principal', () => {
-    render(<App />);
-    
-    // Si aparece el título de la página, AlertsManagement se ha montado bien
-    const pageTitle = screen.getByText(/Gestión de Alertas/i);
-    expect(pageTitle).toBeInTheDocument();
-  });
+  test('renderiza marca y logo en modo autenticado', () => {
+    getItemSpy.mockReturnValueOnce('fake-token');
 
-  test('renderiza el botón de Cerrar Sesión', () => {
     render(<App />);
-    expect(screen.getByText(/Cerrar Sesión/i)).toBeInTheDocument();
+
+    expect(screen.getByAltText(/NewsRadar Logo/i)).toBeInTheDocument();
+    expect(screen.getByText(/NewsRadar/i)).toBeInTheDocument();
   });
 });

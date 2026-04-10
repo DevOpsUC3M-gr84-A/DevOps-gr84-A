@@ -7,7 +7,10 @@ export const useAuth = () => {
   };
 
   const logout = () => {
-    globalThis.localStorage.clear();
+    globalThis.localStorage.removeItem('token');
+    globalThis.localStorage.removeItem('userId');
+    globalThis.localStorage.removeItem('userRoles');
+    globalThis.localStorage.removeItem('userEmail');
     globalThis.location.href = '/auth';
   };
 
