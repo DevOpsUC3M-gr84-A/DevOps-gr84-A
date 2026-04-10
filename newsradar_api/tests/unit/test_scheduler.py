@@ -111,3 +111,16 @@ def test_scheduler_get_next_run_time_and_async_wrapper(monkeypatch):
     assert scheduler.get_next_run_time() == next_run
     asyncio.run(scheduler._run_job())
     assert called["sync"] is True
+
+
+@pytest.mark.unit
+def test_scheduler_run_job_handles_cancelled_error(monkeypatch):
+    scheduler = AlertMonitorScheduler("*/1 * * * *")
+
+    async def fake_to_thread(*_args, **_kwargs):
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr("app.core.scheduler.asyncio.to_thread", fake_to_thread)
+
+    # No debe propagar la excepcion durante el apagado.
+    asyncio.run(scheduler._run_job())

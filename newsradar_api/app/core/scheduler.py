@@ -45,9 +45,7 @@ class AlertMonitorScheduler:
         try:
             await asyncio.to_thread(self._run_job_sync)
         except asyncio.CancelledError:
-            logger.info(
-                "El ciclo de monitorizacion fue cancelado durante el apagado del servidor."
-            )
+            logger.info("Scheduler cancelado durante el apagado.")
 
     def _run_job_sync(self) -> None:
         db = SessionLocal()
