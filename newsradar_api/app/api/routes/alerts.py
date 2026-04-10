@@ -10,9 +10,25 @@ from app.models.user import User as DBUser
 from app.schemas.alert import Alert, AlertCreate, AlertUpdate
 from app.schemas.user import UserInDB
 from app.utils.deps import get_current_gestor, get_current_user
+from app.utils.keyword_utils import get_related_words
 
 
 api_alerts_router = APIRouter()
+
+
+# Endpoint para recomendar palabras relacionadas/sinónimos
+@api_alerts_router.get(
+    "/alerts/keyword-recommendations",
+    tags=["alerts"],
+    summary="Recomienda palabras relacionadas o sinónimos para una palabra clave",
+    response_model=List[str],
+)
+def recommend_keywords(keyword: str):
+    """
+    Devuelve entre 3 y 10 palabras relacionadas o sinónimos para la palabra clave dada.
+    """
+    return get_related_words(keyword)
+
 
 ERROR_USER_NOT_FOUND = "Usuario no encontrado"
 ERROR_ALERT_NOT_FOUND = "Alerta no encontrada para el usuario"
