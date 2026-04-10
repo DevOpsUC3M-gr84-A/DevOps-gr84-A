@@ -49,8 +49,9 @@ describe('Página de Autenticación', () => {
 
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
+      status: 200,
       json: async () => mockResponse,
-    });
+    } as unknown as Response);
 
     const { container } = render(<Auth />);
 
@@ -166,8 +167,9 @@ describe('Página de Autenticación', () => {
     
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: false,
+      status: 401,
       json: async () => ({ detail: 'Credenciales inválidas' }),
-    });
+    } as unknown as Response);
 
     render(<Auth />);
     
