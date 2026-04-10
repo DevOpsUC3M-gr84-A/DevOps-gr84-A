@@ -89,10 +89,19 @@ describe('AlertsManagement Page', () => {
       descriptors: ['Uranio', 'Energía']
     };
 
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockNuevaAlerta,
-    });
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => []
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockNuevaAlerta
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [mockNuevaAlerta]
+      });
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -121,6 +130,28 @@ describe('AlertsManagement Page', () => {
     await waitFor(() => {
       expect(screen.queryByText('CREAR NUEVA ALERTA')).not.toBeInTheDocument();
     });
+  });
+
+  test('abre el modal en modo edición al pulsar Editar', async () => {
+    const mockAlertas = [{ id: 5, name: 'Alerta Editable', descriptors: ['IA', 'NLP'] }];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => mockAlertas
+      });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Editable')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Editar alerta Alerta Editable'));
+
+    expect(screen.getByText('EDITAR ALERTA')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Ej: TENDENCIAS TECH 2026')).toHaveValue('Alerta Editable');
   });
 
   test('maneja correctamente un error del servidor sin romper la app', async () => {

@@ -42,7 +42,12 @@ class AlertMonitorScheduler:
         return None if job is None else job.next_run_time
 
     async def _run_job(self) -> None:
-        await asyncio.to_thread(self._run_job_sync)
+        try:
+            await asyncio.to_thread(self._run_job_sync)
+        except asyncio.CancelledError:
+            logger.info(
+                "El ciclo de monitorizacion fue cancelado durante el apagado del servidor."
+            )
 
     def _run_job_sync(self) -> None:
         db = SessionLocal()
@@ -68,7 +73,7 @@ class AlertMonitorScheduler:
             trigger=trigger,
             id="alert_monitoring_job",
             replace_existing=True,
-            max_instances=1,
+            max_instances=3,
             coalesce=True,
         )
 
