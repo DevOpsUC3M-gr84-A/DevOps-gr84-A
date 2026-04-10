@@ -355,7 +355,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
               {isSubmitting ? (
                 <span className="btn-submit-loading">
                   <span className="btn-spinner" aria-hidden="true" />
-                  GUARDANDO...
+                  <span> GUARDANDO...</span>
                 </span>
               ) : (
                 'GUARDAR ALERTA'

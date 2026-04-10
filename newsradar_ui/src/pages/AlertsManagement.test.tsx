@@ -80,6 +80,32 @@ describe('AlertsManagement Page', () => {
     expect(await screen.findByText('Alerta Legacy')).toBeInTheDocument();
   });
 
+  test('filtra sin romper cuando fuentes_rss contiene valores inválidos', async () => {
+    const mockAlertas = [
+      {
+        id: 15,
+        name: 'Alerta Fuente Invalida',
+        descriptors: ['IA'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: [null, 'Reuters']
+      }
+    ];
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Fuente Invalida')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Filtrar por fuente RSS'), {
+      target: { value: 'reu' }
+    });
+
+    expect(screen.getByText('Alerta Fuente Invalida')).toBeInTheDocument();
+  });
+
   test('tolera respuesta no array devolviendo estado vacío', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,

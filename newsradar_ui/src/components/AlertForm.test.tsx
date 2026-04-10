@@ -402,6 +402,39 @@ describe('AlertForm Component', () => {
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
+  test('muestra spinner y texto de carga mientras se está guardando', async () => {
+    let resolveFetch: ((value: Response) => void) | null = null;
+    const pendingFetch = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+
+    jest.spyOn(global, 'fetch').mockImplementationOnce(() => pendingFetch);
+
+    render(<AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Ej: TENDENCIAS TECH 2026'), {
+      target: { value: 'Alerta Spinner' }
+    });
+    fireEvent.change(screen.getByPlaceholderText('Ej: IA, ROBÓTICA, CHIPS'), {
+      target: { value: 'IA' }
+    });
+    fireEvent.change(screen.getByLabelText('CATEGORIA IPTC (NIVEL 1)'), {
+      target: { value: 'Ciencia y tecnologia' }
+    });
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /GUARDAR ALERTA/i }));
+    });
+
+    expect(screen.getByText('GUARDANDO...')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /GUARDANDO.../i })).toBeDisabled();
+
+    await React.act(async () => {
+      resolveFetch?.({ ok: true, json: async () => ({}) } as unknown as Response);
+      await pendingFetch;
+    });
+  });
+
   test('muestra error desconocido si guardar lanza un valor no Error', async () => {
     jest.spyOn(global, 'fetch').mockRejectedValueOnce('boom');
 
