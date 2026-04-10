@@ -11,6 +11,14 @@ jest.mock('./pages/AlertsManagement', () => ({
   AlertsManagement: () => <div>ALERTS_VIEW</div>
 }));
 
+jest.mock('./pages/ForgotPassword', () => ({
+  ForgotPassword: () => <div>FORGOT_PASSWORD_VIEW</div>
+}));
+
+jest.mock('./pages/ResetPassword', () => ({
+  ResetPassword: () => <div>RESET_PASSWORD_VIEW</div>
+}));
+
 jest.mock('./hooks/useAuth');
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -23,10 +31,27 @@ describe('Componente Raíz App', () => {
     jest.clearAllMocks();
     getItemSpy.mockReset();
     removeItemSpy.mockReset();
+    globalThis.history.pushState({}, '', '/');
     mockedUseAuth.mockReturnValue({
       login: jest.fn(),
       logout: jest.fn()
     });
+  });
+
+  test('renderiza ForgotPassword cuando pathname es /forgot-password', () => {
+    globalThis.history.pushState({}, '', '/forgot-password');
+
+    render(<App />);
+
+    expect(screen.getByText('FORGOT_PASSWORD_VIEW')).toBeInTheDocument();
+  });
+
+  test('renderiza ResetPassword cuando pathname es /reset-password', () => {
+    globalThis.history.pushState({}, '', '/reset-password');
+
+    render(<App />);
+
+    expect(screen.getByText('RESET_PASSWORD_VIEW')).toBeInTheDocument();
   });
 
   test('renderiza Auth cuando no hay token', () => {
