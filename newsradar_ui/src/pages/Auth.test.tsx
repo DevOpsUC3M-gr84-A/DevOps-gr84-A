@@ -10,11 +10,8 @@ const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockLogin = jest.fn();
 
 describe('Página de Autenticación', () => {
-  let consoleErrorSpy: jest.SpyInstance;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockedUseAuth.mockReturnValue({
       login: mockLogin,
       logout: jest.fn()
@@ -26,7 +23,6 @@ describe('Página de Autenticación', () => {
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
     jest.restoreAllMocks();
   });
 

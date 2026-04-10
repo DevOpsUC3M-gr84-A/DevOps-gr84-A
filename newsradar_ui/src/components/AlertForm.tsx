@@ -6,6 +6,8 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:800
 export interface AlertFormPayload {
   name: string;
   descriptors: string[];
+  categoria_iptc: string;
+  fuentes_rss: string[];
   cron_expression: string;
 }
 
@@ -13,6 +15,8 @@ export interface AlertTableItem {
   id: number;
   nombre: string;
   descriptores: string;
+  categoria_iptc: string;
+  fuentes_rss: string[];
 }
 
 
@@ -24,17 +28,46 @@ interface AlertFormProps {
 }
 
 export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialData, onSubmit }) => {
+  const IPTC_LEVEL_1_CATEGORIES: string[] = [
+    'Arte, cultura y entretenimiento',
+    'Crimen, derecho y justicia',
+    'Desastre y accidente',
+    'Economia, negocio y finanzas',
+    'Educacion',
+    'Medioambiente',
+    'Salud',
+    'Interes humano',
+    'Trabajo',
+    'Politica',
+    'Religion y creencias',
+    'Ciencia y tecnologia',
+    'Sociedad',
+    'Deportes',
+    'Conflicto, guerra y paz',
+    'Clima'
+  ];
+
   const [name, setName] = useState('');
   const [descriptors, setDescriptors] = useState('');
+  const [categoriaIptc, setCategoriaIptc] = useState('');
+  const [fuentesRss, setFuentesRss] = useState('');
+  const [cronExpression, setCronExpression] = useState('0 * * * *');
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [hasFetchedRecommendations, setHasFetchedRecommendations] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const parseDescriptors = (value: string): string[] => {
     return value
       .split(',')
       .map((palabra) => palabra.trim())
       .filter((palabra) => palabra !== '');
+  };
+
+  const isValidCronExpression = (value: string): boolean => {
+    // Cron de 5 campos: minuto hora dia-mes mes dia-semana
+    const normalized = value.trim();
+    return /^(\S+\s+){4}\S+$/.test(normalized);
   };
 
   useEffect(() => {
@@ -45,6 +78,10 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
     if (initialData) {
       setName(initialData.nombre);
       setDescriptors(initialData.descriptores ?? '');
+      setCategoriaIptc(initialData.categoria_iptc ?? '');
+      setFuentesRss((initialData.fuentes_rss ?? []).join(', '));
+      setCronExpression('0 * * * *');
+      setFormError(null);
       setRecommendations([]);
       setHasFetchedRecommendations(false);
       return;
@@ -52,6 +89,10 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
 
     setName('');
     setDescriptors('');
+    setCategoriaIptc('');
+    setFuentesRss('');
+    setCronExpression('0 * * * *');
+    setFormError(null);
     setRecommendations([]);
     setHasFetchedRecommendations(false);
   }, [isOpen, initialData]);
@@ -90,7 +131,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
       setRecommendations(filteredRecommendations);
       setHasFetchedRecommendations(true);
     } catch (error) {
-      console.error('No se pudieron obtener recomendaciones:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setFormError(`No se pudieron obtener recomendaciones: ${errorMessage}`);
       setRecommendations([]);
       setHasFetchedRecommendations(false);
     }
@@ -117,26 +159,39 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
 
-    if (isSubmitting) {
+    setFormError(null);
+
+    if (!categoriaIptc.trim()) {
+      setFormError('Debes seleccionar una categoria IPTC.');
+      return;
+    }
+
+    if (!cronExpression.trim()) {
+      setFormError('La expresion cron es obligatoria.');
+      return;
+    }
+
+    if (!isValidCronExpression(cronExpression)) {
+      setFormError('La expresion cron no es valida. Usa 5 campos separados por espacios.');
       return;
     }
     
-    // Transformar el string de descriptores en un array limpio
-    const descriptoresArray = descriptors
-      .split(',')
-      .map(palabra => palabra.trim())
-      .filter(palabra => palabra !== '');
+    const descriptoresArray = parseDescriptors(descriptors);
+
+    const fuentesRssArray = parseDescriptors(fuentesRss);
 
     const payload: AlertFormPayload = {
       name: name,
       descriptors: descriptoresArray,
-      cron_expression: '0 * * * *'
+      categoria_iptc: categoriaIptc,
+      fuentes_rss: fuentesRssArray,
+      cron_expression: cronExpression
     };
 
     try {
       setIsSubmitting(true);
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
+      const token = globalThis.localStorage.getItem('token');
+      const userId = globalThis.localStorage.getItem('userId');
 
       if (!token || !userId) {
         throw new Error('Sesión no disponible para guardar la alerta');
@@ -164,10 +219,15 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
       // Limpiar campos para la próxima vez
       setName('');
       setDescriptors('');
+      setCategoriaIptc('');
+      setFuentesRss('');
+      setCronExpression('0 * * * *');
+      setFormError(null);
       setRecommendations([]);
       setHasFetchedRecommendations(false);
     } catch (error) {
-      console.error('No se pudo guardar la alerta:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setFormError(`No se pudo guardar la alerta: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -182,6 +242,12 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
         </div>
 
         <form onSubmit={handleSubmit} className="modal-body">
+          {formError && (
+            <div className="alert-feedback alert-feedback-error" role="alert" aria-live="assertive">
+              {formError}
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="alertName">NOMBRE DE LA ALERTA</label>
             <input 
@@ -233,6 +299,54 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
                 )}
               </div>
             )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="alertIptcCategory">CATEGORIA IPTC (NIVEL 1)</label>
+            <select
+              id="alertIptcCategory"
+              className="form-input"
+              required
+              value={categoriaIptc}
+              onChange={(e) => setCategoriaIptc(e.target.value)}
+            >
+              <option value="" disabled>
+                Selecciona una categoria
+              </option>
+              {IPTC_LEVEL_1_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="alertRssSources">FUENTES / CANALES RSS (OPCIONAL)</label>
+            <input
+              id="alertRssSources"
+              type="text"
+              className="form-input"
+              placeholder="Ej: ElPais, BBC, Reuters"
+              value={fuentesRss}
+              onChange={(e) => setFuentesRss(e.target.value)}
+            />
+            <p className="form-hint-text">
+              Si lo dejas vacio, se aplicaran todas las fuentes de la categoria seleccionada.
+            </p>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="alertCronExpression">EXPRESION CRON</label>
+            <input
+              id="alertCronExpression"
+              type="text"
+              className="form-input"
+              required
+              placeholder="0 * * * *"
+              value={cronExpression}
+              onChange={(e) => setCronExpression(e.target.value)}
+            />
           </div>
 
           <div className="modal-footer">

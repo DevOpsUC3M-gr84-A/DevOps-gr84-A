@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AlertsManagement } from './AlertsManagement';
 import { fireEvent } from '@testing-library/react';
+import { within } from '@testing-library/dom';
 
 // Mock del fetch global
 global.fetch = jest.fn();
@@ -37,7 +38,13 @@ describe('AlertsManagement Page', () => {
 
   test('renderiza la lista de alertas cuando la API devuelve datos', async () => {
     const mockAlertas = [
-      { id: 1, name: 'Alerta Test', descriptors: ['IA', 'Robot'] }
+      {
+        id: 1,
+        name: 'Alerta Test',
+        descriptors: ['IA', 'Robot'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: ['Reuters']
+      }
     ];
 
     (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -52,19 +59,118 @@ describe('AlertsManagement Page', () => {
     expect(alertName).toBeInTheDocument();
   });
 
+  test('renderiza sin romper con alertas legacy sin categoria ni fuentes', async () => {
+    const mockAlertas = [
+      {
+        id: 10,
+        name: 'Alerta Legacy',
+        descriptors: undefined,
+        categoria_iptc: undefined,
+        fuentes_rss: null
+      }
+    ];
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Legacy')).toBeInTheDocument();
+  });
+
+  test('tolera respuesta no array devolviendo estado vacío', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ not: 'an-array' })
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    expect(await screen.findByText('No hay alertas todavía.')).toBeInTheDocument();
+  });
+
+  test('filtra alertas por categoría IPTC y fuente RSS', async () => {
+    const mockAlertas = [
+      {
+        id: 1,
+        name: 'Alerta Tech',
+        descriptors: ['IA'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: ['Reuters', 'BBC']
+      },
+      {
+        id: 2,
+        name: 'Alerta Deportes',
+        descriptors: ['Futbol'],
+        categoria_iptc: 'Deportes',
+        fuentes_rss: ['ESPN']
+      }
+    ];
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Tech')).toBeInTheDocument();
+    expect(screen.getByText('Alerta Deportes')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Filtrar por categoria IPTC'), {
+      target: { value: 'Deportes' }
+    });
+
+    expect(screen.queryByText('Alerta Tech')).not.toBeInTheDocument();
+    expect(screen.getByText('Alerta Deportes')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Filtrar por categoria IPTC'), {
+      target: { value: '' }
+    });
+    fireEvent.change(screen.getByLabelText('Filtrar por fuente RSS'), {
+      target: { value: 'reuters' }
+    });
+
+    expect(screen.getByText('Alerta Tech')).toBeInTheDocument();
+    expect(screen.queryByText('Alerta Deportes')).not.toBeInTheDocument();
+  });
+
+  test('muestra estado vacío cuando los filtros no tienen coincidencias', async () => {
+    const mockAlertas = [
+      {
+        id: 3,
+        name: 'Alerta Economia',
+        descriptors: ['Mercado'],
+        categoria_iptc: 'Economia, negocio y finanzas',
+        fuentes_rss: ['Bloomberg']
+      }
+    ];
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Economia')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Filtrar por fuente RSS'), {
+      target: { value: 'Reuters' }
+    });
+
+    expect(screen.queryByText('Alerta Economia')).not.toBeInTheDocument();
+    expect(screen.getByText('No hay alertas todavía.')).toBeInTheDocument();
+  });
+
   test('no intenta hacer fetch si el usuario no tiene sesión', async () => {
     // Vaciar el localStorage simulando que no hay usuario logueado
     localStorage.clear();
     
-    // Silenciar el console.warn temporalmente
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
     render(<AlertsManagement onLogout={mockLogout} />);
 
     // Verificar que no se ha llamado a la API
     expect(global.fetch).not.toHaveBeenCalled();
-    
-    consoleSpy.mockRestore();
   });
 
   test('abre el modal de creación al pulsar "Nueva Alerta"', async () => {
@@ -86,7 +192,9 @@ describe('AlertsManagement Page', () => {
     const mockNuevaAlerta = {
       id: 99,
       name: 'Alerta Nuclear',
-      descriptors: ['Uranio', 'Energía']
+      descriptors: ['Uranio', 'Energía'],
+      categoria_iptc: 'Ciencia y tecnologia',
+      fuentes_rss: ['Reuters', 'BBC']
     };
 
     (global.fetch as jest.Mock)
@@ -108,10 +216,16 @@ describe('AlertsManagement Page', () => {
     // Abrir modal
     fireEvent.click(screen.getByText(/Nueva Alerta/i));
 
-    // Rellenar inputs usando selectores 
-    const inputs = screen.getAllByRole('textbox'); 
-    fireEvent.change(inputs[0], { target: { value: 'Alerta Nuclear' } });
-    fireEvent.change(inputs[1], { target: { value: 'Uranio, Energía' } });
+    // Rellenar inputs del modal de forma robusta
+    fireEvent.change(screen.getByPlaceholderText('Ej: TENDENCIAS TECH 2026'), {
+      target: { value: 'Alerta Nuclear' }
+    });
+    fireEvent.change(screen.getByPlaceholderText('Ej: IA, ROBÓTICA, CHIPS'), {
+      target: { value: 'Uranio, Energía' }
+    });
+    fireEvent.change(screen.getByLabelText('CATEGORIA IPTC (NIVEL 1)'), {
+      target: { value: 'Ciencia y tecnologia' }
+    });
 
     // Enviar el formulario
     const botonGuardar = screen.getByRole('button', { name: /GUARDAR ALERTA/i });
@@ -123,8 +237,13 @@ describe('AlertsManagement Page', () => {
 
     // Esperar a que el texto aparezca en la tabla
     const alertaEnTabla = await screen.findByText('Alerta Nuclear');
+    const row = alertaEnTabla.closest('tr');
     expect(alertaEnTabla).toBeInTheDocument();
-    expect(screen.getByText('Uranio, Energía')).toBeInTheDocument();
+    expect(row).not.toBeNull();
+    if (row) {
+      expect(within(row).getByText('Ciencia y tecnologia')).toBeInTheDocument();
+      expect(within(row).getByText('Uranio, Energía')).toBeInTheDocument();
+    }
 
     // Verificar que el modal se cerró
     await waitFor(() => {
@@ -133,7 +252,15 @@ describe('AlertsManagement Page', () => {
   });
 
   test('abre el modal en modo edición al pulsar Editar', async () => {
-    const mockAlertas = [{ id: 5, name: 'Alerta Editable', descriptors: ['IA', 'NLP'] }];
+    const mockAlertas = [
+      {
+        id: 5,
+        name: 'Alerta Editable',
+        descriptors: ['IA', 'NLP'],
+        categoria_iptc: 'Sociedad',
+        fuentes_rss: ['BBC']
+      }
+    ];
 
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
@@ -155,8 +282,16 @@ describe('AlertsManagement Page', () => {
   });
 
   test('borra una alerta cuando el usuario confirma', async () => {
-    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
-    const mockAlertas = [{ id: 11, name: 'Alerta Borrable', descriptors: ['IA'] }];
+    const confirmSpy = jest.spyOn(globalThis, 'confirm').mockReturnValue(true);
+    const mockAlertas = [
+      {
+        id: 11,
+        name: 'Alerta Borrable',
+        descriptors: ['IA'],
+        categoria_iptc: 'Politica',
+        fuentes_rss: []
+      }
+    ];
 
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
@@ -190,8 +325,16 @@ describe('AlertsManagement Page', () => {
   });
 
   test('no borra la alerta si el usuario cancela la confirmación', async () => {
-    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
-    const mockAlertas = [{ id: 12, name: 'Alerta No Borrada', descriptors: ['NLP'] }];
+    const confirmSpy = jest.spyOn(globalThis, 'confirm').mockReturnValue(false);
+    const mockAlertas = [
+      {
+        id: 12,
+        name: 'Alerta No Borrada',
+        descriptors: ['NLP'],
+        categoria_iptc: 'Deportes',
+        fuentes_rss: ['ESPN']
+      }
+    ];
 
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
@@ -219,16 +362,150 @@ describe('AlertsManagement Page', () => {
       status: 500
     });
 
-    // Silenciar el console.error para no ensuciar el test
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
     render(<AlertsManagement onLogout={mockLogout} />);
 
     // Aunque la API falle, la app debería sobrevivir y mostrar la tabla vacía
     const emptyMessage = await screen.findByText(/No hay alertas todavía/i);
     expect(emptyMessage).toBeInTheDocument();
+  });
 
-    consoleSpy.mockRestore();
+  test('muestra feedback de error cuando falla el borrado', async () => {
+    const confirmSpy = jest.spyOn(globalThis, 'confirm').mockReturnValue(true);
+    const mockAlertas = [
+      {
+        id: 33,
+        name: 'Alerta Error Delete',
+        descriptors: ['IA'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: ['Reuters']
+      }
+    ];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({})
+      });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Error Delete')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Eliminar alerta Alerta Error Delete'));
+
+    expect(await screen.findByText(/No se pudo borrar la alerta/i)).toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+
+  test('muestra error desconocido si fetch de alertas lanza valor no Error', async () => {
+    (global.fetch as jest.Mock).mockRejectedValueOnce('boom');
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText(/No se pudieron cargar las alertas: Error desconocido/i)).toBeInTheDocument();
+  });
+
+  test('muestra error desconocido si borrado lanza valor no Error', async () => {
+    const confirmSpy = jest.spyOn(globalThis, 'confirm').mockReturnValue(true);
+    const mockAlertas = [
+      {
+        id: 77,
+        name: 'Alerta Error Desconocido',
+        descriptors: ['IA'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: ['Reuters']
+      }
+    ];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockRejectedValueOnce('boom');
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    expect(await screen.findByText('Alerta Error Desconocido')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Eliminar alerta Alerta Error Desconocido'));
+
+    expect(await screen.findByText(/No se pudo borrar la alerta: Error desconocido/i)).toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+
+  test('muestra feedback de alerta actualizada al guardar en edición', async () => {
+    const mockAlertas = [
+      {
+        id: 55,
+        name: 'Alerta Edit',
+        descriptors: ['IA'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: ['Reuters']
+      }
+    ];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({})
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Edit')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Editar alerta Alerta Edit'));
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /GUARDAR ALERTA/i }));
+    });
+
+    expect(await screen.findByText('Alerta actualizada correctamente.')).toBeInTheDocument();
+  });
+
+  test('lanza logout cuando el borrado devuelve 401', async () => {
+    const confirmSpy = jest.spyOn(globalThis, 'confirm').mockReturnValue(true);
+    const mockAlertas = [
+      {
+        id: 44,
+        name: 'Alerta 401 Delete',
+        descriptors: ['IA'],
+        categoria_iptc: 'Ciencia y tecnologia',
+        fuentes_rss: ['Reuters']
+      }
+    ];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({})
+      });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta 401 Delete')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Eliminar alerta Alerta 401 Delete'));
+
+    await waitFor(() => {
+      expect(mockLogout).toHaveBeenCalled();
+    });
+    confirmSpy.mockRestore();
   });
 
   test('cierra sesión automáticamente si la API devuelve 401 (token expirado o servidor reiniciado)', async () => {
@@ -244,6 +521,25 @@ describe('AlertsManagement Page', () => {
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalled();
     });
+  });
+
+  test('oculta automáticamente el feedback tras 5 segundos', async () => {
+    jest.useFakeTimers();
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 500
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText(/No se pudieron cargar las alertas/i)).toBeInTheDocument();
+
+    await React.act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(screen.queryByText(/No se pudieron cargar las alertas/i)).not.toBeInTheDocument();
+    jest.useRealTimers();
   });
 
 });
