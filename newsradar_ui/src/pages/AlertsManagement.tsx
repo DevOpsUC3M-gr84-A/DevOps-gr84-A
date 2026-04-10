@@ -112,7 +112,11 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       setAlertas(alertasMapeadas);
     } catch (error) {
-      console.error('Error cargando alertas:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setAlertFeedback({
+        type: 'error',
+        message: `No se pudieron cargar las alertas: ${errorMessage}`
+      });
     }
   }, [userId, token, onLogout]);
 

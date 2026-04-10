@@ -1,7 +1,7 @@
 import React from 'react';
 // @ts-ignore: CSS module declaration not found
 import './App.css';
-import { Bell, Settings, Radar, LogOut } from 'lucide-react'; // Añadimos LogOut
+import { Bell, Settings, Radar, LogOut } from 'lucide-react';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
 import { useAuth } from './hooks/useAuth';

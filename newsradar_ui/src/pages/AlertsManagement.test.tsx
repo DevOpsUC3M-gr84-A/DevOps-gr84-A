@@ -8,7 +8,7 @@ global.fetch = jest.fn();
 const mockLogout = jest.fn();
 
 beforeAll(() => {
-  window.alert = jest.fn();
+  globalThis.alert = jest.fn();
 });
 
 describe('AlertsManagement Page', () => {
