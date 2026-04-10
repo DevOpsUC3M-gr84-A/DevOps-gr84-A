@@ -7,7 +7,7 @@ interface AuthLayoutProps {
   successMessage: string | null;
   isSubmitting: boolean;
   submitText: string;
-  onSubmit: React.FormEventHandler<HTMLFormElement>;
+  onSubmit: (e: React.SyntheticEvent) => void;
   children: React.ReactNode;
 }
 

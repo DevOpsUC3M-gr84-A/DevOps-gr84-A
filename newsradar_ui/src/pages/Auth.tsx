@@ -141,6 +141,13 @@ export const Auth = () => {
     );
   }
 
+  let submitText = 'Crear mi cuenta';
+  if (isSubmitting) {
+    submitText = 'Enviando...';
+  } else if (isLogin) {
+    submitText = 'Entrar al sistema';
+  }
+
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -218,7 +225,7 @@ export const Auth = () => {
 
           <button type="submit" className="btn-auth-submit">
             {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-            {isSubmitting ? 'Enviando...' : isLogin ? 'Entrar al sistema' : 'Crear mi cuenta'}
+            {submitText}
           </button>
 
           {isLogin && (
