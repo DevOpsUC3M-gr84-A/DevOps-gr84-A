@@ -1,20 +1,43 @@
-# 1. Imagen base de Python
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
 
-# 2. Establecemos el directorio de trabajo dentro del contenedor
-WORKDIR /app
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+	PIP_NO_CACHE_DIR=1
 
-# 3. Copiamos el archivo de dependencias (requirements.txt)
+WORKDIR /build
+
+RUN apt-get update \
+	&& apt-get install --no-install-recommends -y build-essential gcc \
+	&& rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 
-# 4. Instalamos los paquetes necesarios
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip wheel --wheel-dir /wheels -r requirements.txt
 
-# 5. Copiamos el código fuente de la app a la ruta del contenedor
+
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+	PYTHONUNBUFFERED=1 \
+	APP_HOST=0.0.0.0 \
+	APP_PORT=8000
+
+WORKDIR /app
+
+RUN groupadd --system appuser \
+	&& useradd --system --gid appuser --create-home --home-dir /home/appuser appuser
+
+COPY requirements.txt .
+COPY --from=builder /wheels /wheels
+
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
+	&& rm -rf /wheels
+
 COPY ./app ./app
 
-# 6. Exponemos el puerto que usará FastAPI para comunicarse
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
 EXPOSE 8000
 
-# 7. Ejecutamos el archivo principal (API REST) mediante Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host ${APP_HOST} --port ${APP_PORT}"]
