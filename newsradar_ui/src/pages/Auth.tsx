@@ -6,6 +6,51 @@ import './Auth.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
+interface ApiValidationError {
+  loc?: (string | number)[];
+  msg?: string;
+}
+
+interface ApiErrorResponse {
+  detail?: string | ApiValidationError[] | Record<string, unknown>;
+}
+
+interface AuthResponse extends ApiErrorResponse {
+  access_token?: string;
+  user_id?: number;
+  role_ids?: number[];
+}
+
+const formatApiError = (data: ApiErrorResponse): string => {
+  if (typeof data.detail === 'string') {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map((err) => `${err.loc?.[1] ?? 'campo'}: ${err.msg ?? 'valor inválido'}`)
+      .join('\n');
+  }
+
+  if (data.detail && typeof data.detail === 'object') {
+    return JSON.stringify(data.detail);
+  }
+
+  return 'Error en la operación';
+};
+
+const normalizeLoginErrorMessage = (status: number, message: string, isLogin: boolean): string => {
+  if (!isLogin || (status !== 401 && status !== 403)) {
+    return message;
+  }
+
+  if (/verif|verify/i.test(message)) {
+    return 'Tu cuenta no está verificada. Revisa tu email.';
+  }
+
+  return message;
+};
+
 export const Auth = () => {
   const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
@@ -33,15 +78,6 @@ export const Auth = () => {
     return null;
   };
 
-  interface ApiValidationError {
-    loc?: (string | number)[];
-    msg?: string;
-  }
-
-  interface ApiErrorResponse {
-    detail?: string | ApiValidationError[] | Record<string, unknown>;
-  }
-
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -67,33 +103,12 @@ export const Auth = () => {
         body: JSON.stringify(payload)
       });
 
-      const data = (await response.json()) as ApiErrorResponse & {
-        access_token?: string;
-        user_id?: number;
-        role_ids?: number[];
-      };
+      const data = (await response.json()) as AuthResponse;
 
       if (!response.ok) {
-        let mensajeError = 'Error en la operación';
-
-        if (typeof data.detail === 'string') {
-          mensajeError = data.detail;
-        } else if (Array.isArray(data.detail)) {
-          mensajeError = data.detail
-            .map((err) => `${err.loc?.[1] ?? 'campo'}: ${err.msg ?? 'valor inválido'}`)
-            .join('\n');
-        } else if (data.detail && typeof data.detail === 'object') {
-           mensajeError = JSON.stringify(data.detail);
-        }
-
-        if (isLogin && (response.status === 401 || response.status === 403)) {
-          const verificationRelated = /verif|verify/i.test(mensajeError);
-          if (verificationRelated) {
-            mensajeError = 'Tu cuenta no está verificada. Revisa tu email.';
-          }
-        }
-
-        throw new Error(mensajeError);
+        const baseError = formatApiError(data);
+        const normalizedError = normalizeLoginErrorMessage(response.status, baseError, isLogin);
+        throw new Error(normalizedError);
       }
 
       if (isLogin) {
