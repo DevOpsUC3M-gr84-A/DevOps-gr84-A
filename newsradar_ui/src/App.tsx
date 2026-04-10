@@ -1,23 +1,23 @@
 import React from 'react';
 // @ts-ignore: CSS module declaration not found
 import './App.css';
-import { Bell, Settings, Radar, LogOut } from 'lucide-react'; // Añadimos LogOut
+import { Bell, Settings, Radar, LogOut } from 'lucide-react';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const token = localStorage.getItem('token');
+  const token = globalThis.localStorage.getItem('token');
   const { logout } = useAuth();
 
   // Función para cerrar sesión
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userRoles');
-    localStorage.removeItem('userEmail');
+    globalThis.localStorage.removeItem('token');
+    globalThis.localStorage.removeItem('userId');
+    globalThis.localStorage.removeItem('userRoles');
+    globalThis.localStorage.removeItem('userEmail');
     // Recargamos para volver a la página de Auth
-    window.location.href = '/';
+    globalThis.location.href = '/';
     logout();
   };
 
@@ -29,11 +29,11 @@ function App() {
     <div className="app-container">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="brand-section" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="brand-section app-brand-section">
           <img 
             src={process.env.PUBLIC_URL + '/newsradar-logo.png'}
             alt="NewsRadar Logo" 
-            style={{ width: '32px', height: '32px' }} 
+            className="app-brand-logo"
           />
           <span>NewsRadar</span>
         </div>

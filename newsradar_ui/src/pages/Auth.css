@@ -28,6 +28,11 @@
   margin-bottom: 12px;
 }
 
+.auth-logo-image {
+  width: 44px;
+  height: 44px;
+}
+
 .auth-logo span {
   font-size: 1.6rem;
   font-weight: 800;
@@ -81,7 +86,7 @@
 
 .btn-auth-submit {
   margin-top: 8px;
-  background-color: #3b82f6;
+  background-color: #2563eb;
   color: white;
   border: none;
   padding: 12px;
@@ -96,7 +101,7 @@
 }
 
 .btn-auth-submit:hover {
-  background-color: #2563eb;
+  background-color: #1d4ed8;
 }
 
 .auth-footer {

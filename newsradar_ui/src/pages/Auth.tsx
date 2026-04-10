@@ -31,10 +31,19 @@ export const Auth = () => {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  interface ApiValidationError {
+    loc?: (string | number)[];
+    msg?: string;
+  }
+
+  interface ApiErrorResponse {
+    detail?: string | ApiValidationError[] | Record<string, unknown>;
+  }
+
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     const errorMsg = validate();
-    if (errorMsg) return alert(errorMsg);
+    if (errorMsg) return globalThis.alert(errorMsg);
 
     const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
     
@@ -52,7 +61,11 @@ export const Auth = () => {
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as ApiErrorResponse & {
+        access_token?: string;
+        user_id?: number;
+        role_ids?: number[];
+      };
 
       if (!response.ok) {
         let mensajeError = 'Error en la operación';
@@ -60,7 +73,9 @@ export const Auth = () => {
         if (typeof data.detail === 'string') {
           mensajeError = data.detail;
         } else if (Array.isArray(data.detail)) {
-          mensajeError = data.detail.map((err: any) => `${err.loc[1]}: ${err.msg}`).join('\n');
+          mensajeError = data.detail
+            .map((err) => `${err.loc?.[1] ?? 'campo'}: ${err.msg ?? 'valor inválido'}`)
+            .join('\n');
         } else if (data.detail && typeof data.detail === 'object') {
            mensajeError = JSON.stringify(data.detail);
         }
@@ -71,16 +86,18 @@ export const Auth = () => {
       if (isLogin) {
         // Lógica del hook
         login({
-          access_token: data.access_token,
-          user_id: data.user_id,
-          role_ids: data.role_ids
+          access_token: data.access_token ?? '',
+          user_id: data.user_id ?? 0,
+          role_ids: data.role_ids ?? []
         });
       } else {
-        alert("¡Cuenta creada! Revisa tu email para la verificación (24h) e inicia sesión.");
+        globalThis.alert("¡Cuenta creada! Revisa tu email para la verificación (24h) e inicia sesión.");
         setIsLogin(true);
       }
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error inesperado en autenticación';
+      console.error('Error en autenticación:', error);
+      globalThis.alert(message);
     }
   };
 
@@ -92,7 +109,7 @@ export const Auth = () => {
             <img 
               src={process.env.PUBLIC_URL + '/newsradar-logo.png'}
               alt="NewsRadar Logo" 
-              style={{ width: '44px', height: '44px' }} 
+              className="auth-logo-image"
             />
             <span>NewsRadar</span>
           </div>
@@ -107,15 +124,17 @@ export const Auth = () => {
           {!isLogin && (
             <div className="form-row">
               <div className="form-group">
-                <label><User size={16} /> Nombre</label>
+                <label htmlFor="first_name"><User size={16} /> Nombre</label>
                 <input 
+                  id="first_name"
                   type="text" name="first_name" required 
                   placeholder="Ej: Juan" onChange={handleChange}
                 />
               </div>
               <div className="form-group">
-                <label>Apellidos</label>
+                <label htmlFor="last_name">Apellidos</label>
                 <input 
+                  id="last_name"
                   type="text" name="last_name" required 
                   placeholder="Ej: Pérez" onChange={handleChange}
                 />
@@ -125,8 +144,9 @@ export const Auth = () => {
 
           {!isLogin && (
             <div className="form-group">
-              <label><Building size={16} /> Organización</label>
+              <label htmlFor="organization"><Building size={16} /> Organización</label>
               <input 
+                id="organization"
                 type="text" name="organization" required 
                 placeholder="Nombre de tu empresa/institución" onChange={handleChange}
               />
@@ -134,16 +154,18 @@ export const Auth = () => {
           )}
 
           <div className="form-group">
-            <label><Mail size={16} /> Email Corporativo</label>
+            <label htmlFor="email"><Mail size={16} /> Email Corporativo</label>
             <input 
+              id="email"
               type="email" name="email" required 
               placeholder="tu@organizacion.com" onChange={handleChange}
             />
           </div>
 
           <div className="form-group">
-            <label><Lock size={16} /> Contraseña</label>
+            <label htmlFor="password"><Lock size={16} /> Contraseña</label>
             <input 
+              id="password"
               type="password" name="password" required 
               placeholder="••••••••" onChange={handleChange}
             />

@@ -21,9 +21,9 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const [alertToEdit, setAlertToEdit] = useState<AlertTableItem | null>(null);
   const [alertFeedback, setAlertFeedback] = useState<AlertFeedback | null>(null);
   
-  const token = localStorage.getItem('token');
-  const userId = localStorage.getItem('userId');
-  const userRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
+  const token = globalThis.localStorage.getItem('token');
+  const userId = globalThis.localStorage.getItem('userId');
+  const userRoles = JSON.parse(globalThis.localStorage.getItem('userRoles') || '[]');
   const isGestor = userRoles.includes(1);
 
   const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => ({
@@ -31,7 +31,6 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     nombre: item.name,
     descriptores: item.descriptors.join(', ')
   });
-
   const handleCloseAlertForm = () => {
     setIsAlertFormOpen(false);
     setAlertToEdit(null);
@@ -54,7 +53,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       return;
     }
 
-    const confirmed = window.confirm('¿Seguro que quieres borrar esta alerta?');
+    const confirmed = globalThis.confirm('¿Seguro que quieres borrar esta alerta?');
     if (!confirmed) {
       return;
     }
@@ -113,7 +112,11 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       setAlertas(alertasMapeadas);
     } catch (error) {
-      console.error('Error cargando alertas:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setAlertFeedback({
+        type: 'error',
+        message: `No se pudieron cargar las alertas: ${errorMessage}`
+      });
     }
   }, [userId, token, onLogout]);
 
@@ -129,11 +132,11 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = globalThis.setTimeout(() => {
       setAlertFeedback(null);
     }, 5000);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => globalThis.clearTimeout(timeoutId);
   }, [alertFeedback]);
 
   const handleSaveAlert = async (_datos: AlertFormPayload) => {
