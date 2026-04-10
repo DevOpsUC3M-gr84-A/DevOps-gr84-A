@@ -89,10 +89,19 @@ describe('AlertsManagement Page', () => {
       descriptors: ['Uranio', 'Energía']
     };
 
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockNuevaAlerta,
-    });
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => []
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockNuevaAlerta
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [mockNuevaAlerta]
+      });
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -121,6 +130,86 @@ describe('AlertsManagement Page', () => {
     await waitFor(() => {
       expect(screen.queryByText('CREAR NUEVA ALERTA')).not.toBeInTheDocument();
     });
+  });
+
+  test('abre el modal en modo edición al pulsar Editar', async () => {
+    const mockAlertas = [{ id: 5, name: 'Alerta Editable', descriptors: ['IA', 'NLP'] }];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => mockAlertas
+      });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Editable')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Editar alerta Alerta Editable'));
+
+    expect(screen.getByText('EDITAR ALERTA')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Ej: TENDENCIAS TECH 2026')).toHaveValue('Alerta Editable');
+  });
+
+  test('borra una alerta cuando el usuario confirma', async () => {
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const mockAlertas = [{ id: 11, name: 'Alerta Borrable', descriptors: ['IA'] }];
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAlertas
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({})
+      });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta Borrable')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Eliminar alerta Alerta Borrable'));
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledWith('¿Seguro que quieres borrar esta alerta?');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/users/1/alerts/11'),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Alerta Borrable')).not.toBeInTheDocument();
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  test('no borra la alerta si el usuario cancela la confirmación', async () => {
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const mockAlertas = [{ id: 12, name: 'Alerta No Borrada', descriptors: ['NLP'] }];
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    expect(await screen.findByText('Alerta No Borrada')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Eliminar alerta Alerta No Borrada'));
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalled();
+    });
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(1);
+
+    confirmSpy.mockRestore();
   });
 
   test('maneja correctamente un error del servidor sin romper la app', async () => {

@@ -1,13 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { AlertForm, AlertFormPayload } from '../components/AlertForm';
-import { useAlertModal } from '../hooks/useAlertModal';
-
-interface AlertTableItem {
-  id: number;
-  nombre: string;
-  descriptores: string;
-}
+import { AlertForm, AlertFormPayload, AlertTableItem } from '../components/AlertForm';
 
 interface AlertApiItem {
   id: number;
@@ -15,79 +8,144 @@ interface AlertApiItem {
   descriptors: string[];
 }
 
+interface AlertFeedback {
+  type: 'success' | 'error';
+  message: string;
+}
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
 export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
-  const { isOpen, open, close } = useAlertModal();
+  const [isAlertFormOpen, setIsAlertFormOpen] = useState(false);
   const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
+  const [alertToEdit, setAlertToEdit] = useState<AlertTableItem | null>(null);
+  const [alertFeedback, setAlertFeedback] = useState<AlertFeedback | null>(null);
   
   const token = globalThis.localStorage.getItem('token');
   const userId = globalThis.localStorage.getItem('userId');
   const userRoles = JSON.parse(globalThis.localStorage.getItem('userRoles') || '[]');
   const isGestor = userRoles.includes(1);
 
-  // Carga desde la API
-  useEffect(() => {
-    const fetchAlertas = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+  const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => ({
+    id: item.id,
+    nombre: item.name,
+    descriptores: item.descriptors.join(', ')
+  });
+  const handleCloseAlertForm = () => {
+    setIsAlertFormOpen(false);
+    setAlertToEdit(null);
+  };
 
-        if (response.status === 401) {
-          onLogout();
-          return;
-        }
-        if (!response.ok) throw new Error("Error al obtener alertas");
-        
-        const data = await response.json();
-        
-        // Mapear los nombres de la API (name) a los de tu tabla (nombre)
-        const alertasMapeadas = Array.isArray(data)
-          ? (data as AlertApiItem[]).map((item) => ({
-              id: item.id,
-              nombre: item.name,
-              descriptores: item.descriptors.join(', ')
-            }))
-          : [];
-        
-        setAlertas(alertasMapeadas);
-      } catch (error) {
-        console.error("Error cargando alertas:", error);
-      }
-    };
-    if (userId && token) fetchAlertas();
-  }, [userId, token, onLogout]);
+  const handleOpenCreateModal = () => {
+    setAlertFeedback(null);
+    setAlertToEdit(null);
+    setIsAlertFormOpen(true);
+  };
 
-  // Creación de alertas
-  const handleAlertSubmit = async (datos: AlertFormPayload) => {
+  const handleEditAlert = (alerta: AlertTableItem) => {
+    setAlertFeedback(null);
+    setAlertToEdit(alerta);
+    setIsAlertFormOpen(true);
+  };
+
+  const handleDeleteAlert = async (alertId: number) => {
+    if (!userId || !token) {
+      return;
+    }
+
+    const confirmed = globalThis.confirm('¿Seguro que quieres borrar esta alerta?');
+    if (!confirmed) {
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts/${alertId}`, {
+        method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(datos)
+          Authorization: `Bearer ${token}`
+        }
       });
 
-      if (!response.ok) throw new Error("Error al crear la alerta");
+      if (response.status === 401) {
+        onLogout();
+        return;
+      }
 
-      const nuevaAlertaApi = await response.json();
+      if (!response.ok) {
+        throw new Error('Error al borrar la alerta');
+      }
 
-      // ACTUALIZACIÓN SEGURA: Usa prevAlertas para evitar duplicados en UI
-      setAlertas(prevAlertas => [...prevAlertas, {
-        id: nuevaAlertaApi.id,
-        nombre: nuevaAlertaApi.name,
-        descriptores: nuevaAlertaApi.descriptors.join(', ')
-      }]);
-      
-      close();
+      setAlertas((prevAlertas) => prevAlertas.filter((alerta) => alerta.id !== alertId));
+      setAlertFeedback({
+        type: 'success',
+        message: 'Alerta borrada correctamente.'
+      });
     } catch (error) {
-      alert("Error al crear la alerta: " + error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setAlertFeedback({
+        type: 'error',
+        message: `No se pudo borrar la alerta: ${errorMessage}`
+      });
     }
+  };
+
+  const fetchAlertas = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 401) {
+        onLogout();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error('Error al obtener alertas');
+      }
+
+      const data = await response.json();
+      const alertasMapeadas = Array.isArray(data)
+        ? (data as AlertApiItem[]).map(mapAlertToTableItem)
+        : [];
+
+      setAlertas(alertasMapeadas);
+    } catch (error) {
+      console.error('Error cargando alertas:', error);
+    }
+  }, [userId, token, onLogout]);
+
+  // Carga desde la API
+  useEffect(() => {
+    if (userId && token) {
+      void fetchAlertas();
+    }
+  }, [userId, token, fetchAlertas]);
+
+  useEffect(() => {
+    if (!alertFeedback) {
+      return;
+    }
+
+    const timeoutId = globalThis.setTimeout(() => {
+      setAlertFeedback(null);
+    }, 5000);
+
+    return () => globalThis.clearTimeout(timeoutId);
+  }, [alertFeedback]);
+
+  const handleSaveAlert = async (_datos: AlertFormPayload) => {
+    if (!userId || !token) {
+      return;
+    }
+
+    await fetchAlertas();
+    setAlertFeedback({
+      type: 'success',
+      message: alertToEdit ? 'Alerta actualizada correctamente.' : 'Alerta creada correctamente.'
+    });
+    handleCloseAlertForm();
   };
 
   return (
@@ -96,11 +154,23 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         <header className="header-actions">
           <h2>Gestión de Alertas</h2>
           {isGestor && (
-            <button className="btn-primary" onClick={open}>
-              <Plus size={18} /> Nueva Alerta
+            <button className="btn-primary" onClick={handleOpenCreateModal}>
+              <Plus size={18} /> Crear Nueva Alerta
             </button>
           )}
         </header>
+
+        {alertFeedback && (
+          <div
+            className={`alert-feedback ${
+              alertFeedback.type === 'success' ? 'alert-feedback-success' : 'alert-feedback-error'
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {alertFeedback.message}
+          </div>
+        )}
 
         <section className="table-container">
           <table className="management-table">
@@ -126,8 +196,22 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                     {isGestor && (
                       <td>
                         <div className="action-buttons">
-                          <button className="btn-icon edit" title="Editar"><Pencil size={18} /></button>
-                          <button className="btn-icon delete" title="Eliminar"><Trash2 size={18} /></button>
+                          <button
+                            className="btn-icon edit"
+                            title="Editar"
+                            aria-label={`Editar alerta ${alerta.nombre}`}
+                            onClick={() => handleEditAlert(alerta)}
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button
+                            className="btn-icon delete"
+                            title="Eliminar"
+                            aria-label={`Eliminar alerta ${alerta.nombre}`}
+                            onClick={() => handleDeleteAlert(alerta.id)}
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       </td>
                     )}
@@ -139,7 +223,12 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         </section>
       </main>
 
-      <AlertForm isOpen={isOpen} onClose={close} onSubmit={handleAlertSubmit} />
+      <AlertForm
+        isOpen={isAlertFormOpen}
+        onClose={handleCloseAlertForm}
+        initialData={alertToEdit}
+        onSubmit={handleSaveAlert}
+      />
     </>
   );
 };
