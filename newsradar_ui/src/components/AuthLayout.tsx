@@ -1,4 +1,6 @@
 import React from 'react';
+// @ts-ignore: CSS module declaration not found
+import '../pages/Auth.css';
 
 interface AuthLayoutProps {
   title: string;
@@ -27,7 +29,7 @@ export const AuthLayout = ({
         <h1 id="auth-layout-title">{title}</h1>
         <p>{description}</p>
 
-        <form onSubmit={onSubmit} className="auth-form">
+        <form onSubmit={onSubmit} className="auth-form auth-layout-form">
           {children}
 
           {errorMessage && (
@@ -46,7 +48,7 @@ export const AuthLayout = ({
             {submitText}
           </button>
 
-          <a href="/" className="btn-toggle-auth">
+          <a href="/" className="btn-toggle-auth auth-layout-back-link">
             Volver al Login
           </a>
         </form>

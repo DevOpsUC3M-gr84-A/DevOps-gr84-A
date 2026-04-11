@@ -231,7 +231,7 @@ export const Auth = () => {
           {isLogin && (
             <a
               href="/forgot-password"
-              className="btn-toggle-auth"
+              className="btn-toggle-auth forgot-password-link"
             >
               ¿Has olvidado tu contraseña?
             </a>
