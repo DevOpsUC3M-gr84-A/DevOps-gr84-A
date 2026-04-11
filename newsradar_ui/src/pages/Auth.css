@@ -55,6 +55,10 @@
   gap: 4px; /* Espacio entre los bloques de campos */
 }
 
+.auth-form .form-group {
+  margin-bottom: 0.75rem;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -100,8 +104,22 @@
   cursor: pointer;
 }
 
+.auth-form .alert-feedback {
+  margin: 0 0 1rem;
+}
+
 .btn-auth-submit:hover {
   background-color: #1d4ed8;
+}
+
+.forgot-password-link,
+.auth-layout-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  width: 100%;
+  text-align: center;
 }
 
 .auth-footer {
