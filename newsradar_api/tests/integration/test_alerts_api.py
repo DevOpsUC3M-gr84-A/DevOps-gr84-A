@@ -96,7 +96,7 @@ def test_alert_limit_per_user_rf03(api_client, seeded_user):
         },
     )
     assert response.status_code == 400
-    assert "límite máximo de 20 alertas" in response.json()["detail"]
+    assert "limite maximo de 20 alertas" in response.json()["detail"]
 
     # Delete one alert to free up space
     delete_response = api_client.delete(
