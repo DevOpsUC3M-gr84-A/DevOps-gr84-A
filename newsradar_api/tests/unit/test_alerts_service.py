@@ -286,7 +286,7 @@ def test_create_user_alert_exceeds_limit_raises_400():
         create_user_alert(user_id=1, payload=payload, db=db)
 
     assert exc_info.value.status_code == 400
-    assert "límite máximo de 20 alertas" in exc_info.value.detail
+    assert "limite maximo de 20 alertas" in exc_info.value.detail
 
 
 @pytest.mark.unit
