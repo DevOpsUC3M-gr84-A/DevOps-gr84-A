@@ -226,8 +226,17 @@ export const Auth = () => {
 
           <button type="submit" className="btn-auth-submit">
             {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-            {isLogin ? 'Entrar al sistema' : 'Crear mi cuenta'}
+            {submitText}
           </button>
+
+          {isLogin && (
+            <a
+              href="/forgot-password"
+              className="btn-toggle-auth forgot-password-link"
+            >
+              ¿Has olvidado tu contraseña?
+            </a>
+          )}
         </form>
 
         <footer className="auth-footer">

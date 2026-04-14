@@ -1,4 +1,3 @@
-// src/pages/Auth.test.tsx
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Auth } from './Auth';
@@ -18,7 +17,7 @@ describe('Página de Autenticación', () => {
     });
     jest.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({})
+      json: async () => ({}),
     } as unknown as Response);
   });
 
@@ -28,10 +27,9 @@ describe('Página de Autenticación', () => {
 
   test('permite cambiar entre Iniciar Sesión y Registro', () => {
     render(<Auth />);
-    
-    const toggleButton = screen.getByText(/Regístrate ahora/i);
-    fireEvent.click(toggleButton);
-    
+
+    fireEvent.click(screen.getByText(/Regístrate ahora/i));
+
     expect(screen.getByText(/Crear Cuenta/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Ej: Juan/i)).toBeInTheDocument();
   });
@@ -40,7 +38,7 @@ describe('Página de Autenticación', () => {
     const mockResponse = {
       access_token: 'token-123',
       user_id: 1,
-      role_ids: [1]
+      role_ids: [1],
     };
 
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
@@ -52,10 +50,10 @@ describe('Página de Autenticación', () => {
     const { container } = render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' }
+      target: { value: 'test@test.com' },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: 'password123' }
+      target: { value: 'password123' },
     });
 
     const form = container.querySelector('form');
@@ -68,7 +66,7 @@ describe('Página de Autenticación', () => {
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'test@test.com', password: 'password123' })
+          body: JSON.stringify({ email: 'test@test.com', password: 'password123' }),
         })
       );
       expect(mockLogin).toHaveBeenCalledWith(mockResponse);
@@ -78,7 +76,7 @@ describe('Página de Autenticación', () => {
   test('envía registro por fetch y muestra mensaje de confirmación de email', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'ok' })
+      json: async () => ({ message: 'ok' }),
     } as unknown as Response);
 
     const { container } = render(<Auth />);
@@ -86,19 +84,19 @@ describe('Página de Autenticación', () => {
     fireEvent.click(screen.getByText(/Regístrate ahora/i));
 
     fireEvent.change(screen.getByPlaceholderText(/Ej: Juan/i), {
-      target: { value: 'Juan' }
+      target: { value: 'Juan' },
     });
     fireEvent.change(screen.getByPlaceholderText(/Ej: Pérez/i), {
-      target: { value: 'Pérez' }
+      target: { value: 'Pérez' },
     });
     fireEvent.change(screen.getByPlaceholderText(/Nombre de tu empresa\/institución/i), {
-      target: { value: 'UC3M' }
+      target: { value: 'UC3M' },
     });
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' }
+      target: { value: 'test@test.com' },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: 'password123' }
+      target: { value: 'password123' },
     });
 
     const form = container.querySelector('form');
@@ -117,8 +115,8 @@ describe('Página de Autenticación', () => {
             first_name: 'Juan',
             last_name: 'Pérez',
             organization: 'UC3M',
-            role_ids: [2]
-          })
+            role_ids: [2],
+          }),
         })
       );
       expect(screen.getByText(/Registro exitoso/i)).toBeInTheDocument();
@@ -135,7 +133,7 @@ describe('Página de Autenticación', () => {
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'email-invalido' }
+      target: { value: 'email-invalido' },
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
@@ -146,10 +144,10 @@ describe('Página de Autenticación', () => {
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' }
+      target: { value: 'test@test.com' },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: '123' } // Menos de 6 caracteres
+      target: { value: '123' },
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
@@ -164,11 +162,10 @@ describe('Página de Autenticación', () => {
     } as unknown as Response);
 
     render(<Auth />);
-    
-    // Rellenar datos mínimos
+
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-    
+
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
     await waitFor(() => {
@@ -199,23 +196,22 @@ describe('Página de Autenticación', () => {
   });
 });
 
-describe('Casos de error de API y Red (Cobertura Sonar)', () => {
-    // Re-configuramos el mock para estos tests específicos
-    beforeEach(() => {
-      jest.clearAllMocks();
-      mockedUseAuth.mockReturnValue({
-        login: mockLogin,
-        logout: jest.fn()
-      });
-      jest.spyOn(globalThis, 'fetch').mockResolvedValue({
-        ok: true,
-        json: async () => ({})
-      } as unknown as Response);
+describe('Casos de error de API y Red', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedUseAuth.mockReturnValue({
+      login: mockLogin,
+      logout: jest.fn(),
     });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as unknown as Response);
+  });
 
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
     test('Error 422 (FastAPI style): formatea detail[] y muestra el alert', async () => {
       const errorData = {
@@ -272,4 +268,32 @@ describe('Casos de error de API y Red (Cobertura Sonar)', () => {
     });
   });
 
+  test('Error 500: usa JSON.stringify(detail)', async () => {
+    const errorData = { detail: { error: 'Internal server error' } };
+    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => errorData,
+    } as unknown as Response);
 
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(JSON.stringify(errorData.detail));
+  });
+
+  test('Error de red: muestra mensaje de excepción en UI', async () => {
+    jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network Error');
+  });
+});

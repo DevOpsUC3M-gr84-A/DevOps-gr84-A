@@ -6,6 +6,8 @@ import { Route, Routes } from 'react-router-dom';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
 import { VerifyEmail } from './pages/VerifyEmail';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { useAuth } from './hooks/useAuth';
 
 interface ProtectedLayoutProps {
@@ -60,6 +62,7 @@ const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
 );
 
 function App() {
+  const pathname = globalThis.location.pathname;
   const token = globalThis.localStorage.getItem('token');
   const { logout } = useAuth();
 

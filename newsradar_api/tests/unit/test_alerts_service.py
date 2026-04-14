@@ -68,7 +68,15 @@ def test_create_user_alert_owner_not_found_raises_404():
 def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = owner
+
+    # Mock for user query and count query
+    query_mock = MagicMock()
+    db.query.side_effect = [
+        query_mock,  # For user query
+        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=0)))),  # For count query
+    ]
+    query_mock.filter.return_value.first.return_value = owner
+
     db.commit.side_effect = IntegrityError("statement", "params", Exception("orig"))
 
     payload = AlertCreate(
@@ -89,7 +97,14 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
 def test_create_user_alert_success_commits_and_returns_alert():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = owner
+
+    # Mock for user query and count query
+    query_mock = MagicMock()
+    db.query.side_effect = [
+        query_mock,  # For user query
+        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=5)))),  # For count query
+    ]
+    query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
         obj.id = 10
@@ -205,7 +220,15 @@ def test_delete_user_alert_soft_deletes_and_commits():
 def test_create_user_alert_sqlalchemy_error_propagates():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = owner
+
+    # Mock for user query and count query
+    query_mock = MagicMock()
+    db.query.side_effect = [
+        query_mock,  # For user query
+        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=3)))),  # For count query
+    ]
+    query_mock.filter.return_value.first.return_value = owner
+
     db.commit.side_effect = SQLAlchemyError("connection lost")
 
     payload = AlertCreate(
@@ -238,3 +261,66 @@ def test_update_user_alert_sqlalchemy_error_propagates():
 
     with pytest.raises(SQLAlchemyError):
         update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
+
+
+@pytest.mark.unit
+def test_create_user_alert_exceeds_limit_raises_400():
+    """RF03: Test that creating an alert when user has 20 active alerts raises 400."""
+    owner = SimpleNamespace(id=1)
+    db = MagicMock()
+
+    # Mock owner exists
+    db.query.return_value.filter.return_value.first.return_value = owner
+
+    # Mock count query to return 20 (limit reached)
+    db.query.return_value.filter.return_value.count.return_value = 20
+
+    payload = AlertCreate(
+        name="Alert 21",
+        descriptors=["test"],
+        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        cron_expression="*/1 * * * *",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        create_user_alert(user_id=1, payload=payload, db=db)
+
+    assert exc_info.value.status_code == 400
+    assert "limite maximo de 20 alertas" in exc_info.value.detail
+
+
+@pytest.mark.unit
+def test_create_user_alert_below_limit_succeeds():
+    """RF03: Test that creating an alert when user has less than 20 alerts succeeds."""
+    owner = SimpleNamespace(id=1)
+    db = MagicMock()
+
+    # Mock owner exists
+    query_mock = MagicMock()
+    filter_mock = MagicMock()
+
+    # First query returns owner, second query returns count
+    db.query.side_effect = [
+        query_mock,  # For user query
+        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=19)))),  # For count query
+    ]
+    query_mock.filter.return_value.first.return_value = owner
+
+    def _refresh_side_effect(obj):
+        obj.id = 15
+
+    db.refresh.side_effect = _refresh_side_effect
+
+    payload = AlertCreate(
+        name="Alert 20",
+        descriptors=["test"],
+        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        cron_expression="*/1 * * * *",
+    )
+
+    result = create_user_alert(user_id=1, payload=payload, db=db)
+
+    assert result.id == 15
+    assert result.name == "Alert 20"
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
