@@ -1,19 +1,19 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { useAuth } from './hooks/useAuth';
 
-jest.mock('./pages/Auth', () => ({
-  Auth: () => <div>AUTH_VIEW</div>
-}));
-
-jest.mock('./pages/AlertsManagement', () => ({
-  AlertsManagement: () => <div>ALERTS_VIEW</div>
-}));
+jest.mock('./pages/Auth', () => ({ Auth: () => <div>AUTH_VIEW</div> }));
+jest.mock('./pages/AlertsManagement', () => ({ AlertsManagement: () => <div>ALERTS_VIEW</div> }));
+jest.mock('./pages/VerifyEmail', () => ({ VerifyEmail: () => <div>VERIFY_EMAIL_VIEW</div> }));
+jest.mock('./pages/ForgotPassword', () => ({ ForgotPassword: () => <div>FORGOT_PASSWORD_VIEW</div> }));
+jest.mock('./pages/ResetPassword', () => ({ ResetPassword: () => <div>RESET_PASSWORD_VIEW</div> }));
 
 jest.mock('./hooks/useAuth');
-
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+
+const routerFutureFlags = { v7_startTransition: true, v7_relativeSplatPath: true };
 
 describe('Componente Raíz App', () => {
   const getItemSpy = jest.spyOn(Storage.prototype, 'getItem');
@@ -29,20 +29,66 @@ describe('Componente Raíz App', () => {
     });
   });
 
+  test('renderiza ForgotPassword cuando pathname es /forgot-password', () => {
+    getItemSpy.mockReturnValue(null);
+
+    render(
+      <MemoryRouter initialEntries={['/forgot-password']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('FORGOT_PASSWORD_VIEW')).toBeInTheDocument();
+  });
+
+  test('renderiza ResetPassword cuando pathname es /reset-password', () => {
+    getItemSpy.mockReturnValueOnce(null);
+    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
+
+    render(
+      <MemoryRouter initialEntries={['/reset-password']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('RESET_PASSWORD_VIEW')).toBeInTheDocument();
+  });
+
   test('renderiza Auth cuando no hay token', () => {
     getItemSpy.mockReturnValueOnce(null);
+    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('AUTH_VIEW')).toBeInTheDocument();
   });
 
+  test('renderiza VerifyEmail en ruta pública aunque no haya token', () => {
+    getItemSpy.mockReturnValueOnce(null);
+
+    render(
+      <MemoryRouter initialEntries={['/verify-email?token=test']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('VERIFY_EMAIL_VIEW')).toBeInTheDocument();
+  });
+
   test('renderiza layout protegido cuando hay token', () => {
     getItemSpy.mockReturnValueOnce('fake-token');
+    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/alertas']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByText(/Cerrar Sesión/i)).toBeInTheDocument();
     expect(screen.getByText('ALERTS_VIEW')).toBeInTheDocument();
   });
 
@@ -55,9 +101,13 @@ describe('Componente Raíz App', () => {
       logout: logoutSpy
     });
 
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
 
-    screen.getByText(/Cerrar Sesión/i).click();
+    fireEvent.click(screen.getByText(/Cerrar Sesión/i));
 
     expect(removeItemSpy).toHaveBeenCalledWith('token');
     expect(removeItemSpy).toHaveBeenCalledWith('userId');
@@ -69,7 +119,11 @@ describe('Componente Raíz App', () => {
   test('renderiza los enlaces de navegación principales en modo autenticado', () => {
     getItemSpy.mockReturnValueOnce('fake-token');
 
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/Mis Alertas/i)).toBeInTheDocument();
@@ -79,7 +133,11 @@ describe('Componente Raíz App', () => {
   test('renderiza marca y logo en modo autenticado', () => {
     getItemSpy.mockReturnValueOnce('fake-token');
 
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
+        <App />
+      </MemoryRouter>
+    );
 
     expect(screen.getByAltText(/NewsRadar Logo/i)).toBeInTheDocument();
     expect(screen.getByText(/NewsRadar/i)).toBeInTheDocument();

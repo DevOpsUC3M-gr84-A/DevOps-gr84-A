@@ -6,9 +6,56 @@ import './Auth.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
+interface ApiValidationError {
+  loc?: (string | number)[];
+  msg?: string;
+}
+
+interface ApiErrorResponse {
+  detail?: string | ApiValidationError[] | Record<string, unknown>;
+}
+
+interface AuthResponse extends ApiErrorResponse {
+  access_token?: string;
+  user_id?: number;
+  role_ids?: number[];
+}
+
+const formatApiError = (data: ApiErrorResponse): string => {
+  if (typeof data.detail === 'string') {
+    return data.detail;
+  }
+
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map((err) => `${err.loc?.[1] ?? 'campo'}: ${err.msg ?? 'valor inválido'}`)
+      .join('\n');
+  }
+
+  if (data.detail && typeof data.detail === 'object') {
+    return JSON.stringify(data.detail);
+  }
+
+  return 'Error en la operación';
+};
+
+const normalizeLoginErrorMessage = (status: number, message: string, isLogin: boolean): string => {
+  if (!isLogin || (status !== 401 && status !== 403)) {
+    return message;
+  }
+
+  if (/verif|verify/i.test(message)) {
+    return 'Tu cuenta no está verificada. Revisa tu email.';
+  }
+
+  return message;
+};
+
 export const Auth = () => {
   const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -31,75 +78,77 @@ export const Auth = () => {
     return null;
   };
 
-  interface ApiValidationError {
-    loc?: (string | number)[];
-    msg?: string;
-  }
-
-  interface ApiErrorResponse {
-    detail?: string | ApiValidationError[] | Record<string, unknown>;
-  }
-
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    setAuthError(null);
     const errorMsg = validate();
-    if (errorMsg) return globalThis.alert(errorMsg);
+    if (errorMsg) {
+      setAuthError(errorMsg);
+      return;
+    }
 
     const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
     
     const payload = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : { 
-          ...formData, 
-          role_ids: [2] 
-        };
-
+    ? { email: formData.email, password: formData.password }
+    : { 
+      ...formData, 
+      role_ids: [2] 
+    };
+    
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
-      const data = (await response.json()) as ApiErrorResponse & {
-        access_token?: string;
-        user_id?: number;
-        role_ids?: number[];
-      };
-
+      
+      const data = (await response.json()) as AuthResponse;
+      
       if (!response.ok) {
-        let mensajeError = 'Error en la operación';
-
-        if (typeof data.detail === 'string') {
-          mensajeError = data.detail;
-        } else if (Array.isArray(data.detail)) {
-          mensajeError = data.detail
-            .map((err) => `${err.loc?.[1] ?? 'campo'}: ${err.msg ?? 'valor inválido'}`)
-            .join('\n');
-        } else if (data.detail && typeof data.detail === 'object') {
-           mensajeError = JSON.stringify(data.detail);
-        }
-
-        throw new Error(mensajeError);
+        const baseError = formatApiError(data);
+        const normalizedError = normalizeLoginErrorMessage(response.status, baseError, isLogin);
+        throw new Error(normalizedError);
       }
-
+      
       if (isLogin) {
-        // Lógica del hook
         login({
           access_token: data.access_token ?? '',
           user_id: data.user_id ?? 0,
           role_ids: data.role_ids ?? []
         });
       } else {
-        globalThis.alert("¡Cuenta creada! Revisa tu email para la verificación (24h) e inicia sesión.");
-        setIsLogin(true);
+        setRegisterSuccess(true);
+        setAuthError(null);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error inesperado en autenticación';
-      globalThis.alert(message);
+      setAuthError(message);
     }
   };
-
+  
+  if (registerSuccess) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card" role="status" aria-live="polite">
+          <h2>Registro exitoso</h2>
+          <p>Por favor, revisa tu bandeja de entrada para verificar tu cuenta.</p>
+          <button
+            type="button"
+            className="btn-toggle-auth"
+            onClick={() => {
+              setRegisterSuccess(false);
+              setIsLogin(true);
+              setAuthError(null);
+            }}
+            >
+            Ir al Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const submitText = isLogin ? 'Entrar al sistema' : 'Crear mi cuenta';
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -119,6 +168,11 @@ export const Auth = () => {
         </header>
 
         <form onSubmit={handleSubmit} className="auth-form">
+          {authError && (
+            <div role="alert" aria-live="assertive" className="alert-feedback alert-feedback-error">
+              {authError}
+            </div>
+          )}
           
           {!isLogin && (
             <div className="form-row">
@@ -172,15 +226,28 @@ export const Auth = () => {
 
           <button type="submit" className="btn-auth-submit">
             {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-            {isLogin ? 'Entrar al sistema' : 'Crear mi cuenta'}
+            {submitText}
           </button>
+
+          {isLogin && (
+            <a
+              href="/forgot-password"
+              className="btn-toggle-auth forgot-password-link"
+            >
+              ¿Has olvidado tu contraseña?
+            </a>
+          )}
         </form>
 
         <footer className="auth-footer">
           <p>{isLogin ? '¿No tienes cuenta todavía?' : '¿Ya tienes una cuenta?'}</p>
           <button 
             type="button" 
-            onClick={() => setIsLogin(!isLogin)} 
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setAuthError(null);
+              setRegisterSuccess(false);
+            }} 
             className="btn-toggle-auth"
           >
             {isLogin ? 'Regístrate ahora' : 'Inicia sesión aquí'}
