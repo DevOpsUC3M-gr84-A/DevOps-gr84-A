@@ -1,5 +1,7 @@
 import logging
 import os
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,15 +14,9 @@ import app.models  # noqa: F401
 logger = logging.getLogger("uvicorn.error")
 scheduler = AlertMonitorScheduler()
 
-app = FastAPI(
-    title="NewsRadar API",
-    version="1.0.0",
-    description="API REST para gestión de usuarios, alertas, notificaciones, fuentes y canales RSS.",
-)
 
-
-@app.on_event("startup")
-def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(bind=engine)
     logger.info("Startup FastAPI completado: metadata SQLAlchemy cargada")
 
@@ -32,11 +28,18 @@ def on_startup() -> None:
         scheduler.get_next_run_time(),
     )
 
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=False)
+        logger.info("Shutdown FastAPI completado: scheduler detenido")
 
-@app.on_event("shutdown")
-def on_shutdown() -> None:
-    scheduler.stop()
-    logger.info("Shutdown FastAPI completado: scheduler detenido")
+app = FastAPI(
+    title="NewsRadar API",
+    version="1.0.0",
+    description="API REST para gestión de usuarios, alertas, notificaciones, fuentes y canales RSS.",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,

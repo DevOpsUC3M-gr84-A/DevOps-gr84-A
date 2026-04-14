@@ -12,6 +12,7 @@ from typing import List
 from urllib.parse import urlparse, urlunparse
 
 import feedparser
+import requests
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ from app.services.workflows.classification_workflow import classify_article
 logger = logging.getLogger("uvicorn.error")
 RSS_USER_AGENT = "NewsRadar/1.0 (+https://localhost)"
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
+RSS_FETCH_TIMEOUT_SECONDS = float(os.getenv("RSS_FETCH_TIMEOUT_SECONDS", "10"))
 
 
 class ParsedEntry(BaseModel):
@@ -76,10 +78,20 @@ def _normalize_feed_entry(raw_entry: dict) -> ParsedEntry | None:
 
 
 def _parse_feed(channel_url: str):
-    parsed = feedparser.parse(
-        channel_url,
-        request_headers={"User-Agent": RSS_USER_AGENT},
-    )
+    def _fetch_and_parse(url: str):
+        try:
+            response = requests.get(
+                url,
+                headers={"User-Agent": RSS_USER_AGENT},
+                timeout=RSS_FETCH_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            return feedparser.parse(response.content)
+        except requests.RequestException as exc:
+            logger.warning("Fallo leyendo RSS url=%s: %s", url, exc)
+            return feedparser.parse("")
+
+    parsed = _fetch_and_parse(channel_url)
 
     if getattr(parsed, "entries", None):
         return parsed
@@ -90,10 +102,7 @@ def _parse_feed(channel_url: str):
         # Cambiamos el esquema de forma segura y reconstruimos la URL
         secure_url = urlunparse(parsed_url._replace(scheme="https"))
 
-        parsed_https = feedparser.parse(
-            secure_url,
-            request_headers={"User-Agent": RSS_USER_AGENT},
-        )
+        parsed_https = _fetch_and_parse(secure_url)
         if getattr(parsed_https, "entries", None):
             return parsed_https
 
