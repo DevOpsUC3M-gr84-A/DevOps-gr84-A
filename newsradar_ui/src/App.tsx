@@ -6,6 +6,8 @@ import { Route, Routes } from 'react-router-dom';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
 import { VerifyEmail } from './pages/VerifyEmail';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { useAuth } from './hooks/useAuth';
 
 interface ProtectedLayoutProps {
@@ -77,6 +79,8 @@ function App() {
   return (
     <Routes>
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="*" element={token ? <ProtectedLayout handleLogout={handleLogout} /> : <Auth />} />
     </Routes>
   );
