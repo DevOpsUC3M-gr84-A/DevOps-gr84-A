@@ -73,7 +73,7 @@ describe('Página de Autenticación', () => {
     });
   });
 
-  test('envía registro por fetch y muestra pantalla de éxito', async () => {
+  test('envía registro por fetch y muestra mensaje de confirmación de email', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
       json: async () => ({ message: 'ok' }),
@@ -119,12 +119,17 @@ describe('Página de Autenticación', () => {
           }),
         })
       );
+      expect(screen.getByText(/Registro exitoso/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Por favor, revisa tu bandeja de entrada para verificar tu cuenta/i)
+      ).toBeInTheDocument();
     });
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Registro exitoso');
+    fireEvent.click(screen.getByRole('button', { name: /Ir al Login/i }));
+    expect(screen.getByText(/Iniciar Sesión/i)).toBeInTheDocument();
   });
 
-  test('muestra error inline si el email no es válido', async () => {
+  test('muestra alerta si el email no es válido', () => {
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
@@ -132,10 +137,10 @@ describe('Página de Autenticación', () => {
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Email no válido');
+    expect(screen.getByRole('alert')).toHaveTextContent('Email no válido');
   });
 
-  test('muestra error inline si la contraseña es muy corta', async () => {
+  test('muestra alerta si la contraseña es muy corta', () => {
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
@@ -146,7 +151,7 @@ describe('Página de Autenticación', () => {
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('La contraseña debe tener al menos 6 caracteres');
+    expect(screen.getByRole('alert')).toHaveTextContent('La contraseña debe tener al menos 6 caracteres');
   });
 
   test('muestra el error devuelto por la API si el login falla', async () => {
@@ -163,15 +168,31 @@ describe('Página de Autenticación', () => {
 
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Credenciales inválidas');
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Credenciales inválidas');
+    });
   });
 
-  test('muestra enlace de recuperación apuntando a /forgot-password', () => {
+  test('muestra mensaje amigable cuando la cuenta no está verificada', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: 'Account not verified' })
+    } as unknown as Response);
+
     render(<Auth />);
 
-    const forgotLink = screen.getByRole('link', { name: /¿Has olvidado tu contraseña\?/i });
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: 'test@test.com' }
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: 'password123' }
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(forgotLink).toHaveAttribute('href', '/forgot-password');
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Tu cuenta no está verificada. Revisa tu email.');
+    });
   });
 });
 
@@ -192,24 +213,59 @@ describe('Casos de error de API y Red', () => {
     jest.restoreAllMocks();
   });
 
-  test('Error 422: formatea detail[] y lo muestra', async () => {
-    const errorData = {
-      detail: [{ loc: ['body', 'email'], msg: 'invalid email' }],
-    };
-    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: async () => errorData,
-    } as unknown as Response);
+    test('Error 422 (FastAPI style): formatea detail[] y muestra el alert', async () => {
+      const errorData = {
+        detail: [{ loc: ['body', 'email'], msg: 'invalid email' }]
+      };
+      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        json: async () => errorData,
+      } as unknown as Response);
+      
+      render(<Auth />);
+      
+      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    render(<Auth />);
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('email: invalid email');
+      });
+    });
 
-    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+    test('Error 500 (Object detail): usa JSON.stringify(detail) en el alert', async () => {
+      const errorData = { detail: { error: 'Internal server error' } };
+      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => errorData,
+      } as unknown as Response);
+      
+      render(<Auth />);
+      
+      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('email: invalid email');
-  });
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(JSON.stringify(errorData.detail));
+      });
+    });
+
+    test('Error de red (Catch): captura excepción y muestra alert con el mensaje', async () => {
+      jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
+
+      render(<Auth />);
+      
+      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
+      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+      fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Network Error');
+      });
+    });
 
   test('Error 500: usa JSON.stringify(detail)', async () => {
     const errorData = { detail: { error: 'Internal server error' } };

@@ -39,10 +39,21 @@ const formatApiError = (data: ApiErrorResponse): string => {
   return 'Error en la operación';
 };
 
+const normalizeLoginErrorMessage = (status: number, message: string, isLogin: boolean): string => {
+  if (!isLogin || (status !== 401 && status !== 403)) {
+    return message;
+  }
+
+  if (/verif|verify/i.test(message)) {
+    return 'Tu cuenta no está verificada. Revisa tu email.';
+  }
+
+  return message;
+};
+
 export const Auth = () => {
   const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -76,30 +87,30 @@ export const Auth = () => {
       return;
     }
 
-    setIsSubmitting(true);
-
     const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
     
     const payload = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : { 
-          ...formData, 
-          role_ids: [2] 
-        };
-
+    ? { email: formData.email, password: formData.password }
+    : { 
+      ...formData, 
+      role_ids: [2] 
+    };
+    
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
+      
       const data = (await response.json()) as AuthResponse;
-
+      
       if (!response.ok) {
-        throw new Error(formatApiError(data));
+        const baseError = formatApiError(data);
+        const normalizedError = normalizeLoginErrorMessage(response.status, baseError, isLogin);
+        throw new Error(normalizedError);
       }
-
+      
       if (isLogin) {
         login({
           access_token: data.access_token ?? '',
@@ -109,22 +120,19 @@ export const Auth = () => {
       } else {
         setRegisterSuccess(true);
         setAuthError(null);
-        setIsLogin(true);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error inesperado en autenticación';
       setAuthError(message);
-    } finally {
-      setIsSubmitting(false);
     }
   };
-
+  
   if (registerSuccess) {
     return (
       <div className="auth-page">
         <div className="auth-card" role="status" aria-live="polite">
           <h2>Registro exitoso</h2>
-          <p>Si el correo existe, recibirás instrucciones para verificar tu cuenta.</p>
+          <p>Por favor, revisa tu bandeja de entrada para verificar tu cuenta.</p>
           <button
             type="button"
             className="btn-toggle-auth"
@@ -133,21 +141,14 @@ export const Auth = () => {
               setIsLogin(true);
               setAuthError(null);
             }}
-          >
+            >
             Ir al Login
           </button>
         </div>
       </div>
     );
   }
-
-  let submitText = 'Crear mi cuenta';
-  if (isSubmitting) {
-    submitText = 'Enviando...';
-  } else if (isLogin) {
-    submitText = 'Entrar al sistema';
-  }
-
+  const submitText = isLogin ? 'Entrar al sistema' : 'Crear mi cuenta';
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -245,6 +246,7 @@ export const Auth = () => {
             onClick={() => {
               setIsLogin(!isLogin);
               setAuthError(null);
+              setRegisterSuccess(false);
             }} 
             className="btn-toggle-auth"
           >
