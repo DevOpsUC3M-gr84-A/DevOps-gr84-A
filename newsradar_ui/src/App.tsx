@@ -4,9 +4,12 @@ import './App.css';
 import { Bell, Settings, Radar, LogOut } from 'lucide-react';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
+  const pathname = globalThis.location.pathname;
   const token = globalThis.localStorage.getItem('token');
   const { logout } = useAuth();
 
@@ -20,6 +23,14 @@ function App() {
     globalThis.location.href = '/';
     logout();
   };
+
+  if (pathname === '/forgot-password') {
+    return <ForgotPassword />;
+  }
+
+  if (pathname === '/reset-password') {
+    return <ResetPassword />;
+  }
 
   if (!token) {
     return <Auth />;
