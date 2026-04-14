@@ -266,7 +266,6 @@ describe('Casos de error de API y Red', () => {
         expect(screen.getByRole('alert')).toHaveTextContent('Network Error');
       });
     });
-  });
 
   test('Error 500: usa JSON.stringify(detail)', async () => {
     const errorData = { detail: { error: 'Internal server error' } };

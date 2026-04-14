@@ -4,16 +4,10 @@ import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { useAuth } from './hooks/useAuth';
 
-jest.mock('./pages/Auth', () => ({
-  Auth: () => <div>AUTH_VIEW</div>
-}));
-
-jest.mock('./pages/AlertsManagement', () => ({
-  AlertsManagement: () => <div>ALERTS_VIEW</div>
-}));
-
 jest.mock('./pages/VerifyEmail', () => ({
   VerifyEmail: () => <div>VERIFY_EMAIL_VIEW</div>
+}));
+
 jest.mock('./pages/ForgotPassword', () => ({
   ForgotPassword: () => <div>FORGOT_PASSWORD_VIEW</div>
 }));
@@ -23,7 +17,6 @@ jest.mock('./pages/ResetPassword', () => ({
 }));
 
 jest.mock('./hooks/useAuth');
-
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 describe('Componente Raíz App', () => {

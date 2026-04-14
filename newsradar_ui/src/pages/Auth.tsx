@@ -90,27 +90,27 @@ export const Auth = () => {
     const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
     
     const payload = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : { 
-          ...formData, 
-          role_ids: [2] 
-        };
-
+    ? { email: formData.email, password: formData.password }
+    : { 
+      ...formData, 
+      role_ids: [2] 
+    };
+    
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
+      
       const data = (await response.json()) as AuthResponse;
-
+      
       if (!response.ok) {
         const baseError = formatApiError(data);
         const normalizedError = normalizeLoginErrorMessage(response.status, baseError, isLogin);
         throw new Error(normalizedError);
       }
-
+      
       if (isLogin) {
         login({
           access_token: data.access_token ?? '',
@@ -126,7 +126,7 @@ export const Auth = () => {
       setAuthError(message);
     }
   };
-
+  
   if (registerSuccess) {
     return (
       <div className="auth-page">
@@ -141,14 +141,14 @@ export const Auth = () => {
               setIsLogin(true);
               setAuthError(null);
             }}
-          >
+            >
             Ir al Login
           </button>
         </div>
       </div>
     );
   }
-
+  const submitText = isLogin ? 'Entrar al sistema' : 'Crear mi cuenta';
   return (
     <div className="auth-page">
       <div className="auth-card">
