@@ -1,4 +1,5 @@
 import pytest
+from app.models.rss import RSSChannel, CategoriaIPTC
 
 
 @pytest.mark.integration
@@ -116,3 +117,248 @@ def test_alert_limit_per_user_rf03(api_client, seeded_user):
     )
     assert response.status_code == 201
     assert response.json()["name"] == "Alerta 20 - After Delete"
+
+
+@pytest.mark.integration
+def test_create_alert_auto_assigns_rss_channels_rf07(api_client, seeded_user, test_session_factory):
+    """RF07: Test that RSS channels are auto-assigned based on alert categories."""
+    session = test_session_factory()
+    try:
+        # Create RSS channels for different categories
+        tech_channel_1 = RSSChannel(
+            media_name="Tech News",
+            url="https://technews.com/feed1",
+            iptc_category=CategoriaIPTC.TECNOLOGIA,
+            is_active=True,
+        )
+        tech_channel_2 = RSSChannel(
+            media_name="Tech Blog",
+            url="https://techblog.com/feed",
+            iptc_category=CategoriaIPTC.TECNOLOGIA,
+            is_active=True,
+        )
+        cultura_channel = RSSChannel(
+            media_name="Cultura News",
+            url="https://cultura.com/feed",
+            iptc_category=CategoriaIPTC.CULTURA,
+            is_active=True,
+        )
+        session.add_all([tech_channel_1, tech_channel_2, cultura_channel])
+        session.commit()
+        session.refresh(tech_channel_1)
+        session.refresh(tech_channel_2)
+        session.refresh(cultura_channel)
+
+        # Create alert without specifying RSS channels
+        create_payload = {
+            "name": "Tech Alert",
+            "descriptors": ["ai", "machine learning"],
+            "categories": [{"code": "04010000", "label": "Tecnologia"}],
+            "cron_expression": "*/1 * * * *",
+            # rss_channel_ids not specified - should auto-assign
+        }
+
+        response = api_client.post(
+            f"/api/v1/users/{seeded_user.id}/alerts",
+            json=create_payload,
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Tech Alert"
+        # Should have auto-assigned the 2 tech channels
+        assert len(data["rss_channel_ids"]) == 2
+        assert set(data["rss_channel_ids"]) == {tech_channel_1.id, tech_channel_2.id}
+
+    finally:
+        session.close()
+
+
+@pytest.mark.integration
+def test_create_alert_with_explicit_rss_channels_rf07(api_client, seeded_user, test_session_factory):
+    """RF07: Test creating alert with explicitly specified RSS channels."""
+    session = test_session_factory()
+    try:
+        # Create RSS channels
+        tech_channel = RSSChannel(
+            media_name="Tech News",
+            url="https://technews.com/feed2",
+            iptc_category=CategoriaIPTC.TECNOLOGIA,
+            is_active=True,
+        )
+        eco_channel = RSSChannel(
+            media_name="Economy Times",
+            url="https://economy.com/feed",
+            iptc_category=CategoriaIPTC.ECONOMIA,
+            is_active=True,
+        )
+        session.add_all([tech_channel, eco_channel])
+        session.commit()
+        session.refresh(tech_channel)
+        session.refresh(eco_channel)
+
+        # Create alert with explicit channel selection
+        create_payload = {
+            "name": "Selective Alert",
+            "descriptors": ["business", "startup"],
+            "categories": [{"code": "04000000", "label": "Economia"}],
+            "rss_channel_ids": [eco_channel.id],  # Explicitly specify only one channel
+            "cron_expression": "*/5 * * * *",
+        }
+
+        response = api_client.post(
+            f"/api/v1/users/{seeded_user.id}/alerts",
+            json=create_payload,
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Selective Alert"
+        assert data["rss_channel_ids"] == [eco_channel.id]
+
+    finally:
+        session.close()
+
+
+@pytest.mark.integration
+def test_create_alert_with_invalid_rss_channels_rf07(api_client, seeded_user):
+    """RF07: Test that specifying non-existent RSS channels returns 400."""
+    create_payload = {
+        "name": "Invalid Channels Alert",
+        "descriptors": ["test"],
+        "categories": [{"code": "04010000", "label": "Tecnologia"}],
+        "rss_channel_ids": [9999, 8888],  # Non-existent channels
+        "cron_expression": "*/1 * * * *",
+    }
+
+    response = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json=create_payload,
+    )
+
+    assert response.status_code == 400
+    assert "canales rss" in response.json()["detail"].lower()
+
+
+@pytest.mark.integration
+def test_update_alert_rss_channels_rf07(api_client, seeded_user, test_session_factory):
+    """RF07: Test updating alert RSS channels."""
+    session = test_session_factory()
+    try:
+        # Create RSS channels
+        channel_1 = RSSChannel(
+            media_name="Channel 1",
+            url="https://channel1.com/feed",
+            iptc_category=CategoriaIPTC.DEPORTES,
+            is_active=True,
+        )
+        channel_2 = RSSChannel(
+            media_name="Channel 2",
+            url="https://channel2.com/feed",
+            iptc_category=CategoriaIPTC.DEPORTES,
+            is_active=True,
+        )
+        channel_3 = RSSChannel(
+            media_name="Channel 3",
+            url="https://channel3.com/feed",
+            iptc_category=CategoriaIPTC.DEPORTES,
+            is_active=True,
+        )
+        session.add_all([channel_1, channel_2, channel_3])
+        session.commit()
+        session.refresh(channel_1)
+        session.refresh(channel_2)
+        session.refresh(channel_3)
+
+        # Create alert
+        create_payload = {
+            "name": "Sports Alert",
+            "descriptors": ["football"],
+            "categories": [{"code": "15000000", "label": "Deportes"}],
+            "rss_channel_ids": [channel_1.id],
+            "cron_expression": "*/1 * * * *",
+        }
+
+        create_response = api_client.post(
+            f"/api/v1/users/{seeded_user.id}/alerts",
+            json=create_payload,
+        )
+        assert create_response.status_code == 201
+        alert_id = create_response.json()["id"]
+
+        # Update RSS channels
+        update_payload = {
+            "rss_channel_ids": [channel_2.id, channel_3.id]
+        }
+
+        update_response = api_client.put(
+            f"/api/v1/users/{seeded_user.id}/alerts/{alert_id}",
+            json=update_payload,
+        )
+
+        assert update_response.status_code == 200
+        data = update_response.json()
+        assert set(data["rss_channel_ids"]) == {channel_2.id, channel_3.id}
+
+    finally:
+        session.close()
+
+
+@pytest.mark.integration
+def test_alert_with_multiple_categories_gets_all_channels_rf07(api_client, seeded_user, test_session_factory):
+    """RF07: Test that alert with multiple categories gets channels from all categories."""
+    session = test_session_factory()
+    try:
+        # Create RSS channels for different categories
+        tech_channel = RSSChannel(
+            media_name="Tech News",
+            url="https://tech.com/feed3",
+            iptc_category=CategoriaIPTC.TECNOLOGIA,
+            is_active=True,
+        )
+        cultura_channel_1 = RSSChannel(
+            media_name="Culture News 1",
+            url="https://culture1.com/feed",
+            iptc_category=CategoriaIPTC.CULTURA,
+            is_active=True,
+        )
+        cultura_channel_2 = RSSChannel(
+            media_name="Culture News 2",
+            url="https://culture2.com/feed",
+            iptc_category=CategoriaIPTC.CULTURA,
+            is_active=True,
+        )
+        session.add_all([tech_channel, cultura_channel_1, cultura_channel_2])
+        session.commit()
+        session.refresh(tech_channel)
+        session.refresh(cultura_channel_1)
+        session.refresh(cultura_channel_2)
+
+        # Create alert with multiple categories
+        create_payload = {
+            "name": "Multi-Category Alert",
+            "descriptors": ["art", "tech"],
+            "categories": [
+                {"code": "04010000", "label": "Tecnologia"},
+                {"code": "01000000", "label": "Cultura"},
+            ],
+            "cron_expression": "*/1 * * * *",
+        }
+
+        response = api_client.post(
+            f"/api/v1/users/{seeded_user.id}/alerts",
+            json=create_payload,
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        # Should have channels from both categories (1 tech + 2 cultura)
+        assert len(data["rss_channel_ids"]) == 3
+        assert set(data["rss_channel_ids"]) == {
+            tech_channel.id,
+            cultura_channel_1.id,
+            cultura_channel_2.id,
+        }
+
+    finally:
+        session.close()
