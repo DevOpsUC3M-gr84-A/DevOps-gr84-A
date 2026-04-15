@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { AuthLayout } from '../components/AuthLayout';
+import React, { useState } from "react";
+import { AuthLayout } from "../components/AuthLayout";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 interface ForgotPasswordResponse {
   detail?: string;
 }
 
 export const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -19,28 +20,39 @@ export const ForgotPassword = () => {
     setSuccessMessage(null);
 
     if (!email.trim()) {
-      setErrorMessage('Debes introducir un email.');
+      setErrorMessage("Debes introducir un email.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/auth/forgot-password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim() }),
+        },
+      );
 
       const data = (await response.json()) as ForgotPasswordResponse;
 
       if (!response.ok) {
-        throw new Error(data.detail ?? 'No se pudo procesar la solicitud. Inténtalo más tarde.');
+        throw new Error(
+          data.detail ??
+            "No se pudo procesar la solicitud. Inténtalo más tarde.",
+        );
       }
 
-      setSuccessMessage('Si el correo existe, recibirás instrucciones para restablecer tu contraseña.');
+      setSuccessMessage(
+        "Si el correo existe, recibirás instrucciones para restablecer tu contraseña.",
+      );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error inesperado al solicitar recuperación de contraseña.';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error inesperado al solicitar recuperación de contraseña.";
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -54,7 +66,9 @@ export const ForgotPassword = () => {
       errorMessage={errorMessage}
       successMessage={successMessage}
       isSubmitting={isSubmitting}
-      submitText={isSubmitting ? 'Enviando...' : 'Enviar enlace de recuperación'}
+      submitText={
+        isSubmitting ? "Enviando..." : "Enviar enlace de recuperación"
+      }
       onSubmit={handleSubmit}
     >
       <div className="form-group">
