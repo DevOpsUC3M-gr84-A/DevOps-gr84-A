@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'newsradar_ui/**'
-      - '.github/workflows/cd-frontend.yml'
+      - "newsradar_ui/**"
+      - ".github/workflows/cd-frontend.yml"
   pull_request:
     branches:
       - main
     paths:
-      - 'newsradar_ui/**'
-      - '.github/workflows/cd-frontend.yml'
+      - "newsradar_ui/**"
+      - ".github/workflows/cd-frontend.yml"
   workflow_dispatch:
 
 permissions:
@@ -32,13 +32,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: 'newsradar_ui/package-lock.json'
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: "newsradar_ui/package-lock.json"
 
       - name: Install dependencies
         working-directory: newsradar_ui
-        run: npm ci
+        run: npm i
 
       - name: Build React app
         working-directory: newsradar_ui
@@ -51,5 +51,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./newsradar_ui/build
-          cname: ''
+          cname: ""
           force_orphan: true
