@@ -1,12 +1,12 @@
-const reportWebVitals = (onPerfEntry?: (entry: any) => void) => {
+import { onCLS, onLCP, onFCP, onTTFB } from "web-vitals";
+import type { Metric } from "web-vitals";
+
+const reportWebVitals = (onPerfEntry?: (entry: Metric) => void) => {
   if (onPerfEntry && typeof onPerfEntry === "function") {
-    import("web-vitals").then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-      getCLS(onPerfEntry);
-      getFID(onPerfEntry);
-      getFCP(onPerfEntry);
-      getLCP(onPerfEntry);
-      getTTFB(onPerfEntry);
-    });
+    onCLS(onPerfEntry);
+    onLCP(onPerfEntry);
+    onFCP(onPerfEntry);
+    onTTFB(onPerfEntry);
   }
 };
 

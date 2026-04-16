@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { AlertForm } from "../components/AlertForm";
 import type { AlertFormPayload, AlertTableItem } from "../components/AlertForm";

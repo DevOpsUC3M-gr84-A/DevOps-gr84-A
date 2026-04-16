@@ -1,21 +1,20 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Auth } from './Auth';
-import { useAuth } from '../hooks/useAuth';
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { Auth } from "./Auth";
+import { useAuth } from "../hooks/useAuth";
 
-jest.mock('../hooks/useAuth');
+jest.mock("../hooks/useAuth");
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockLogin = jest.fn();
 
-describe('Página de Autenticación', () => {
+describe("Página de Autenticación", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseAuth.mockReturnValue({
       login: mockLogin,
-      logout: jest.fn()
+      logout: jest.fn(),
     });
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({}),
     } as unknown as Response);
@@ -25,7 +24,7 @@ describe('Página de Autenticación', () => {
     jest.restoreAllMocks();
   });
 
-  test('permite cambiar entre Iniciar Sesión y Registro', () => {
+  test("permite cambiar entre Iniciar Sesión y Registro", () => {
     render(<Auth />);
 
     fireEvent.click(screen.getByText(/Regístrate ahora/i));
@@ -34,14 +33,14 @@ describe('Página de Autenticación', () => {
     expect(screen.getByPlaceholderText(/Ej: Juan/i)).toBeInTheDocument();
   });
 
-  test('envía login por fetch y llama login del hook tras éxito', async () => {
+  test("envía login por fetch y llama login del hook tras éxito", async () => {
     const mockResponse = {
-      access_token: 'token-123',
+      access_token: "token-123",
       user_id: 1,
       role_ids: [1],
     };
 
-    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
       status: 200,
       json: async () => mockResponse,
@@ -50,33 +49,36 @@ describe('Página de Autenticación', () => {
     const { container } = render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' },
+      target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: 'password123' },
+      target: { value: "password123" },
     });
 
-    const form = container.querySelector('form');
+    const form = container.querySelector("form");
     expect(form).not.toBeNull();
     fireEvent.submit(form as HTMLFormElement);
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/auth/login'),
+        expect.stringContaining("/api/v1/auth/login"),
         expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'test@test.com', password: 'password123' }),
-        })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: "test@test.com",
+            password: "password123",
+          }),
+        }),
       );
       expect(mockLogin).toHaveBeenCalledWith(mockResponse);
     });
   });
 
-  test('envía registro por fetch y muestra mensaje de confirmación de email', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+  test("envía registro por fetch y muestra mensaje de confirmación de email", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'ok' }),
+      json: async () => ({ message: "ok" }),
     } as unknown as Response);
 
     const { container } = render(<Auth />);
@@ -84,126 +86,141 @@ describe('Página de Autenticación', () => {
     fireEvent.click(screen.getByText(/Regístrate ahora/i));
 
     fireEvent.change(screen.getByPlaceholderText(/Ej: Juan/i), {
-      target: { value: 'Juan' },
+      target: { value: "Juan" },
     });
     fireEvent.change(screen.getByPlaceholderText(/Ej: Pérez/i), {
-      target: { value: 'Pérez' },
+      target: { value: "Pérez" },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Nombre de tu empresa\/institución/i), {
-      target: { value: 'UC3M' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Nombre de tu empresa\/institución/i),
+      {
+        target: { value: "UC3M" },
+      },
+    );
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' },
+      target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: 'password123' },
+      target: { value: "password123" },
     });
 
-    const form = container.querySelector('form');
+    const form = container.querySelector("form");
     expect(form).not.toBeNull();
     fireEvent.submit(form as HTMLFormElement);
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/auth/register'),
+        expect.stringContaining("/api/v1/auth/register"),
         expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: 'test@test.com',
-            password: 'password123',
-            first_name: 'Juan',
-            last_name: 'Pérez',
-            organization: 'UC3M',
+            email: "test@test.com",
+            password: "password123",
+            first_name: "Juan",
+            last_name: "Pérez",
+            organization: "UC3M",
             role_ids: [2],
           }),
-        })
+        }),
       );
       expect(screen.getByText(/Registro exitoso/i)).toBeInTheDocument();
       expect(
-        screen.getByText(/Por favor, revisa tu bandeja de entrada para verificar tu cuenta/i)
+        screen.getByText(
+          /Por favor, revisa tu bandeja de entrada para verificar tu cuenta/i,
+        ),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Ir al Login/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Ir al Login/i }));
     expect(screen.getByText(/Iniciar Sesión/i)).toBeInTheDocument();
   });
 
-  test('muestra alerta si el email no es válido', () => {
+  test("muestra alerta si el email no es válido", () => {
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'email-invalido' },
+      target: { value: "email-invalido" },
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Email no válido');
+    expect(screen.getByRole("alert")).toHaveTextContent("Email no válido");
   });
 
-  test('muestra alerta si la contraseña es muy corta', () => {
+  test("muestra alerta si la contraseña es muy corta", () => {
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' },
+      target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: '123' },
+      target: { value: "123" },
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('La contraseña debe tener al menos 6 caracteres');
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "La contraseña debe tener al menos 6 caracteres",
+    );
   });
 
-  test('muestra el error devuelto por la API si el login falla', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+  test("muestra el error devuelto por la API si el login falla", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 401,
-      json: async () => ({ detail: 'Credenciales inválidas' }),
-    } as unknown as Response);
-
-    render(<Auth />);
-
-    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-
-    fireEvent.click(screen.getByText(/Entrar al sistema/i));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Credenciales inválidas');
-    });
-  });
-
-  test('muestra mensaje amigable cuando la cuenta no está verificada', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      json: async () => ({ detail: 'Account not verified' })
+      json: async () => ({ detail: "Credenciales inválidas" }),
     } as unknown as Response);
 
     render(<Auth />);
 
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: 'test@test.com' }
+      target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: 'password123' }
+      target: { value: "password123" },
+    });
+
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Credenciales inválidas",
+      );
+    });
+  });
+
+  test("muestra mensaje amigable cuando la cuenta no está verificada", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: "Account not verified" }),
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
     });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Tu cuenta no está verificada. Revisa tu email.');
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Tu cuenta no está verificada. Revisa tu email.",
+      );
     });
   });
 });
 
-describe('Casos de error de API y Red', () => {
+describe("Casos de error de API y Red", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseAuth.mockReturnValue({
       login: mockLogin,
       logout: jest.fn(),
     });
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({}),
     } as unknown as Response);
@@ -213,63 +230,36 @@ describe('Casos de error de API y Red', () => {
     jest.restoreAllMocks();
   });
 
-    test('Error 422 (FastAPI style): formatea detail[] y muestra el alert', async () => {
-      const errorData = {
-        detail: [{ loc: ['body', 'email'], msg: 'invalid email' }]
-      };
-      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: async () => errorData,
-      } as unknown as Response);
-      
-      render(<Auth />);
-      
-      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-      fireEvent.click(screen.getByText(/Entrar al sistema/i));
+  test("Error 422 (FastAPI style): formatea detail[] y muestra el alert", async () => {
+    const errorData = {
+      detail: [{ loc: ["body", "email"], msg: "invalid email" }],
+    };
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => errorData,
+    } as unknown as Response);
 
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('email: invalid email');
-      });
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
     });
-
-    test('Error 500 (Object detail): usa JSON.stringify(detail) en el alert', async () => {
-      const errorData = { detail: { error: 'Internal server error' } };
-      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => errorData,
-      } as unknown as Response);
-      
-      render(<Auth />);
-      
-      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-      fireEvent.click(screen.getByText(/Entrar al sistema/i));
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(JSON.stringify(errorData.detail));
-      });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
     });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    test('Error de red (Catch): captura excepción y muestra alert con el mensaje', async () => {
-      jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
-
-      render(<Auth />);
-      
-      fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-      fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-      fireEvent.click(screen.getByText(/Entrar al sistema/i));
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('Network Error');
-      });
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "email: invalid email",
+      );
     });
+  });
 
-  test('Error 500: usa JSON.stringify(detail)', async () => {
-    const errorData = { detail: { error: 'Internal server error' } };
-    jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+  test("Error 500 (Object detail): usa JSON.stringify(detail) en el alert", async () => {
+    const errorData = { detail: { error: "Internal server error" } };
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 500,
       json: async () => errorData,
@@ -277,22 +267,79 @@ describe('Casos de error de API y Red', () => {
 
     render(<Auth />);
 
-    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(JSON.stringify(errorData.detail));
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        JSON.stringify(errorData.detail),
+      );
+    });
   });
 
-  test('Error de red: muestra mensaje de excepción en UI', async () => {
-    jest.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
+  test("Error de red (Catch): captura excepción y muestra alert con el mensaje", async () => {
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("Network Error"));
 
     render(<Auth />);
 
-    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), { target: { value: 'test@test.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Network Error');
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Network Error");
+    });
+  });
+
+  test("Error 500: usa JSON.stringify(detail)", async () => {
+    const errorData = { detail: { error: "Internal server error" } };
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      JSON.stringify(errorData.detail),
+    );
+  });
+
+  test("Error de red: muestra mensaje de excepción en UI", async () => {
+    jest
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("Network Error"));
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Network Error");
   });
 });
