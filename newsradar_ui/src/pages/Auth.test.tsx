@@ -1,10 +1,11 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
 import { Auth } from "./Auth";
 import { useAuth } from "../hooks/useAuth";
 
-jest.mock("../hooks/useAuth");
+vi.mock("../hooks/useAuth");
 
-const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockedUseAuth = vi.mocked(useAuth);
 const mockLogin = jest.fn();
 
 describe("Página de Autenticación", () => {
@@ -142,7 +143,9 @@ describe("Página de Autenticación", () => {
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
       target: { value: "email-invalido" },
     });
-    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+    const form = screen.getByText(/Entrar al sistema/i).closest("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Email no válido");
   });

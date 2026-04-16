@@ -25,9 +25,11 @@ describe("ForgotPassword", () => {
 
     const emailInput = screen.getByLabelText(/Email/i);
     fireEvent.change(emailInput, { target: { value: "   " } });
-    fireEvent.click(
-      screen.getByRole("button", { name: /Enviar enlace de recuperación/i }),
-    );
+    const form = screen
+      .getByRole("button", { name: /Enviar enlace de recuperación/i })
+      .closest("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Debes introducir un email.",

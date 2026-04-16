@@ -2,4 +2,8 @@
 // allows you to do things like:
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
+import { vi } from "vitest";
+
+// Compatibility shim for legacy CRA/Jest-style tests.
+(globalThis as typeof globalThis & { jest: typeof vi }).jest = vi;

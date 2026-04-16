@@ -3,15 +3,15 @@ import { VerifyEmail } from "./VerifyEmail";
 
 describe("VerifyEmail Page", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+    vi.clearAllMocks();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({}),
     } as unknown as Response);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     globalThis.history.pushState({}, "", "/");
   });
 
@@ -32,7 +32,7 @@ describe("VerifyEmail Page", () => {
       resolveFetch = resolve;
     });
 
-    jest.spyOn(globalThis, "fetch").mockImplementationOnce(() => pendingFetch);
+    vi.spyOn(globalThis, "fetch").mockImplementationOnce(() => pendingFetch);
     globalThis.history.pushState({}, "", "/verify-email?token=valid-token");
 
     render(<VerifyEmail />);

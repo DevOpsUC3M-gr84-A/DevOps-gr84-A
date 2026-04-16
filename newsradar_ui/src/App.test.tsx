@@ -1,24 +1,25 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { vi } from "vitest";
 import App from "./App";
 import { useAuth } from "./hooks/useAuth";
 
-jest.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
-jest.mock("./pages/AlertsManagement", () => ({
+vi.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
+vi.mock("./pages/AlertsManagement", () => ({
   AlertsManagement: () => <div>ALERTS_VIEW</div>,
 }));
-jest.mock("./pages/VerifyEmail", () => ({
+vi.mock("./pages/VerifyEmail", () => ({
   VerifyEmail: () => <div>VERIFY_EMAIL_VIEW</div>,
 }));
-jest.mock("./pages/ForgotPassword", () => ({
+vi.mock("./pages/ForgotPassword", () => ({
   ForgotPassword: () => <div>FORGOT_PASSWORD_VIEW</div>,
 }));
-jest.mock("./pages/ResetPassword", () => ({
+vi.mock("./pages/ResetPassword", () => ({
   ResetPassword: () => <div>RESET_PASSWORD_VIEW</div>,
 }));
 
-jest.mock("./hooks/useAuth");
-const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+vi.mock("./hooks/useAuth");
+const mockedUseAuth = vi.mocked(useAuth);
 
 describe("Componente Raíz App", () => {
   const getItemSpy = jest.spyOn(Storage.prototype, "getItem");

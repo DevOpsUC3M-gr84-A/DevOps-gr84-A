@@ -3,23 +3,23 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AlertForm } from "./AlertForm";
 
 describe("AlertForm Component", () => {
-  const mockOnClose = jest.fn();
-  const mockOnSubmit = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnSubmit = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem("token", "fake-token");
     localStorage.setItem("userId", "1");
 
-    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [],
     } as unknown as Response);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test("no renderiza nada si isOpen es false", () => {
@@ -111,8 +111,11 @@ describe("AlertForm Component", () => {
       target: { value: "0 * * * *" },
     });
 
+    const form = screen.getByText("GUARDAR ALERTA").closest("form");
+    expect(form).not.toBeNull();
+
     await React.act(async () => {
-      fireEvent.click(screen.getByText("GUARDAR ALERTA"));
+      fireEvent.submit(form as HTMLFormElement);
     });
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -339,22 +342,24 @@ describe("AlertForm Component", () => {
     );
 
     const inputNombre = screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026");
+    const inputDesc = screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS");
     const selectCategoria = screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)");
     fireEvent.change(inputNombre, { target: { value: "Test" } });
+    fireEvent.change(inputDesc, { target: { value: "IA" } });
     fireEvent.change(selectCategoria, { target: { value: "Deportes" } });
 
     await React.act(async () => {
       fireEvent.click(screen.getByText("GUARDAR ALERTA"));
     });
 
-    // Al volver a renderizar, los campos deberían estar vacíos
     await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalled();
       expect(inputNombre).toHaveValue("");
     });
   });
 
   test("muestra chips de sugerencias al pulsar Sugerir Descriptores", async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ["Machine Learning", "IA"],
     } as unknown as Response);
@@ -384,7 +389,7 @@ describe("AlertForm Component", () => {
   });
 
   test("muestra error si falla la API de recomendaciones", async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: false,
       json: async () => ({}),
     } as unknown as Response);
@@ -404,7 +409,7 @@ describe("AlertForm Component", () => {
   });
 
   test("muestra error desconocido si recomendaciones lanza valor no Error", async () => {
-    jest.spyOn(globalThis, "fetch").mockRejectedValueOnce("boom");
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce("boom");
 
     render(
       <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
@@ -421,7 +426,7 @@ describe("AlertForm Component", () => {
   });
 
   test('muestra "No hay sugerencias nuevas" cuando recomendaciones no es array', async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
       json: async () => ({ invalid: true }),
     } as unknown as Response);
@@ -441,7 +446,7 @@ describe("AlertForm Component", () => {
   });
 
   test("muestra error si falla el guardado en API", async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: false,
       json: async () => ({}),
     } as unknown as Response);
@@ -476,7 +481,7 @@ describe("AlertForm Component", () => {
       resolveFetch = resolve;
     });
 
-    jest.spyOn(globalThis, "fetch").mockImplementationOnce(() => pendingFetch);
+    vi.spyOn(globalThis, "fetch").mockImplementationOnce(() => pendingFetch);
 
     render(
       <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
@@ -511,7 +516,7 @@ describe("AlertForm Component", () => {
   });
 
   test("muestra error desconocido si guardar lanza un valor no Error", async () => {
-    jest.spyOn(globalThis, "fetch").mockRejectedValueOnce("boom");
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce("boom");
 
     render(
       <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
@@ -548,7 +553,7 @@ describe("AlertForm Component", () => {
   });
 
   test("aceptar una recomendación la elimina y actualiza el input de descriptores", async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ["Machine Learning", "IA"],
     } as unknown as Response);
@@ -578,7 +583,7 @@ describe("AlertForm Component", () => {
   });
 
   test("rechazar una recomendación la elimina y no modifica el input de descriptores", async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ["Machine Learning", "IA"],
     } as unknown as Response);
