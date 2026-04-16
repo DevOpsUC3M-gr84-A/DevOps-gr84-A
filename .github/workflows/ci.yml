@@ -83,7 +83,7 @@ jobs:
       # Paso 7: [Frontend] Instalación de dependencias
       - name: Install Frontend Dependencies
         working-directory: ./newsradar_ui
-        run: npm ci
+        run: npm i
 
       # Paso 8: [Frontend] Ejecución de pruebas con generación de cobertura
       # El flag --coverage genera la carpeta /coverage con el lcov.info necesario para SonarCloud
