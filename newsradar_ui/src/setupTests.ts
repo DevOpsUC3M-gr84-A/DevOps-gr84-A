@@ -6,4 +6,4 @@ import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
 // Compatibility shim for legacy CRA/Jest-style tests.
-(globalThis as typeof globalThis & { jest: typeof vi }).jest = vi;
+(globalThis as { jest: unknown }).jest = vi;
