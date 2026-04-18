@@ -1,10 +1,14 @@
-"""Servicios de formateo para notificaciones de monitorizacion de alertas."""
+"""Servicios de monitorizacion y formateo para notificaciones de alertas."""
 
 from __future__ import annotations
 
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any, Callable, Mapping, Protocol, runtime_checkable
+
+from app.schemas.alert import Alert
+from app.schemas.notification import Notification
+from app.stores.memory import alerts_store, notifications_store
 
 
 @runtime_checkable
@@ -43,7 +47,10 @@ def _parse_news_datetime(raw_value: Any) -> datetime | None:
     return None
 
 
-def _resolve_title_datetime(noticia: Mapping[str, Any], now_provider: Callable[[], datetime]) -> datetime:
+def _resolve_title_datetime(
+    noticia: Mapping[str, Any],
+    now_provider: Callable[[], datetime],
+) -> datetime:
     for key in ("published", "published_at", "date"):
         parsed = _parse_news_datetime(noticia.get(key))
         if parsed is not None:
@@ -77,3 +84,37 @@ def build_notification_payload(
     )
 
     return {"title": title, "message": message}
+
+
+def noticia_coincide_alerta(noticia: Mapping[str, Any], alerta: Alert) -> bool:
+    """Evalua si una noticia coincide con los descriptores de una alerta."""
+
+    texto = (
+        f"{noticia.get('title', '')} "
+        f"{noticia.get('description', '')} "
+        f"{noticia.get('summary', '')}"
+    ).lower()
+    return any(descriptor.lower() in texto for descriptor in alerta.descriptors)
+
+
+def generar_notificacion_si_coincide(noticia: Mapping[str, Any]) -> int:
+    """Genera notificaciones para cada alerta activa que coincida con la noticia."""
+
+    created_notifications = 0
+    for alerta in alerts_store.values():
+        if not noticia_coincide_alerta(noticia, alerta):
+            continue
+
+        # Mantiene el formato RF11/RF12 preparado para integraciones de salida.
+        build_notification_payload(alerta, noticia)
+
+        notificacion = Notification(
+            id=max(notifications_store.keys(), default=0) + 1,
+            alert_id=alerta.id,
+            timestamp=_resolve_title_datetime(noticia, datetime.now),
+            metrics=[],
+        )
+        notifications_store[notificacion.id] = notificacion
+        created_notifications += 1
+
+    return created_notifications
