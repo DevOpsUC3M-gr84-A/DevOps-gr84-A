@@ -105,9 +105,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({ isOpen, onClose, initialDa
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/alerts/keyword-recommendations?keyword=${encodeURIComponent(name)}`
-      );
+      // 1. Construimos la URL de forma segura usando la API nativa
+      const requestUrl = new URL('/api/v1/alerts/keyword-recommendations', API_BASE_URL);
+      
+      // 2. Añadimos el parámetro (la API nativa ya se encarga de codificarlo de forma segura)
+      requestUrl.searchParams.set('keyword', name);
+
+      // 3. Hacemos el fetch
+      const response = await fetch(requestUrl.toString());
 
       if (!response.ok) {
         throw new Error('Error fetching keyword recommendations');
