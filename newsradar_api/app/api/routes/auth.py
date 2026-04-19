@@ -1,6 +1,5 @@
 from uuid import uuid4
-from typing import Annotated
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -8,13 +7,22 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user import User as DBUser
 from app.schemas.user import UserCreate, User, UserInDB
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    TokenResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    MessageResponse,
+)
 from app.stores.memory import users_store, active_tokens
 from app.services.user_service import role_ids_from_role
 from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
+from app.utils.email_utils import send_reset_password_email
 from app.services.user_service import (
     create_db_user,
     verify_password,
+    generate_reset_token,
+    reset_password_with_token,
 )
 
 
@@ -79,3 +87,51 @@ def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> Us
 
     sync_memory_user(user_db)
     return to_user_schema(user_db)
+
+# Recuperación de contraseña
+
+@api_auth_router.post(
+    "/auth/forgot-password",
+    tags=["auth"],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Solicitar recuperación de contraseña",
+    description=(
+        "Recibe un email y, si existe en el sistema, envía un enlace de reset. "
+        "Siempre devuelve 202 para no revelar si el email está registrado."
+    ),
+)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> MessageResponse:
+    token = generate_reset_token(db, payload.email)
+
+    # Si el usuario existe, enviamos el email (el fallo de envío se loguea internamente)
+    if token is not None:
+        send_reset_password_email(to_email=payload.email, reset_token=token)
+
+    # Respuesta siempre igual (evita enumeración de usuarios)
+    return MessageResponse(
+        message="Si el email está registrado, recibirás un enlace de recuperación en breve."
+    )
+
+
+@api_auth_router.post(
+    "/auth/reset-password",
+    tags=["auth"],
+    summary="Restablecer contraseña con token",
+    description="Valida el token recibido por email y establece la nueva contraseña.",
+    responses={
+        400: {"description": "Token inválido o expirado"},
+    },
+)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> MessageResponse:
+    success, message = reset_password_with_token(db, payload.token, payload.new_password)
+
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+
+    return MessageResponse(message=message)

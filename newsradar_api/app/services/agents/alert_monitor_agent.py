@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.models.alert_monitoring import AlertRule
 from app.models.rss import RSSChannel
+from app.services.alert_monitoring_service import build_notification_payload
 from app.services.workflows.classification_workflow import classify_article
 
 logger = logging.getLogger("uvicorn.error")
@@ -166,6 +167,15 @@ def _build_article_document(
     entry: ParsedEntry,
 ) -> dict[str, object | None]:
     published_at = entry.published_at.isoformat() if entry.published_at else None
+    notification_payload = build_notification_payload(
+        alert,
+        {
+            "source": channel.media_name,
+            "published": published_at,
+            "title": entry.title,
+            "summary": entry.summary,
+        },
+    )
     return {
         "title": entry.title,
         "link": entry.link,
@@ -177,6 +187,8 @@ def _build_article_document(
         "user_id": alert.user_id,
         "channel_id": channel.id,
         "source": channel.media_name,
+        "notification_title": notification_payload["title"],
+        "notification_message": notification_payload["message"],
     }
 
 

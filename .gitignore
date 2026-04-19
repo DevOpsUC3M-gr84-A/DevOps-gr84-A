@@ -1,18 +1,56 @@
-# Entornos virtuales de Python
-.venv/
-venv/
-env/
+# ==============================
+# OS temporary files
+# ==============================
+.DS_Store
+Thumbs.db
 
-# Archivos de caché de Python
+# ==============================
+# Python cache and test temp
+# ==============================
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *$py.class
 
-# Archivos de configuración de Visual Studio Code
-.vscode/
+# ==============================
+# JavaScript/React cache
+# ==============================
+.eslintcache
 
-# Variables de entorno
+# ==============================
+# Coverage reports
+# ==============================
+.coverage
+htmlcov/
+coverage/
+
+# ==============================
+# Dependencies and environments
+# ==============================
+node_modules/
+venv/
+.venv/
+env/
+
+# ==============================
+# Build artifacts
+# ==============================
+build/
+dist/
+
+# ==============================
+# IDE/editor settings
+# ==============================
+.vscode/
+.idea/
+
+# ==============================
+# Local environment variables
+# ==============================
 .env
 
-# Archivos de configuración de JetBrains (PyCharm, etc.)
-.idea/
+# ==============================
+# Critical exception: keep shared SQLite DB files versioned
+# ==============================
+!newsradar.db
+!*.db
