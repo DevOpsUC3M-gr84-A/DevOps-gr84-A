@@ -91,7 +91,7 @@ jobs:
         working-directory: ./newsradar_ui
         env:
           CI: true
-        run: npm test -- --coverage
+        run: npx vitest run --coverage
 
       # ==========================================
       # FASE 4: ANÁLISIS DE CALIDAD UNIFICADO
