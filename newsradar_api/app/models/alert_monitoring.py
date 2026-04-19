@@ -16,6 +16,7 @@ class AlertRule(Base):
     name = Column(String(200), nullable=False)
     descriptors = Column(JSON, nullable=False, default=list)
     categories = Column(JSON, nullable=False, default=list)
+    rss_channel_ids = Column(JSON, nullable=False, default=list)  # RF07: RSS channels for alert
     cron_expression = Column(String(120), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
 
