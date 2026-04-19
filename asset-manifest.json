@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/DevOps-gr84-A/static/css/main.0000d113.css",
+    "main.js": "/DevOps-gr84-A/static/js/main.38723f07.js",
+    "static/js/453.8e7d977b.chunk.js": "/DevOps-gr84-A/static/js/453.8e7d977b.chunk.js",
+    "index.html": "/DevOps-gr84-A/index.html",
+    "main.0000d113.css.map": "/DevOps-gr84-A/static/css/main.0000d113.css.map",
+    "main.38723f07.js.map": "/DevOps-gr84-A/static/js/main.38723f07.js.map",
+    "453.8e7d977b.chunk.js.map": "/DevOps-gr84-A/static/js/453.8e7d977b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.0000d113.css",
+    "static/js/main.38723f07.js"
+  ]
+}
