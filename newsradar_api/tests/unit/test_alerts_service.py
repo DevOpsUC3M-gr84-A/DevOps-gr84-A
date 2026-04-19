@@ -6,11 +6,14 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.routes.alerts import (
+    _extract_category_codes,
+    _validate_rss_channels,
     create_user_alert,
     delete_user_alert,
     get_rss_channels_for_categories,
     get_user_alert,
     list_user_alerts,
+    recommend_keywords,
     update_user_alert,
 )
 from app.schemas.alert import AlertCategoryItem, AlertCreate, AlertUpdate
@@ -559,3 +562,148 @@ def test_update_alert_with_rss_channels():
     assert result.rss_channel_ids == [10, 20, 30]
     db.commit.assert_called_once()
     db.refresh.assert_called_once_with(db_alert)
+
+
+@pytest.mark.unit
+def test_validate_rss_channels_with_valid_ids_passes():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = [
+        SimpleNamespace(id=10),
+        SimpleNamespace(id=20),
+    ]
+
+    _validate_rss_channels(db, [10, 20])
+
+    db.query.assert_called_once()
+
+
+@pytest.mark.unit
+def test_validate_rss_channels_with_invalid_id_raises_400():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = [
+        SimpleNamespace(id=10),
+    ]
+
+    with pytest.raises(HTTPException) as exc_info:
+        _validate_rss_channels(db, [10, 999])
+
+    assert exc_info.value.status_code == 400
+
+
+@pytest.mark.unit
+def test_extract_category_codes_from_dicts():
+    categories = [
+        {"code": "04010000", "label": "Tech"},
+        {"code": "01000000", "label": "Culture"},
+    ]
+
+    result = _extract_category_codes(categories)
+
+    assert result == ["04010000", "01000000"]
+
+
+@pytest.mark.unit
+def test_extract_category_codes_from_objects_with_code_attribute():
+    categories = [
+        SimpleNamespace(code="04010000"),
+        SimpleNamespace(code="01000000"),
+    ]
+
+    result = _extract_category_codes(categories)
+
+    assert result == ["04010000", "01000000"]
+
+
+@pytest.mark.unit
+def test_extract_category_codes_with_mixed_malformed_data_returns_partial_list():
+    class BrokenCode:
+        @property
+        def code(self):
+            raise RuntimeError("broken attribute")
+
+    categories = [
+        {"code": "04010000"},
+        {"label": "no code"},
+        SimpleNamespace(code="01000000"),
+        SimpleNamespace(other="x"),
+        BrokenCode(),
+        123,
+        None,
+        {"code": 42},
+    ]
+
+    result = _extract_category_codes(categories)
+
+    assert result == ["04010000", "01000000"]
+
+
+@pytest.mark.unit
+def test_update_user_alert_auto_assigns_channels_when_rss_channel_ids_is_none():
+    db_alert = SimpleNamespace(
+        id=5,
+        user_id=1,
+        name="old",
+        descriptors=["x"],
+        categories=[{"code": "04010000", "label": "Tech"}],
+        rss_channel_ids=[1, 2],
+        cron_expression="*/5 * * * *",
+        is_active=True,
+    )
+    db = MagicMock()
+
+    alert_query = MagicMock()
+    alert_query.filter.return_value.first.return_value = db_alert
+
+    channels_query = MagicMock()
+    channels_query.filter.return_value.filter.return_value.all.return_value = [
+        SimpleNamespace(id=10),
+        SimpleNamespace(id=20),
+    ]
+
+    db.query.side_effect = [alert_query, channels_query]
+
+    payload = AlertUpdate(rss_channel_ids=None)
+
+    result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
+
+    assert result.rss_channel_ids == [10, 20]
+    assert db_alert.rss_channel_ids == [10, 20]
+    db.commit.assert_called_once()
+    db.refresh.assert_called_once_with(db_alert)
+
+
+@pytest.mark.unit
+def test_get_user_alert_success_returns_alert_data():
+    db = MagicMock()
+    db_alert = SimpleNamespace(
+        id=8,
+        user_id=2,
+        name="Mi alerta",
+        descriptors=["energia"],
+        categories=[{"code": "04010000", "label": "Tech"}],
+        rss_channel_ids=[5, 6],
+        cron_expression="*/10 * * * *",
+        is_active=True,
+    )
+    db.query.return_value.filter.return_value.first.return_value = db_alert
+
+    result = get_user_alert(user_id=2, alert_id=8, db=db)
+
+    assert result.id == 8
+    assert result.user_id == 2
+    assert result.name == "Mi alerta"
+    assert result.rss_channel_ids == [5, 6]
+
+
+@pytest.mark.unit
+def test_recommend_keywords_delegates_to_helper(monkeypatch):
+    expected = ["ia", "aprendizaje", "automatizacion"]
+
+    monkeypatch.setattr(
+        "app.api.routes.alerts.get_related_words",
+        lambda keyword: expected,
+    )
+
+    result = recommend_keywords("tecnologia")
+
+    assert result == expected

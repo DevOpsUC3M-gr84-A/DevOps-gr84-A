@@ -81,7 +81,10 @@ def _extract_category_codes(categories: Any) -> List[str]:
     category_codes: List[str] = []
     source = categories if isinstance(categories, list) else []
     for category in source:
-        code = category.get("code") if isinstance(category, dict) else getattr(category, "code", None)
+        try:
+            code = category.get("code") if isinstance(category, dict) else getattr(category, "code", None)
+        except Exception:
+            code = None
         if isinstance(code, str):
             category_codes.append(code)
     return category_codes
