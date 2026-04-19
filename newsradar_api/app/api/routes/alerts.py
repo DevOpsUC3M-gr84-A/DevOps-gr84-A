@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
@@ -62,6 +62,29 @@ def get_rss_channels_for_categories(db: Session, category_codes: List[str]) -> L
     )
 
     return [channel.id for channel in channels]
+
+
+def _validate_rss_channels(db: Session, rss_channel_ids: List[int]) -> None:
+    """Validate that all requested RSS channels exist and are active."""
+    existing_channels = (
+        db.query(RSSChannel.id)
+        .filter(RSSChannel.id.in_(rss_channel_ids), RSSChannel.is_active.is_(True))
+        .all()
+    )
+    existing_ids = [channel.id for channel in existing_channels]
+    if len(existing_ids) != len(rss_channel_ids):
+        raise HTTPException(status_code=400, detail=ERROR_INVALID_RSS_CHANNELS)
+
+
+def _extract_category_codes(categories: Any) -> List[str]:
+    """Extract IPTC category codes from dict or schema objects."""
+    category_codes: List[str] = []
+    source = categories if isinstance(categories, list) else []
+    for category in source:
+        code = category.get("code") if isinstance(category, dict) else getattr(category, "code", None)
+        if isinstance(code, str):
+            category_codes.append(code)
+    return category_codes
 
 
 @api_alerts_router.get("/users/{user_id}/alerts", tags=["alerts"])
@@ -203,7 +226,10 @@ def get_user_alert(
 @api_alerts_router.put(
     "/users/{user_id}/alerts/{alert_id}",
     tags=["alerts"],
-    responses={404: {"description": "Not found"}},
+    responses={
+        400: {"description": "Invalid RSS channels data"},
+        404: {"description": "Not found"},
+    },
 )
 def update_user_alert(
     user_id: int,
@@ -236,22 +262,12 @@ def update_user_alert(
             for item in update_data["categories"]
         ]
     if "rss_channel_ids" in update_data:
-        # RF07: Handle RSS channel updates
         rss_channel_ids = update_data["rss_channel_ids"]
         if rss_channel_ids is None:
-            # Auto-assign based on current categories
-            category_codes = [cat.get("code") if isinstance(cat, dict) else cat.code for cat in db_alert.categories]
+            category_codes = _extract_category_codes(db_alert.categories or [])
             rss_channel_ids = get_rss_channels_for_categories(db, category_codes)
         else:
-            # Validate specified channels exist
-            existing_channels = (
-                db.query(RSSChannel.id)
-                .filter(RSSChannel.id.in_(rss_channel_ids), RSSChannel.is_active.is_(True))
-                .all()
-            )
-            existing_ids = [ch.id for ch in existing_channels]
-            if len(existing_ids) != len(rss_channel_ids):
-                raise HTTPException(status_code=400, detail=ERROR_INVALID_RSS_CHANNELS)
+            _validate_rss_channels(db, rss_channel_ids)
         db_alert.rss_channel_ids = rss_channel_ids
     if "cron_expression" in update_data:
         db_alert.cron_expression = update_data["cron_expression"]
