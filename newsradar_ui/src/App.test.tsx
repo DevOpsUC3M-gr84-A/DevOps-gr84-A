@@ -59,7 +59,7 @@ describe('Componente Raíz App', () => {
     mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
     render(
-      <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
+      <MemoryRouter initialEntries={['/login']} future={routerFutureFlags}>
         <App />
       </MemoryRouter>
     );
@@ -125,9 +125,11 @@ describe('Componente Raíz App', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mis Alertas/i)).toBeInTheDocument();
-    expect(screen.getByText(/Configuración/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Dashboard \/ Resumen/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Gestión de Alertas/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Gestión de Fuentes y canales RSS/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Buzón de Notificaciones/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Gestión del Perfil de Usuario/i })).toBeInTheDocument();
   });
 
   test('renderiza marca y logo en modo autenticado', () => {
