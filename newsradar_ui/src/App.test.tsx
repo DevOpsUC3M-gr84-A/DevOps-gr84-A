@@ -80,7 +80,7 @@ describe('Componente Raíz App', () => {
   });
 
   test('renderiza layout protegido cuando hay token', () => {
-    getItemSpy.mockReturnValueOnce('fake-token');
+    getItemSpy.mockReturnValue('fake-token');
     mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
     render(
@@ -92,8 +92,8 @@ describe('Componente Raíz App', () => {
     expect(screen.getByText('ALERTS_VIEW')).toBeInTheDocument();
   });
 
-  test('al cerrar sesión elimina claves y redirige', () => {
-    getItemSpy.mockReturnValueOnce('fake-token');
+  test('al cerrar sesión elimina claves y ejecuta logout', () => {
+    getItemSpy.mockReturnValue('fake-token');
     removeItemSpy.mockImplementation(() => {});
     const logoutSpy = jest.fn();
     mockedUseAuth.mockReturnValue({
@@ -107,7 +107,7 @@ describe('Componente Raíz App', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText(/Cerrar Sesión/i));
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar Sesión/i }));
 
     expect(removeItemSpy).toHaveBeenCalledWith('token');
     expect(removeItemSpy).toHaveBeenCalledWith('userId');
@@ -117,7 +117,7 @@ describe('Componente Raíz App', () => {
   });
 
   test('renderiza los enlaces de navegación principales en modo autenticado', () => {
-    getItemSpy.mockReturnValueOnce('fake-token');
+    getItemSpy.mockReturnValue('fake-token');
 
     render(
       <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>
@@ -133,7 +133,7 @@ describe('Componente Raíz App', () => {
   });
 
   test('renderiza marca y logo en modo autenticado', () => {
-    getItemSpy.mockReturnValueOnce('fake-token');
+    getItemSpy.mockReturnValue('fake-token');
 
     render(
       <MemoryRouter initialEntries={['/']} future={routerFutureFlags}>

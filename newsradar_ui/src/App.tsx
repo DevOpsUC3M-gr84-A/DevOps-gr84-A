@@ -1,7 +1,8 @@
 import React from 'react';
+// @ts-ignore: CSS module declaration not found
 import './App.css';
 import { Bell, Radar, Rss, Mail, User, LogOut } from 'lucide-react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { AlertsManagement } from './pages/AlertsManagement';
 import { Auth } from './pages/Auth';
 import { VerifyEmail } from './pages/VerifyEmail';
@@ -83,14 +84,15 @@ const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
 function App() {
   const token = globalThis.localStorage.getItem('token');
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     globalThis.localStorage.removeItem('token');
     globalThis.localStorage.removeItem('userId');
     globalThis.localStorage.removeItem('userRoles');
     globalThis.localStorage.removeItem('userEmail');
-    globalThis.location.href = '/login';
     logout();
+    navigate('/login', { replace: true });
   };
 
   return (

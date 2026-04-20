@@ -21,11 +21,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(bind=engine)
     logger.info("Startup FastAPI completado: metadata SQLAlchemy cargada")
 
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         load_rss_seed_if_empty(db)
-    finally:
-        db.close()
 
     scheduler.start()
     logger.info(

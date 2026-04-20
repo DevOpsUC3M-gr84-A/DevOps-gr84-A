@@ -1,0 +1,1076 @@
+{
+    "information_sources": [
+        {
+            "id": 1,
+            "name": "El País",
+            "domain": "elpais.com"
+        },
+        {
+            "id": 2,
+            "name": "El Mundo",
+            "domain": "elmundo.es"
+        },
+        {
+            "id": 3,
+            "name": "ABC",
+            "domain": "abc.es"
+        },
+        {
+            "id": 4,
+            "name": "La Vanguardia",
+            "domain": "lavanguardia.com"
+        },
+        {
+            "id": 5,
+            "name": "El Confidencial",
+            "domain": "elconfidencial.com"
+        },
+        {
+            "id": 6,
+            "name": "RTVE",
+            "domain": "rtve.es"
+        },
+        {
+            "id": 7,
+            "name": "20 Minutos",
+            "domain": "20minutos.es"
+        },
+        {
+            "id": 8,
+            "name": "Público",
+            "domain": "publico.es"
+        },
+        {
+            "id": 9,
+            "name": "Eldiario.es",
+            "domain": "eldiario.es"
+        },
+        {
+            "id": 10,
+            "name": "Europa Press",
+            "domain": "europapress.es"
+        }
+    ],
+    "rss_channels": [
+        {
+            "id": 1,
+            "information_source_id": 1,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://elpais.com/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 2,
+            "information_source_id": 1,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://elpais.com/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 3,
+            "information_source_id": 1,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://elpais.com/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 4,
+            "information_source_id": 1,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://elpais.com/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 5,
+            "information_source_id": 1,
+            "category_iptc": "education",
+            "url": "https://elpais.com/rss/education.xml"
+        },
+        {
+            "id": 6,
+            "information_source_id": 1,
+            "category_iptc": "environmental_issue",
+            "url": "https://elpais.com/rss/environmental_issue.xml"
+        },
+        {
+            "id": 7,
+            "information_source_id": 1,
+            "category_iptc": "health",
+            "url": "https://elpais.com/rss/health.xml"
+        },
+        {
+            "id": 8,
+            "information_source_id": 1,
+            "category_iptc": "human_interest",
+            "url": "https://elpais.com/rss/human_interest.xml"
+        },
+        {
+            "id": 9,
+            "information_source_id": 1,
+            "category_iptc": "labor",
+            "url": "https://elpais.com/rss/labor.xml"
+        },
+        {
+            "id": 10,
+            "information_source_id": 1,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://elpais.com/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 11,
+            "information_source_id": 1,
+            "category_iptc": "politics",
+            "url": "https://elpais.com/rss/politics.xml"
+        },
+        {
+            "id": 12,
+            "information_source_id": 1,
+            "category_iptc": "religion_and_belief",
+            "url": "https://elpais.com/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 13,
+            "information_source_id": 1,
+            "category_iptc": "science_and_technology",
+            "url": "https://elpais.com/rss/science_and_technology.xml"
+        },
+        {
+            "id": 14,
+            "information_source_id": 1,
+            "category_iptc": "society",
+            "url": "https://elpais.com/rss/society.xml"
+        },
+        {
+            "id": 15,
+            "information_source_id": 1,
+            "category_iptc": "sports",
+            "url": "https://elpais.com/rss/sports.xml"
+        },
+        {
+            "id": 16,
+            "information_source_id": 1,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://elpais.com/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 17,
+            "information_source_id": 1,
+            "category_iptc": "weather",
+            "url": "https://elpais.com/rss/weather.xml"
+        },
+        {
+            "id": 18,
+            "information_source_id": 2,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://elmundo.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 19,
+            "information_source_id": 2,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://elmundo.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 20,
+            "information_source_id": 2,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://elmundo.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 21,
+            "information_source_id": 2,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://elmundo.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 22,
+            "information_source_id": 2,
+            "category_iptc": "education",
+            "url": "https://elmundo.es/rss/education.xml"
+        },
+        {
+            "id": 23,
+            "information_source_id": 2,
+            "category_iptc": "environmental_issue",
+            "url": "https://elmundo.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 24,
+            "information_source_id": 2,
+            "category_iptc": "health",
+            "url": "https://elmundo.es/rss/health.xml"
+        },
+        {
+            "id": 25,
+            "information_source_id": 2,
+            "category_iptc": "human_interest",
+            "url": "https://elmundo.es/rss/human_interest.xml"
+        },
+        {
+            "id": 26,
+            "information_source_id": 2,
+            "category_iptc": "labor",
+            "url": "https://elmundo.es/rss/labor.xml"
+        },
+        {
+            "id": 27,
+            "information_source_id": 2,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://elmundo.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 28,
+            "information_source_id": 2,
+            "category_iptc": "politics",
+            "url": "https://elmundo.es/rss/politics.xml"
+        },
+        {
+            "id": 29,
+            "information_source_id": 2,
+            "category_iptc": "religion_and_belief",
+            "url": "https://elmundo.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 30,
+            "information_source_id": 2,
+            "category_iptc": "science_and_technology",
+            "url": "https://elmundo.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 31,
+            "information_source_id": 2,
+            "category_iptc": "society",
+            "url": "https://elmundo.es/rss/society.xml"
+        },
+        {
+            "id": 32,
+            "information_source_id": 2,
+            "category_iptc": "sports",
+            "url": "https://elmundo.es/rss/sports.xml"
+        },
+        {
+            "id": 33,
+            "information_source_id": 2,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://elmundo.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 34,
+            "information_source_id": 2,
+            "category_iptc": "weather",
+            "url": "https://elmundo.es/rss/weather.xml"
+        },
+        {
+            "id": 35,
+            "information_source_id": 3,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://abc.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 36,
+            "information_source_id": 3,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://abc.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 37,
+            "information_source_id": 3,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://abc.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 38,
+            "information_source_id": 3,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://abc.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 39,
+            "information_source_id": 3,
+            "category_iptc": "education",
+            "url": "https://abc.es/rss/education.xml"
+        },
+        {
+            "id": 40,
+            "information_source_id": 3,
+            "category_iptc": "environmental_issue",
+            "url": "https://abc.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 41,
+            "information_source_id": 3,
+            "category_iptc": "health",
+            "url": "https://abc.es/rss/health.xml"
+        },
+        {
+            "id": 42,
+            "information_source_id": 3,
+            "category_iptc": "human_interest",
+            "url": "https://abc.es/rss/human_interest.xml"
+        },
+        {
+            "id": 43,
+            "information_source_id": 3,
+            "category_iptc": "labor",
+            "url": "https://abc.es/rss/labor.xml"
+        },
+        {
+            "id": 44,
+            "information_source_id": 3,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://abc.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 45,
+            "information_source_id": 3,
+            "category_iptc": "politics",
+            "url": "https://abc.es/rss/politics.xml"
+        },
+        {
+            "id": 46,
+            "information_source_id": 3,
+            "category_iptc": "religion_and_belief",
+            "url": "https://abc.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 47,
+            "information_source_id": 3,
+            "category_iptc": "science_and_technology",
+            "url": "https://abc.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 48,
+            "information_source_id": 3,
+            "category_iptc": "society",
+            "url": "https://abc.es/rss/society.xml"
+        },
+        {
+            "id": 49,
+            "information_source_id": 3,
+            "category_iptc": "sports",
+            "url": "https://abc.es/rss/sports.xml"
+        },
+        {
+            "id": 50,
+            "information_source_id": 3,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://abc.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 51,
+            "information_source_id": 3,
+            "category_iptc": "weather",
+            "url": "https://abc.es/rss/weather.xml"
+        },
+        {
+            "id": 52,
+            "information_source_id": 4,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://lavanguardia.com/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 53,
+            "information_source_id": 4,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://lavanguardia.com/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 54,
+            "information_source_id": 4,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://lavanguardia.com/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 55,
+            "information_source_id": 4,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://lavanguardia.com/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 56,
+            "information_source_id": 4,
+            "category_iptc": "education",
+            "url": "https://lavanguardia.com/rss/education.xml"
+        },
+        {
+            "id": 57,
+            "information_source_id": 4,
+            "category_iptc": "environmental_issue",
+            "url": "https://lavanguardia.com/rss/environmental_issue.xml"
+        },
+        {
+            "id": 58,
+            "information_source_id": 4,
+            "category_iptc": "health",
+            "url": "https://lavanguardia.com/rss/health.xml"
+        },
+        {
+            "id": 59,
+            "information_source_id": 4,
+            "category_iptc": "human_interest",
+            "url": "https://lavanguardia.com/rss/human_interest.xml"
+        },
+        {
+            "id": 60,
+            "information_source_id": 4,
+            "category_iptc": "labor",
+            "url": "https://lavanguardia.com/rss/labor.xml"
+        },
+        {
+            "id": 61,
+            "information_source_id": 4,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://lavanguardia.com/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 62,
+            "information_source_id": 4,
+            "category_iptc": "politics",
+            "url": "https://lavanguardia.com/rss/politics.xml"
+        },
+        {
+            "id": 63,
+            "information_source_id": 4,
+            "category_iptc": "religion_and_belief",
+            "url": "https://lavanguardia.com/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 64,
+            "information_source_id": 4,
+            "category_iptc": "science_and_technology",
+            "url": "https://lavanguardia.com/rss/science_and_technology.xml"
+        },
+        {
+            "id": 65,
+            "information_source_id": 4,
+            "category_iptc": "society",
+            "url": "https://lavanguardia.com/rss/society.xml"
+        },
+        {
+            "id": 66,
+            "information_source_id": 4,
+            "category_iptc": "sports",
+            "url": "https://lavanguardia.com/rss/sports.xml"
+        },
+        {
+            "id": 67,
+            "information_source_id": 4,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://lavanguardia.com/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 68,
+            "information_source_id": 4,
+            "category_iptc": "weather",
+            "url": "https://lavanguardia.com/rss/weather.xml"
+        },
+        {
+            "id": 69,
+            "information_source_id": 5,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://elconfidencial.com/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 70,
+            "information_source_id": 5,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://elconfidencial.com/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 71,
+            "information_source_id": 5,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://elconfidencial.com/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 72,
+            "information_source_id": 5,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://elconfidencial.com/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 73,
+            "information_source_id": 5,
+            "category_iptc": "education",
+            "url": "https://elconfidencial.com/rss/education.xml"
+        },
+        {
+            "id": 74,
+            "information_source_id": 5,
+            "category_iptc": "environmental_issue",
+            "url": "https://elconfidencial.com/rss/environmental_issue.xml"
+        },
+        {
+            "id": 75,
+            "information_source_id": 5,
+            "category_iptc": "health",
+            "url": "https://elconfidencial.com/rss/health.xml"
+        },
+        {
+            "id": 76,
+            "information_source_id": 5,
+            "category_iptc": "human_interest",
+            "url": "https://elconfidencial.com/rss/human_interest.xml"
+        },
+        {
+            "id": 77,
+            "information_source_id": 5,
+            "category_iptc": "labor",
+            "url": "https://elconfidencial.com/rss/labor.xml"
+        },
+        {
+            "id": 78,
+            "information_source_id": 5,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://elconfidencial.com/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 79,
+            "information_source_id": 5,
+            "category_iptc": "politics",
+            "url": "https://elconfidencial.com/rss/politics.xml"
+        },
+        {
+            "id": 80,
+            "information_source_id": 5,
+            "category_iptc": "religion_and_belief",
+            "url": "https://elconfidencial.com/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 81,
+            "information_source_id": 5,
+            "category_iptc": "science_and_technology",
+            "url": "https://elconfidencial.com/rss/science_and_technology.xml"
+        },
+        {
+            "id": 82,
+            "information_source_id": 5,
+            "category_iptc": "society",
+            "url": "https://elconfidencial.com/rss/society.xml"
+        },
+        {
+            "id": 83,
+            "information_source_id": 5,
+            "category_iptc": "sports",
+            "url": "https://elconfidencial.com/rss/sports.xml"
+        },
+        {
+            "id": 84,
+            "information_source_id": 5,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://elconfidencial.com/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 85,
+            "information_source_id": 5,
+            "category_iptc": "weather",
+            "url": "https://elconfidencial.com/rss/weather.xml"
+        },
+        {
+            "id": 86,
+            "information_source_id": 6,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://rtve.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 87,
+            "information_source_id": 6,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://rtve.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 88,
+            "information_source_id": 6,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://rtve.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 89,
+            "information_source_id": 6,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://rtve.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 90,
+            "information_source_id": 6,
+            "category_iptc": "education",
+            "url": "https://rtve.es/rss/education.xml"
+        },
+        {
+            "id": 91,
+            "information_source_id": 6,
+            "category_iptc": "environmental_issue",
+            "url": "https://rtve.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 92,
+            "information_source_id": 6,
+            "category_iptc": "health",
+            "url": "https://rtve.es/rss/health.xml"
+        },
+        {
+            "id": 93,
+            "information_source_id": 6,
+            "category_iptc": "human_interest",
+            "url": "https://rtve.es/rss/human_interest.xml"
+        },
+        {
+            "id": 94,
+            "information_source_id": 6,
+            "category_iptc": "labor",
+            "url": "https://rtve.es/rss/labor.xml"
+        },
+        {
+            "id": 95,
+            "information_source_id": 6,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://rtve.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 96,
+            "information_source_id": 6,
+            "category_iptc": "politics",
+            "url": "https://rtve.es/rss/politics.xml"
+        },
+        {
+            "id": 97,
+            "information_source_id": 6,
+            "category_iptc": "religion_and_belief",
+            "url": "https://rtve.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 98,
+            "information_source_id": 6,
+            "category_iptc": "science_and_technology",
+            "url": "https://rtve.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 99,
+            "information_source_id": 6,
+            "category_iptc": "society",
+            "url": "https://rtve.es/rss/society.xml"
+        },
+        {
+            "id": 100,
+            "information_source_id": 6,
+            "category_iptc": "sports",
+            "url": "https://rtve.es/rss/sports.xml"
+        },
+        {
+            "id": 101,
+            "information_source_id": 6,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://rtve.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 102,
+            "information_source_id": 6,
+            "category_iptc": "weather",
+            "url": "https://rtve.es/rss/weather.xml"
+        },
+        {
+            "id": 103,
+            "information_source_id": 7,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://20minutos.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 104,
+            "information_source_id": 7,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://20minutos.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 105,
+            "information_source_id": 7,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://20minutos.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 106,
+            "information_source_id": 7,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://20minutos.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 107,
+            "information_source_id": 7,
+            "category_iptc": "education",
+            "url": "https://20minutos.es/rss/education.xml"
+        },
+        {
+            "id": 108,
+            "information_source_id": 7,
+            "category_iptc": "environmental_issue",
+            "url": "https://20minutos.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 109,
+            "information_source_id": 7,
+            "category_iptc": "health",
+            "url": "https://20minutos.es/rss/health.xml"
+        },
+        {
+            "id": 110,
+            "information_source_id": 7,
+            "category_iptc": "human_interest",
+            "url": "https://20minutos.es/rss/human_interest.xml"
+        },
+        {
+            "id": 111,
+            "information_source_id": 7,
+            "category_iptc": "labor",
+            "url": "https://20minutos.es/rss/labor.xml"
+        },
+        {
+            "id": 112,
+            "information_source_id": 7,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://20minutos.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 113,
+            "information_source_id": 7,
+            "category_iptc": "politics",
+            "url": "https://20minutos.es/rss/politics.xml"
+        },
+        {
+            "id": 114,
+            "information_source_id": 7,
+            "category_iptc": "religion_and_belief",
+            "url": "https://20minutos.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 115,
+            "information_source_id": 7,
+            "category_iptc": "science_and_technology",
+            "url": "https://20minutos.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 116,
+            "information_source_id": 7,
+            "category_iptc": "society",
+            "url": "https://20minutos.es/rss/society.xml"
+        },
+        {
+            "id": 117,
+            "information_source_id": 7,
+            "category_iptc": "sports",
+            "url": "https://20minutos.es/rss/sports.xml"
+        },
+        {
+            "id": 118,
+            "information_source_id": 7,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://20minutos.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 119,
+            "information_source_id": 7,
+            "category_iptc": "weather",
+            "url": "https://20minutos.es/rss/weather.xml"
+        },
+        {
+            "id": 120,
+            "information_source_id": 8,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://publico.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 121,
+            "information_source_id": 8,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://publico.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 122,
+            "information_source_id": 8,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://publico.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 123,
+            "information_source_id": 8,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://publico.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 124,
+            "information_source_id": 8,
+            "category_iptc": "education",
+            "url": "https://publico.es/rss/education.xml"
+        },
+        {
+            "id": 125,
+            "information_source_id": 8,
+            "category_iptc": "environmental_issue",
+            "url": "https://publico.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 126,
+            "information_source_id": 8,
+            "category_iptc": "health",
+            "url": "https://publico.es/rss/health.xml"
+        },
+        {
+            "id": 127,
+            "information_source_id": 8,
+            "category_iptc": "human_interest",
+            "url": "https://publico.es/rss/human_interest.xml"
+        },
+        {
+            "id": 128,
+            "information_source_id": 8,
+            "category_iptc": "labor",
+            "url": "https://publico.es/rss/labor.xml"
+        },
+        {
+            "id": 129,
+            "information_source_id": 8,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://publico.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 130,
+            "information_source_id": 8,
+            "category_iptc": "politics",
+            "url": "https://publico.es/rss/politics.xml"
+        },
+        {
+            "id": 131,
+            "information_source_id": 8,
+            "category_iptc": "religion_and_belief",
+            "url": "https://publico.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 132,
+            "information_source_id": 8,
+            "category_iptc": "science_and_technology",
+            "url": "https://publico.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 133,
+            "information_source_id": 8,
+            "category_iptc": "society",
+            "url": "https://publico.es/rss/society.xml"
+        },
+        {
+            "id": 134,
+            "information_source_id": 8,
+            "category_iptc": "sports",
+            "url": "https://publico.es/rss/sports.xml"
+        },
+        {
+            "id": 135,
+            "information_source_id": 8,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://publico.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 136,
+            "information_source_id": 8,
+            "category_iptc": "weather",
+            "url": "https://publico.es/rss/weather.xml"
+        },
+        {
+            "id": 137,
+            "information_source_id": 9,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://eldiario.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 138,
+            "information_source_id": 9,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://eldiario.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 139,
+            "information_source_id": 9,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://eldiario.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 140,
+            "information_source_id": 9,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://eldiario.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 141,
+            "information_source_id": 9,
+            "category_iptc": "education",
+            "url": "https://eldiario.es/rss/education.xml"
+        },
+        {
+            "id": 142,
+            "information_source_id": 9,
+            "category_iptc": "environmental_issue",
+            "url": "https://eldiario.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 143,
+            "information_source_id": 9,
+            "category_iptc": "health",
+            "url": "https://eldiario.es/rss/health.xml"
+        },
+        {
+            "id": 144,
+            "information_source_id": 9,
+            "category_iptc": "human_interest",
+            "url": "https://eldiario.es/rss/human_interest.xml"
+        },
+        {
+            "id": 145,
+            "information_source_id": 9,
+            "category_iptc": "labor",
+            "url": "https://eldiario.es/rss/labor.xml"
+        },
+        {
+            "id": 146,
+            "information_source_id": 9,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://eldiario.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 147,
+            "information_source_id": 9,
+            "category_iptc": "politics",
+            "url": "https://eldiario.es/rss/politics.xml"
+        },
+        {
+            "id": 148,
+            "information_source_id": 9,
+            "category_iptc": "religion_and_belief",
+            "url": "https://eldiario.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 149,
+            "information_source_id": 9,
+            "category_iptc": "science_and_technology",
+            "url": "https://eldiario.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 150,
+            "information_source_id": 9,
+            "category_iptc": "society",
+            "url": "https://eldiario.es/rss/society.xml"
+        },
+        {
+            "id": 151,
+            "information_source_id": 9,
+            "category_iptc": "sports",
+            "url": "https://eldiario.es/rss/sports.xml"
+        },
+        {
+            "id": 152,
+            "information_source_id": 9,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://eldiario.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 153,
+            "information_source_id": 9,
+            "category_iptc": "weather",
+            "url": "https://eldiario.es/rss/weather.xml"
+        },
+        {
+            "id": 154,
+            "information_source_id": 10,
+            "category_iptc": "arts_and_entertainment",
+            "url": "https://europapress.es/rss/arts_and_entertainment.xml"
+        },
+        {
+            "id": 155,
+            "information_source_id": 10,
+            "category_iptc": "crime_law_and_justice",
+            "url": "https://europapress.es/rss/crime_law_and_justice.xml"
+        },
+        {
+            "id": 156,
+            "information_source_id": 10,
+            "category_iptc": "disaster_and_accident",
+            "url": "https://europapress.es/rss/disaster_and_accident.xml"
+        },
+        {
+            "id": 157,
+            "information_source_id": 10,
+            "category_iptc": "economy_business_and_finance",
+            "url": "https://europapress.es/rss/economy_business_and_finance.xml"
+        },
+        {
+            "id": 158,
+            "information_source_id": 10,
+            "category_iptc": "education",
+            "url": "https://europapress.es/rss/education.xml"
+        },
+        {
+            "id": 159,
+            "information_source_id": 10,
+            "category_iptc": "environmental_issue",
+            "url": "https://europapress.es/rss/environmental_issue.xml"
+        },
+        {
+            "id": 160,
+            "information_source_id": 10,
+            "category_iptc": "health",
+            "url": "https://europapress.es/rss/health.xml"
+        },
+        {
+            "id": 161,
+            "information_source_id": 10,
+            "category_iptc": "human_interest",
+            "url": "https://europapress.es/rss/human_interest.xml"
+        },
+        {
+            "id": 162,
+            "information_source_id": 10,
+            "category_iptc": "labor",
+            "url": "https://europapress.es/rss/labor.xml"
+        },
+        {
+            "id": 163,
+            "information_source_id": 10,
+            "category_iptc": "lifestyle_and_leisure",
+            "url": "https://europapress.es/rss/lifestyle_and_leisure.xml"
+        },
+        {
+            "id": 164,
+            "information_source_id": 10,
+            "category_iptc": "politics",
+            "url": "https://europapress.es/rss/politics.xml"
+        },
+        {
+            "id": 165,
+            "information_source_id": 10,
+            "category_iptc": "religion_and_belief",
+            "url": "https://europapress.es/rss/religion_and_belief.xml"
+        },
+        {
+            "id": 166,
+            "information_source_id": 10,
+            "category_iptc": "science_and_technology",
+            "url": "https://europapress.es/rss/science_and_technology.xml"
+        },
+        {
+            "id": 167,
+            "information_source_id": 10,
+            "category_iptc": "society",
+            "url": "https://europapress.es/rss/society.xml"
+        },
+        {
+            "id": 168,
+            "information_source_id": 10,
+            "category_iptc": "sports",
+            "url": "https://europapress.es/rss/sports.xml"
+        },
+        {
+            "id": 169,
+            "information_source_id": 10,
+            "category_iptc": "unrest_conflicts_and_war",
+            "url": "https://europapress.es/rss/unrest_conflicts_and_war.xml"
+        },
+        {
+            "id": 170,
+            "information_source_id": 10,
+            "category_iptc": "weather",
+            "url": "https://europapress.es/rss/weather.xml"
+        }
+    ]
+}
