@@ -31,5 +31,8 @@ class User(Base):
     # Control de email de verificación
     is_verified = Column(Boolean, default=False)
 
+    # Token de verificación único para cada usuario, utilizado para el proceso de verificación de email
+    verification_token = Column(String, unique=True, index=True, nullable=True)
+
     # Fecha de control para calcular la caducidad de 24 horas
     created_at = Column(DateTime(timezone=True), server_default=func.now())
