@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.scheduler import AlertMonitorScheduler
-from app.database.database import Base, engine
+from app.database.database import Base, engine, SessionLocal
+from app.database.init_db import load_rss_seed_if_empty
 import app.models  # noqa: F401
 
 logger = logging.getLogger("uvicorn.error")
@@ -19,6 +20,12 @@ scheduler = AlertMonitorScheduler()
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(bind=engine)
     logger.info("Startup FastAPI completado: metadata SQLAlchemy cargada")
+
+    db = SessionLocal()
+    try:
+        load_rss_seed_if_empty(db)
+    finally:
+        db.close()
 
     scheduler.start()
     logger.info(
