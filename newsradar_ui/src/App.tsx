@@ -1,5 +1,4 @@
 import React from 'react';
-// @ts-ignore: CSS module declaration not found
 import './App.css';
 import { Bell, Radar, Rss, Mail, User, LogOut } from 'lucide-react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
@@ -8,17 +7,17 @@ import { Auth } from './pages/Auth';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import {
+  DashboardDevelopmentPage,
+  SourcesRssDevelopmentPage,
+  NotificationsDevelopmentPage,
+  ProfileDevelopmentPage
+} from './pages/placeholders/DevelopmentPlaceholderPages';
 import { useAuth } from './hooks/useAuth';
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
 }
-
-// TODO: Reemplazar por páginas reales cuando estén implementadas.
-const DashboardPage = () => <main className="main-content"><h2>Dashboard / Resumen</h2></main>;
-const SourcesRssPage = () => <main className="main-content"><h2>Gestión de Fuentes y canales RSS</h2></main>;
-const NotificationsPage = () => <main className="main-content"><h2>Buzón de Notificaciones</h2></main>;
-const ProfilePage = () => <main className="main-content"><h2>Gestión del Perfil de Usuario</h2></main>;
 
 const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
   <div className="app-container">
@@ -71,11 +70,11 @@ const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
     </aside>
 
     <Routes>
-      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/dashboard" element={<DashboardDevelopmentPage />} />
       <Route path="/alertas" element={<AlertsManagement onLogout={handleLogout} />} />
-      <Route path="/fuentes-rss" element={<SourcesRssPage />} />
-      <Route path="/notificaciones" element={<NotificationsPage />} />
-      <Route path="/perfil" element={<ProfilePage />} />
+      <Route path="/fuentes-rss" element={<SourcesRssDevelopmentPage />} />
+      <Route path="/notificaciones" element={<NotificationsDevelopmentPage />} />
+      <Route path="/perfil" element={<ProfileDevelopmentPage />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </div>
