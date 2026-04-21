@@ -1,4 +1,4 @@
-# ADR 019: Recuperación de Contraseña mediante Token de Un Solo Uso
+# ADR 020: Recuperación de Contraseña mediante Token de Un Solo Uso
 
 **Estado:** Aceptado  
 **Fecha:** 2026-04-18  

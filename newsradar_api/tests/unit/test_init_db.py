@@ -25,8 +25,7 @@ def test_create_initial_admin_creates_user_when_missing():
         patch.object(init_db, "get_password_hash", return_value="hashed-password") as hash_mock,
     ):
         getenv_mock.side_effect = lambda key: {
-            "FIRST_SUPERUSER_EMAIL": "admin@test.com",
-            "FIRST_SUPERUSER_PASSWORD": "secret123",
+            "NEWSRADAR_ADMIN_PASSWORD": "secret123",
         }.get(key)
 
         init_db.create_initial_admin(db)
@@ -36,7 +35,7 @@ def test_create_initial_admin_creates_user_when_missing():
     db.refresh.assert_called_once()
 
     created_user = db.add.call_args.args[0]
-    assert created_user.email == "admin@test.com"
+    assert created_user.email == "admin@newsradar.com"
     assert created_user.hashed_password == "hashed-password"
     assert created_user.role == UserRole.GESTOR
     assert created_user.is_verified is True

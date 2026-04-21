@@ -43,8 +43,8 @@ def create_db_user(db: Session, payload: UserCreate) -> User:
     token = str(uuid.uuid4())
     db_user = User(
         email=payload.email,
-        name=payload.name,
-        surname=payload.surname,
+        name=payload.first_name,
+        surname=payload.last_name,
         organization=payload.organization,
         verification_token=token,
         hashed_password=get_password_hash(payload.password),
@@ -68,10 +68,10 @@ def update_db_user(db: Session, db_user: User, payload: UserUpdate) -> User:
 
     if "email" in data:
         db_user.email = data["email"]
-    if "name" in data:
-        db_user.name = data["name"]
-    if "surname" in data:
-        db_user.surname = data["surname"]
+    if "first_name" in data:
+        db_user.name = data["first_name"]
+    if "last_name" in data:
+        db_user.surname = data["last_name"]
     if "organization" in data:
         db_user.organization = data["organization"]
     if "password" in data:

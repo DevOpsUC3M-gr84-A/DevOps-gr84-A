@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -8,8 +8,11 @@ export const VerifyEmail: React.FC = () => {
   const [status, setStatus] = useState<VerificationStatus>('loading');
   const [message, setMessage] = useState('Validando tu cuenta...');
 
+  const hasCalled = useRef(false);
+
   useEffect(() => {
     const verifyToken = async () => {
+      if (hasCalled.current) return;
       const token = new URLSearchParams(globalThis.location.search).get('token')?.trim() ?? '';
 
       if (!token) {
@@ -17,6 +20,8 @@ export const VerifyEmail: React.FC = () => {
         setMessage('Token de verificacion no proporcionado.');
         return;
       }
+
+      hasCalled.current = true;
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify-email`, {
