@@ -13,6 +13,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=128)
 
+class UserResponse(UserBase):
+    id: int
+    is_verified: bool
+
+    class Config:
+        from_attributes = True
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
@@ -29,3 +35,6 @@ class User(UserBase):
 
 class UserInDB(User):
     password: str
+
+class TokenVerification(BaseModel):
+    token: str

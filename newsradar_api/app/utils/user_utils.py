@@ -31,8 +31,8 @@ def to_user_schema(user: DBUser) -> User:
     return User(
         id=user.id,
         email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
+        first_name=user.name or "Usuario",
+        last_name=user.surname or "Desconocido",
         organization=user.organization or "",
         role_ids=role_ids_from_role(user.role),
     )
@@ -42,8 +42,8 @@ def sync_memory_user(user: DBUser) -> None:
     users_store[user.id] = UserInDB(
         id=user.id,
         email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
+        first_name=user.name or "Usuario",
+        last_name=user.surname or "Desconocido",
         organization=user.organization or "",
         role_ids=role_ids_from_role(user.role),
         password=user.hashed_password,

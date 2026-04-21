@@ -3,13 +3,17 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
+from app.main import app
 from app.api.routes.auth import login, register
 from app.schemas.auth import LoginRequest
 from app.schemas.user import UserCreate, UserInDB
 from app.services.user_service import UserRole
 from app.stores.memory import active_tokens, users_store
+from app.database.database import get_db
 
+client = TestClient(app)
 
 @pytest.mark.unit
 def test_login_legacy_user_not_found_returns_401():
@@ -128,6 +132,8 @@ def test_register_success_returns_user_schema(monkeypatch):
         organization="QA",
         role_ids=[1],
         password="secret123",
+        is_verified=False,
+        verification_token="token_fake"
     )
 
     fake_db_user = SimpleNamespace(
@@ -138,6 +144,8 @@ def test_register_success_returns_user_schema(monkeypatch):
         organization="QA",
         role=UserRole.GESTOR,
         hashed_password="hashed",
+        is_verified=False,
+        verification_token="token_fake"
     )
 
     monkeypatch.setattr("app.api.routes.auth.ensure_role_ids_exist", lambda _role_ids: None)
@@ -148,3 +156,93 @@ def test_register_success_returns_user_schema(monkeypatch):
 
     assert response.id == 10
     assert response.email == "ok@test.com"
+
+
+@pytest.mark.unit
+def test_login_unverified_user_returns_401(monkeypatch):
+    """Prueba que el login se bloquea si el usuario no ha verificado su email"""
+    # Creamos un usuario falso que simula salir de la base de datos
+    fake_user = SimpleNamespace(
+        id=1,
+        email="unverified@test.com",
+        hashed_password="hashed_pwd",
+        is_verified=False
+    )
+
+    # Cuando busque al usuario en la DB, devolverá a fake_user
+    db_mock = MagicMock()
+    db_mock.query.return_value.filter.return_value.first.return_value = fake_user
+    
+    # Verificar contraseña
+    monkeypatch.setattr("app.api.routes.auth.verify_password", lambda plain, hashed: True)
+
+    payload = LoginRequest(email="unverified@test.com", password="correct_password")
+
+    # Intentar el login y comprobar que explota con un 401
+    with pytest.raises(HTTPException) as exc_info:
+        login(payload=payload, db=db_mock)
+    
+    assert exc_info.value.status_code == 401
+    assert "Cuenta no verificada" in str(exc_info.value.detail)
+
+
+@pytest.mark.unit
+def test_login_verified_user_returns_token(monkeypatch):
+    """Prueba que el login triunfa si el usuario es correcto y está verificado"""
+    
+    fake_user = SimpleNamespace(
+        id=1,
+        email="verified@test.com",
+        hashed_password="hashed_pwd",
+        is_verified=True,
+        name="Verified",
+        surname="User",
+        organization="QA",
+        role=UserRole.GESTOR
+    )
+
+    db_mock = MagicMock()
+    db_mock.query.return_value.filter.return_value.first.return_value = fake_user
+    
+    # Contraseña correcta
+    monkeypatch.setattr("app.api.routes.auth.verify_password", lambda plain, hashed: True)
+
+    payload = LoginRequest(email="verified@test.com", password="correct_password")
+
+    # Llamar a la función de login
+    response = login(payload=payload, db=db_mock)
+    
+    # Comprobaciones de éxito
+    assert response.access_token is not None
+    assert response.token_type == "bearer"
+    # Aseguramos que el token se ha guardado en la memoria activa
+    from app.stores.memory import active_tokens
+    assert response.access_token in active_tokens
+
+
+@pytest.mark.unit
+def test_verify_email_endpoint_success(monkeypatch):
+    """Prueba la ruta real de FastAPI para verificar un email pasándole un token en la URL."""
+    
+    # Creamos una petición
+    db_mock = MagicMock()
+    fake_user = SimpleNamespace(email="test@test.com", is_verified=False)
+    db_mock.query.return_value.filter.return_value.first.return_value = fake_user
+
+    # Engañar al user_service para que la función verify_user_email devuelva éxito
+    monkeypatch.setattr("app.api.routes.auth.verify_user_email", lambda u, db: (True, "Cuenta verificada con éxito"))
+    
+    # FastAPI devuelve el db_mock cuando la ruta pida la DB
+    app.dependency_overrides[get_db] = lambda: db_mock
+
+    # petición POST con TestClient
+    response = client.post(
+        "/api/v1/auth/verify-email", 
+        json={"token": "token_inventado_123"} 
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Cuenta verificada con éxito"
+    
+    # Limpiar los overrides
+    app.dependency_overrides.clear()

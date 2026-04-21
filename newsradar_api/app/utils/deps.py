@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
-from app.models.user import User as DBUser
+from app.models.user import User as DBUser, UserRole
 from app.services.user_service import role_ids_from_role
 from app.stores.memory import active_tokens
 from app.schemas.user import UserInDB
@@ -14,7 +14,7 @@ security = HTTPBearer(auto_error=False)
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
-) -> UserInDB:
+) -> DBUser:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Token inválido o ausente")
 
@@ -24,23 +24,17 @@ def get_current_user(
 
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
     if user is None:
-        raise HTTPException(status_code=401, detail="Usuario inválido")
+        raise HTTPException(status_code=401, detail="Usuario inválido (ID no encontrado)")
 
-    return UserInDB(
-        id=user.id,
-        email=user.email,
-        first_name=user.name,
-        last_name=user.surname,
-        organization=user.organization or "",
-        role_ids=role_ids_from_role(user.role),
-        password=user.hashed_password,
-    )
+    if not user.is_verified:
+        raise HTTPException(status_code=401, detail="Cuenta no verificada")
+    return user
 
 
-def get_current_gestor(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
-    if 1 not in current_user.role_ids:
+def get_current_gestor(current_user: DBUser = Depends(get_current_user)) -> DBUser:
+    if current_user.role != UserRole.GESTOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes los permisos necesarios para realizar esta acción.",
+            detail="No tienes los permisos necesarios (rol de Gestor).",
         )
     return current_user
