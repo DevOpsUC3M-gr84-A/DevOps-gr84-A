@@ -22,7 +22,6 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
-    all_users = db.query(DBUser).all()
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Usuario inválido (ID no encontrado)")
