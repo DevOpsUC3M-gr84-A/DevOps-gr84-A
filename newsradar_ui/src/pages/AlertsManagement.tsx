@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { AlertForm, AlertFormPayload, AlertTableItem } from '../components/AlertForm';
+import { useCallback, useEffect, useState } from "react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { AlertForm } from "../components/AlertForm";
+import type { AlertFormPayload, AlertTableItem } from "../components/AlertForm";
 
 interface AlertApiItem {
   id: number;
@@ -11,51 +12,59 @@ interface AlertApiItem {
 }
 
 interface AlertFeedback {
-  type: 'success' | 'error';
+  type: "success" | "error";
   message: string;
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const [isAlertFormOpen, setIsAlertFormOpen] = useState(false);
   const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
   const [alertToEdit, setAlertToEdit] = useState<AlertTableItem | null>(null);
-  const [alertFeedback, setAlertFeedback] = useState<AlertFeedback | null>(null);
-  const [selectedIptcCategory, setSelectedIptcCategory] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('');
-  
-  const token = globalThis.localStorage.getItem('token');
-  const userId = globalThis.localStorage.getItem('userId');
-  const userRoles = JSON.parse(globalThis.localStorage.getItem('userRoles') || '[]');
+  const [alertFeedback, setAlertFeedback] = useState<AlertFeedback | null>(
+    null,
+  );
+  const [selectedIptcCategory, setSelectedIptcCategory] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+
+  const token = globalThis.localStorage.getItem("token");
+  const userId = globalThis.localStorage.getItem("userId");
+  const userRoles = JSON.parse(
+    globalThis.localStorage.getItem("userRoles") || "[]",
+  );
   const isGestor = userRoles.includes(1);
   const canManageAlerts = isGestor && Boolean(userId) && Boolean(token);
 
   const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => ({
     id: item.id,
     nombre: item.name,
-    descriptores: (item.descriptors ?? []).join(', '),
-    categoria_iptc: item.categoria_iptc ?? '',
-    fuentes_rss: item.fuentes_rss ?? []
+    descriptores: (item.descriptors ?? []).join(", "),
+    categoria_iptc: item.categoria_iptc ?? "",
+    fuentes_rss: item.fuentes_rss ?? [],
   });
 
   const availableIptcCategories = Array.from(
     new Set(
       alertas
-        .map((alerta) => (alerta.categoria_iptc || '').trim())
-        .filter((categoria) => categoria !== '')
-    )
+        .map((alerta) => (alerta.categoria_iptc || "").trim())
+        .filter((categoria) => categoria !== ""),
+    ),
   ).sort((a, b) => a.localeCompare(b));
 
   const normalizedSourceFilter = sourceFilter.trim().toLowerCase();
   const filteredAlertas = alertas.filter((alerta) => {
-    const categoriaIptc = (alerta.categoria_iptc || '').trim();
+    const categoriaIptc = (alerta.categoria_iptc || "").trim();
     const fuentesRss = alerta.fuentes_rss;
 
-    const matchesCategory = selectedIptcCategory === '' || categoriaIptc === selectedIptcCategory;
+    const matchesCategory =
+      selectedIptcCategory === "" || categoriaIptc === selectedIptcCategory;
     const matchesSource =
-      normalizedSourceFilter === '' ||
-      fuentesRss.some((source) => source?.toLowerCase().includes(normalizedSourceFilter));
+      normalizedSourceFilter === "" ||
+      fuentesRss.some((source) =>
+        source?.toLowerCase().includes(normalizedSourceFilter),
+      );
 
     return matchesCategory && matchesSource;
   });
@@ -78,18 +87,23 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   };
 
   const handleDeleteAlert = async (alertId: number) => {
-    const confirmed = globalThis.confirm('¿Seguro que quieres borrar esta alerta?');
+    const confirmed = globalThis.confirm(
+      "¿Seguro que quieres borrar esta alerta?",
+    );
     if (!confirmed) {
       return;
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts/${alertId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/users/${userId}/alerts/${alertId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       if (response.status === 401) {
         onLogout();
@@ -97,37 +111,43 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       }
 
       if (!response.ok) {
-        throw new Error('Error al borrar la alerta');
+        throw new Error("Error al borrar la alerta");
       }
 
-      setAlertas((prevAlertas) => prevAlertas.filter((alerta) => alerta.id !== alertId));
+      setAlertas((prevAlertas) =>
+        prevAlertas.filter((alerta) => alerta.id !== alertId),
+      );
       setAlertFeedback({
-        type: 'success',
-        message: 'Alerta borrada correctamente.'
+        type: "success",
+        message: "Alerta borrada correctamente.",
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
       setAlertFeedback({
-        type: 'error',
-        message: `No se pudo borrar la alerta: ${errorMessage}`
+        type: "error",
+        message: `No se pudo borrar la alerta: ${errorMessage}`,
       });
     }
   };
 
   const fetchAlertas = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}/alerts`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/users/${userId}/alerts`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       if (response.status === 401) {
         onLogout();
         return;
       }
       if (!response.ok) {
-        throw new Error('Error al obtener alertas');
+        throw new Error("Error al obtener alertas");
       }
 
       const data = await response.json();
@@ -137,10 +157,11 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       setAlertas(alertasMapeadas);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
       setAlertFeedback({
-        type: 'error',
-        message: `No se pudieron cargar las alertas: ${errorMessage}`
+        type: "error",
+        message: `No se pudieron cargar las alertas: ${errorMessage}`,
       });
     }
   }, [userId, token, onLogout]);
@@ -167,8 +188,10 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const handleSaveAlert = async (_datos: AlertFormPayload) => {
     await fetchAlertas();
     setAlertFeedback({
-      type: 'success',
-      message: alertToEdit ? 'Alerta actualizada correctamente.' : 'Alerta creada correctamente.'
+      type: "success",
+      message: alertToEdit
+        ? "Alerta actualizada correctamente."
+        : "Alerta creada correctamente.",
     });
     handleCloseAlertForm();
   };
@@ -188,7 +211,9 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         {alertFeedback && (
           <div
             className={`alert-feedback ${
-              alertFeedback.type === 'success' ? 'alert-feedback-success' : 'alert-feedback-error'
+              alertFeedback.type === "success"
+                ? "alert-feedback-success"
+                : "alert-feedback-error"
             }`}
             role="status"
             aria-live="polite"
@@ -200,7 +225,9 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         <section className="table-container">
           <div className="header-actions" aria-label="Filtros de alertas">
             <div className="form-group">
-              <label htmlFor="alertsIptcFilter">Filtrar por categoria IPTC</label>
+              <label htmlFor="alertsIptcFilter">
+                Filtrar por categoria IPTC
+              </label>
               <select
                 id="alertsIptcFilter"
                 className="form-input"
@@ -241,7 +268,10 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
             <tbody>
               {filteredAlertas.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageAlerts ? 4 : 3} className="empty-state-cell">
+                  <td
+                    colSpan={canManageAlerts ? 4 : 3}
+                    className="empty-state-cell"
+                  >
                     No hay alertas todavía.
                   </td>
                 </tr>
