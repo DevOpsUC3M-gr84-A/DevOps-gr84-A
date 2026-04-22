@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.models.user import User as DBUser
-from app.schemas.user import UserCreate, User, UserInDB
+from app.schemas.user import UserCreate, User, UserInDB, TokenVerification, UserResponse
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -14,15 +14,16 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     MessageResponse,
 )
-from app.stores.memory import users_store, active_tokens
+from app.stores.memory import active_tokens, users_store
 from app.services.user_service import role_ids_from_role
 from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
-from app.utils.email_utils import send_reset_password_email
+from app.utils.email_utils import send_reset_password_email, send_verification_email
 from app.services.user_service import (
     create_db_user,
     verify_password,
     generate_reset_token,
     reset_password_with_token,
+    verify_user_email,
 )
 
 
@@ -54,6 +55,12 @@ def login(
 ) -> TokenResponse:
     db_user = _find_db_user_by_email(payload.email, db)
     if db_user is not None and verify_password(payload.password, db_user.hashed_password):
+        if not db_user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Cuenta no verificada. Revisa tu email para activar tu cuenta.",
+            )
+        
         sync_memory_user(db_user)
         ids = role_ids_from_role(db_user.role)
         return _issue_token(db_user.id, ids)
@@ -85,8 +92,29 @@ def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> Us
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    if user_db.verification_token:
+        send_verification_email(to_email=user_db.email, verification_token=user_db.verification_token)
+
     sync_memory_user(user_db)
     return to_user_schema(user_db)
+
+# Endpoint de verificación de email
+@api_auth_router.post("/auth/verify-email", tags=["auth"])
+def verify_account(payload: TokenVerification, db: Annotated[Session, Depends(get_db)]) -> MessageResponse:
+    """Valida el token de verificación recibido por email y activa la cuenta del usuario."""
+    db_user = db.query(DBUser).filter(DBUser.verification_token == payload.token).first()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Token de verificación inválido o la cuenta ya está verificada.",
+        )
+
+    success, message = verify_user_email(db_user, db)
+
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+
+    return MessageResponse(message=message)
 
 # Recuperación de contraseña
 

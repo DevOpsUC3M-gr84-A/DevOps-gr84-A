@@ -392,7 +392,7 @@ class TestSendResetPasswordEmail:
         eu_module.config.SMTP_HOST = "smtp.test.com"
         eu_module.config.SMTP_PORT = 587
         eu_module.config.SMTP_FROM = "sender@test.com"
-        eu_module.config.FRONTEND_URL = "http://localhost:3000"
+        eu_module.config.FRONTEND_URL = "http://localhost:5173"
 
         try:
             with patch("app.utils.email_utils.smtplib.SMTP") as mock_smtp:
@@ -417,7 +417,7 @@ class TestSendResetPasswordEmail:
         eu_module.config.SMTP_HOST = "smtp.test.com"
         eu_module.config.SMTP_PORT = 587
         eu_module.config.SMTP_FROM = "sender@test.com"
-        eu_module.config.FRONTEND_URL = "http://localhost:3000"
+        eu_module.config.FRONTEND_URL = "http://localhost:5173"
 
         try:
             with patch(

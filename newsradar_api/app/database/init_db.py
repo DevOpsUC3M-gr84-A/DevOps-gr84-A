@@ -170,8 +170,8 @@ def create_initial_admin(db: Session) -> None:
     if not admin:
         logger.info("No se encontró ningún administrador. Creando Gestor inicial...")
 
-        admin_email = os.getenv("FIRST_SUPERUSER_EMAIL")
-        admin_password = os.getenv("FIRST_SUPERUSER_PASSWORD")
+        admin_email = "admin@newsradar.com"
+        admin_password = os.getenv("NEWSRADAR_ADMIN_PASSWORD")
 
         if not admin_email or not admin_password:
             raise RuntimeError("Faltan credenciales de entorno")

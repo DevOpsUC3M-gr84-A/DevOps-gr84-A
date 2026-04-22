@@ -11,6 +11,7 @@ from app.core.scheduler import AlertMonitorScheduler
 from app.database.database import Base, engine, SessionLocal
 from app.database.init_db import load_rss_seed_if_empty
 import app.models  # noqa: F401
+from app.database.init_db import create_initial_admin
 
 logger = logging.getLogger("uvicorn.error")
 scheduler = AlertMonitorScheduler()
@@ -23,6 +24,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     with SessionLocal() as db:
         load_rss_seed_if_empty(db)
+    db = SessionLocal()
+    try:
+        create_initial_admin(db)
+    finally:
+        db.close()
 
     scheduler.start()
     logger.info(

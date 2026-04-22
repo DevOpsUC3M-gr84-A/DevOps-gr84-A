@@ -1,16 +1,20 @@
-import React, { useMemo, useState } from 'react';
-import { AuthLayout } from '../components/AuthLayout';
+import React, { useMemo, useState } from "react";
+import { AuthLayout } from "../components/AuthLayout";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 interface ResetPasswordResponse {
   detail?: string;
 }
 
 export const ResetPassword = () => {
-  const token = useMemo(() => new URLSearchParams(globalThis.location.search).get('token') ?? '', []);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const token = useMemo(
+    () => new URLSearchParams(globalThis.location.search).get("token") ?? "",
+    [],
+  );
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -21,38 +25,47 @@ export const ResetPassword = () => {
     setSuccessMessage(null);
 
     if (!token) {
-      setErrorMessage('El enlace de recuperación no es válido.');
+      setErrorMessage("El enlace de recuperación no es válido.");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage('Las contraseñas no coinciden.');
+      setErrorMessage("Las contraseñas no coinciden.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          new_password: newPassword,
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/auth/reset-password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            new_password: newPassword,
+          }),
+        },
+      );
 
       const data = (await response.json()) as ResetPasswordResponse;
 
       if (!response.ok) {
-        throw new Error(data.detail ?? 'No se pudo restablecer la contraseña. Inténtalo más tarde.');
+        throw new Error(
+          data.detail ??
+            "No se pudo restablecer la contraseña. Inténtalo más tarde.",
+        );
       }
 
-      setSuccessMessage('Tu contraseña se ha actualizado correctamente.');
-      setNewPassword('');
-      setConfirmPassword('');
+      setSuccessMessage("Tu contraseña se ha actualizado correctamente.");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error inesperado al restablecer la contraseña.';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Error inesperado al restablecer la contraseña.";
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -66,7 +79,7 @@ export const ResetPassword = () => {
       errorMessage={errorMessage}
       successMessage={successMessage}
       isSubmitting={isSubmitting}
-      submitText={isSubmitting ? 'Actualizando...' : 'Actualizar contraseña'}
+      submitText={isSubmitting ? "Actualizando..." : "Actualizar contraseña"}
       onSubmit={handleSubmit}
     >
       <div className="form-group">

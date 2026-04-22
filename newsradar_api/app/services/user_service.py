@@ -1,5 +1,5 @@
 """Este módulo contiene funciones relacionadas con la lógica de verificación de usuarios"""
-
+import uuid
 import secrets
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
@@ -40,11 +40,13 @@ def role_ids_from_role(role: UserRole) -> list[int]:
 
 def create_db_user(db: Session, payload: UserCreate) -> User:
     """Crea un usuario persistente en SQL y devuelve la entidad."""
+    token = str(uuid.uuid4())
     db_user = User(
         email=payload.email,
         name=payload.first_name,
         surname=payload.last_name,
         organization=payload.organization,
+        verification_token=token,
         hashed_password=get_password_hash(payload.password),
         role=role_from_role_ids(payload.role_ids),
         is_verified=False,
