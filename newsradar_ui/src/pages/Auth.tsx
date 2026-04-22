@@ -176,7 +176,7 @@ export const Auth = () => {
         <header className="auth-header">
           <div className="auth-logo">
             <img
-              src={"/newsradar-logo.png"}
+              src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
               alt="NewsRadar Logo"
               className="auth-logo-image"
             />
