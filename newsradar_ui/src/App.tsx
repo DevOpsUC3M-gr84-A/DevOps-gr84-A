@@ -19,7 +19,7 @@ const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
     <aside className="sidebar">
       <div className="brand-section app-brand-section">
         <img
-          src={"/newsradar-logo.png"}
+          src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
           alt="NewsRadar Logo"
           className="app-brand-logo"
         />
