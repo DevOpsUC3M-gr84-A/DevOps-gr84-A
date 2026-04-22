@@ -88,6 +88,36 @@
   border-color: #3b82f6;
 }
 
+.password-field-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input {
+  width: 100%;
+  padding-right: 38px;
+}
+
+.password-toggle-button {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
 .btn-auth-submit {
   margin-top: 8px;
   background-color: #2563eb;

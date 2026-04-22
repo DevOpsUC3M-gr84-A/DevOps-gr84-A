@@ -3,6 +3,21 @@ import { vi } from "vitest";
 import { Auth } from "./Auth";
 import { useAuth } from "../hooks/useAuth";
 
+const { mockedNavigate } = vi.hoisted(() => ({
+  mockedNavigate: vi.fn(),
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+
+  return {
+    ...actual,
+    useNavigate: () => mockedNavigate,
+  };
+});
+
 vi.mock("../hooks/useAuth");
 
 const mockedUseAuth = vi.mocked(useAuth);
@@ -72,7 +87,14 @@ describe("Página de Autenticación", () => {
           }),
         }),
       );
-      expect(mockLogin).toHaveBeenCalledWith(mockResponse);
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-123",
+        user_id: 1,
+        role_ids: [1],
+      });
+      expect(mockedNavigate).toHaveBeenCalledWith("/dashboard", {
+        replace: true,
+      });
     });
   });
 

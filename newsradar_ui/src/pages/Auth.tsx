@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { LogIn, UserPlus, Mail, Lock, User, Building } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import "./Auth.css";
 
@@ -60,6 +61,7 @@ const normalizeLoginErrorMessage = (
 
 export const Auth = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
@@ -134,6 +136,7 @@ export const Auth = () => {
           user_id: data.user_id ?? 0,
           role_ids: data.role_ids ?? [],
         });
+        navigate("/dashboard", { replace: true });
       } else {
         setRegisterSuccess(true);
         setAuthError(null);
@@ -262,22 +265,13 @@ export const Auth = () => {
           </div>
 
           <div
-            className="form-group"
-            style={{
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-            }}
+            className="form-group password-field-group"
           >
             <label htmlFor="password">
               <Lock size={16} /> Contraseña
             </label>
             <div
-              style={{
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-              }}
+              className="password-input-wrapper"
             >
               <input
                 id="password"
@@ -288,7 +282,7 @@ export const Auth = () => {
                 onChange={handleChange}
                 value={formData.password}
                 autoComplete="current-password"
-                style={{ paddingRight: 38, width: "100%" }}
+                className="password-input"
               />
               <button
                 type="button"
@@ -296,18 +290,7 @@ export const Auth = () => {
                   showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
                 }
                 onClick={() => setShowPassword((v) => !v)}
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#64748b",
-                }}
+                className="password-toggle-button"
                 tabIndex={0}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
