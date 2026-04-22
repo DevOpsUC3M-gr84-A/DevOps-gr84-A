@@ -17,7 +17,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-# Helper 
+# Helper
+
 
 def _make_user(
     *,
@@ -46,6 +47,7 @@ def _get_client():
 
 
 # generate_reset_token
+
 
 @pytest.mark.unit
 class TestGenerateResetToken:
@@ -89,7 +91,11 @@ class TestGenerateResetToken:
         after = datetime.now(timezone.utc)
 
         expected_delta = timedelta(hours=config.RESET_TOKEN_EXPIRE_HOURS)
-        assert before + expected_delta <= user.reset_password_token_expires <= after + expected_delta
+        assert (
+            before + expected_delta
+            <= user.reset_password_token_expires
+            <= after + expected_delta
+        )
 
     def test_token_is_urlsafe_string(self):
         """El token generado no debe contener caracteres problemáticos para URLs."""
@@ -103,10 +109,11 @@ class TestGenerateResetToken:
         token = generate_reset_token(db, user.email)
 
         assert isinstance(token, str)
-        assert re.match(r'^[A-Za-z0-9\-_]+$', token)
+        assert re.match(r"^[A-Za-z0-9\-_]+$", token)
 
 
 # reset_password_with_token
+
 
 @pytest.mark.unit
 class TestResetPasswordWithToken:
@@ -202,14 +209,16 @@ class TestResetPasswordWithToken:
 
 # POST /auth/forgot-password
 
+
 @pytest.mark.unit
 class TestForgotPasswordEndpoint:
 
     def test_always_returns_202_even_for_unknown_email(self):
         client = _get_client()
 
-        with patch("app.api.routes.auth.generate_reset_token", return_value=None), \
-             patch("app.api.routes.auth.send_reset_password_email") as mock_send:
+        with patch(
+            "app.api.routes.auth.generate_reset_token", return_value=None
+        ), patch("app.api.routes.auth.send_reset_password_email") as mock_send:
 
             resp = client.post("/auth/forgot-password", json={"email": "no@existe.com"})
 
@@ -219,20 +228,26 @@ class TestForgotPasswordEndpoint:
     def test_sends_email_when_user_exists(self):
         client = _get_client()
 
-        with patch("app.api.routes.auth.generate_reset_token", return_value="tok123"), \
-             patch("app.api.routes.auth.send_reset_password_email") as mock_send:
+        with patch(
+            "app.api.routes.auth.generate_reset_token", return_value="tok123"
+        ), patch("app.api.routes.auth.send_reset_password_email") as mock_send:
 
-            resp = client.post("/auth/forgot-password", json={"email": "user@existe.com"})
+            resp = client.post(
+                "/auth/forgot-password", json={"email": "user@existe.com"}
+            )
 
         assert resp.status_code == 202
-        mock_send.assert_called_once_with(to_email="user@existe.com", reset_token="tok123")
+        mock_send.assert_called_once_with(
+            to_email="user@existe.com", reset_token="tok123"
+        )
 
     def test_response_body_contains_message(self):
         """La respuesta siempre incluye el campo message independientemente del email."""
         client = _get_client()
 
-        with patch("app.api.routes.auth.generate_reset_token", return_value=None), \
-             patch("app.api.routes.auth.send_reset_password_email"):
+        with patch(
+            "app.api.routes.auth.generate_reset_token", return_value=None
+        ), patch("app.api.routes.auth.send_reset_password_email"):
 
             resp = client.post("/auth/forgot-password", json={"email": "x@test.com"})
 
@@ -258,6 +273,7 @@ class TestForgotPasswordEndpoint:
 
 # POST /auth/reset-password
 
+
 @pytest.mark.unit
 class TestResetPasswordEndpoint:
 
@@ -280,7 +296,10 @@ class TestResetPasswordEndpoint:
 
         with patch(
             "app.api.routes.auth.reset_password_with_token",
-            return_value=(False, "El enlace de recuperacion ha expirado. Solicita uno nuevo."),
+            return_value=(
+                False,
+                "El enlace de recuperacion ha expirado. Solicita uno nuevo.",
+            ),
         ):
             resp = client.post(
                 "/auth/reset-password",
@@ -348,7 +367,9 @@ class TestResetPasswordEndpoint:
         )
 
         assert resp.status_code == 422
+
     # ── send_reset_password_email ─────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestSendResetPasswordEmail:
@@ -392,7 +413,7 @@ class TestSendResetPasswordEmail:
         eu_module.config.SMTP_HOST = "smtp.test.com"
         eu_module.config.SMTP_PORT = 587
         eu_module.config.SMTP_FROM = "sender@test.com"
-        eu_module.config.FRONTEND_URL = "http://localhost:3000"
+        eu_module.config.FRONTEND_URL = "http://localhost:5173"
 
         try:
             with patch("app.utils.email_utils.smtplib.SMTP") as mock_smtp:
@@ -417,7 +438,7 @@ class TestSendResetPasswordEmail:
         eu_module.config.SMTP_HOST = "smtp.test.com"
         eu_module.config.SMTP_PORT = 587
         eu_module.config.SMTP_FROM = "sender@test.com"
-        eu_module.config.FRONTEND_URL = "http://localhost:3000"
+        eu_module.config.FRONTEND_URL = "http://localhost:5173"
 
         try:
             with patch(
@@ -462,6 +483,9 @@ class TestSendResetPasswordEmail:
                         pass
 
             decoded = " ".join(decoded_parts)
-            assert "http://mifrontend.com/reset-password?token=tok_url_check" in decoded.replace(" ", "")
+            assert (
+                "http://mifrontend.com/reset-password?token=tok_url_check"
+                in decoded.replace(" ", "")
+            )
         finally:
             eu_module.config.SMTP_USER = ""
