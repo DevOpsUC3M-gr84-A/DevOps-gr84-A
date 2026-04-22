@@ -106,7 +106,7 @@ export const Auth = () => {
       ? { email: formData.email, password: formData.password }
       : {
           ...formData,
-          role_ids: [2],
+          role_ids: [1],
         };
 
     try {

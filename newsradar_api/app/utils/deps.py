@@ -32,9 +32,9 @@ def get_current_user(
 
 
 def get_current_gestor(current_user: DBUser = Depends(get_current_user)) -> DBUser:
-    if current_user.role != UserRole.GESTOR:
+    if current_user.role not in {UserRole.GESTOR, UserRole.ADMIN}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes los permisos necesarios (rol de Gestor).",
+            detail="No tienes los permisos necesarios (rol de gestión).",
         )
     return current_user

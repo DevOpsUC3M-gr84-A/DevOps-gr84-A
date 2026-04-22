@@ -26,13 +26,20 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def role_from_role_ids(role_ids: list[int]) -> UserRole:
     """Mapea los role_ids legacy a un rol del modelo SQL."""
+    if 3 in role_ids:
+        return UserRole.ADMIN
     if 1 in role_ids:
         return UserRole.GESTOR
-    return UserRole.LECTOR
+    if 2 in role_ids:
+        return UserRole.LECTOR
+    # Por defecto, los nuevos registros deben ser Gestor.
+    return UserRole.GESTOR
 
 
 def role_ids_from_role(role: UserRole) -> list[int]:
     """Mapea el rol SQL a role_ids esperados por los schemas actuales."""
+    if role == UserRole.ADMIN:
+        return [3]
     if role == UserRole.GESTOR:
         return [1]
     return [2]

@@ -8,6 +8,9 @@ vi.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
 vi.mock("./pages/AlertsManagement", () => ({
   AlertsManagement: () => <div>ALERTS_VIEW</div>,
 }));
+vi.mock("./pages/SourcesRss", () => ({
+  SourcesRss: () => <div>SOURCES_RSS_VIEW</div>,
+}));
 vi.mock("./pages/VerifyEmail", () => ({
   VerifyEmail: () => <div>VERIFY_EMAIL_VIEW</div>,
 }));
@@ -22,13 +25,12 @@ vi.mock("./hooks/useAuth");
 const mockedUseAuth = vi.mocked(useAuth);
 
 describe("Componente Raíz App", () => {
-  const getItemSpy = jest.spyOn(Storage.prototype, "getItem");
   const removeItemSpy = jest.spyOn(Storage.prototype, "removeItem");
 
   beforeEach(() => {
     jest.clearAllMocks();
-    getItemSpy.mockReset();
     removeItemSpy.mockReset();
+    localStorage.clear();
     mockedUseAuth.mockReturnValue({
       login: jest.fn(),
       logout: jest.fn(),
@@ -36,8 +38,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza ForgotPassword cuando pathname es /forgot-password", () => {
-    getItemSpy.mockReturnValue(null);
-
     render(
       <MemoryRouter initialEntries={["/forgot-password"]}>
         <App />
@@ -48,7 +48,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza ResetPassword cuando pathname es /reset-password", () => {
-    getItemSpy.mockReturnValueOnce(null);
     mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
     render(
@@ -61,7 +60,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza Auth cuando no hay token", () => {
-    getItemSpy.mockReturnValueOnce(null);
     mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
     render(
@@ -74,8 +72,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza VerifyEmail en ruta pública aunque no haya token", () => {
-    getItemSpy.mockReturnValueOnce(null);
-
     render(
       <MemoryRouter initialEntries={["/verify-email?token=test"]}>
         <App />
@@ -86,7 +82,8 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza layout protegido cuando hay token", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([1]));
     mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
 
     render(
@@ -98,8 +95,37 @@ describe("Componente Raíz App", () => {
     expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
   });
 
+  test("renderiza fuentes rss para usuarios con permisos de gestión", () => {
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([3]));
+
+    render(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    expect(screen.getByText(/Fuentes RSS/i)).toBeInTheDocument();
+  });
+
+  test("bloquea alertas a usuarios sin permisos de gestión", () => {
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([2]));
+
+    render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Panel general/i)).toBeInTheDocument();
+    expect(screen.queryByText("ALERTS_VIEW")).not.toBeInTheDocument();
+  });
+
   test("al cerrar sesión elimina claves y redirige", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([1]));
     removeItemSpy.mockImplementation(() => {});
     const logoutSpy = jest.fn();
     mockedUseAuth.mockReturnValue({
@@ -123,7 +149,8 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza los enlaces de navegación principales en modo autenticado", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([1]));
 
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -133,11 +160,13 @@ describe("Componente Raíz App", () => {
 
     expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/Mis Alertas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fuentes RSS/i)).toBeInTheDocument();
     expect(screen.getByText(/Configuración/i)).toBeInTheDocument();
   });
 
   test("renderiza marca y logo en modo autenticado", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([1]));
 
     render(
       <MemoryRouter initialEntries={["/"]}>

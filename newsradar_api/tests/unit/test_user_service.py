@@ -55,14 +55,25 @@ class TestRoleMapping:
         assert role_from_role_ids([1]) == UserRole.GESTOR
         assert role_from_role_ids([1, 2]) == UserRole.GESTOR  # GESTOR takes precedence
 
+    def test_role_from_role_ids_admin(self):
+        """Verify role_from_role_ids returns ADMIN for role_id 3."""
+        assert role_from_role_ids([3]) == UserRole.ADMIN
+
+    def test_role_from_role_ids_default_gestor(self):
+        """Verify role_from_role_ids defaults to GESTOR when no role ids are provided."""
+        assert role_from_role_ids([]) == UserRole.GESTOR
+
     def test_role_from_role_ids_lector(self):
         """Verify role_from_role_ids returns LECTOR for role_id 2."""
         assert role_from_role_ids([2]) == UserRole.LECTOR
-        assert role_from_role_ids([]) == UserRole.LECTOR  # Default
 
     def test_role_ids_from_role_gestor(self):
         """Verify role_ids_from_role returns [1] for GESTOR."""
         assert role_ids_from_role(UserRole.GESTOR) == [1]
+
+    def test_role_ids_from_role_admin(self):
+        """Verify role_ids_from_role returns [3] for ADMIN."""
+        assert role_ids_from_role(UserRole.ADMIN) == [3]
 
     def test_role_ids_from_role_lector(self):
         """Verify role_ids_from_role returns [2] for LECTOR."""
@@ -85,7 +96,6 @@ class TestCreateDBUser:
             last_name="User",
             organization="TestOrg",
             password="password123",
-            role_ids=[2],
         )
 
         user = create_db_user(db, payload)
@@ -94,11 +104,30 @@ class TestCreateDBUser:
         assert user.name == "New"
         assert user.surname == "User"
         assert user.organization == "TestOrg"
-        assert user.role == UserRole.LECTOR
+        assert user.role == UserRole.GESTOR
         assert user.is_verified is False
         db.add.assert_called_once_with(user)
         db.commit.assert_called_once()
         db.refresh.assert_called_once_with(user)
+
+    def test_create_db_user_with_lector_role(self):
+        """Verify create_db_user still supports explicit LECTOR creation."""
+        db = MagicMock()
+        db.commit = MagicMock()
+        db.refresh = MagicMock()
+
+        payload = UserCreate(
+            email="lector@test.com",
+            first_name="Lector",
+            last_name="User",
+            organization="Public",
+            password="password123",
+            role_ids=[2],
+        )
+
+        user = create_db_user(db, payload)
+
+        assert user.role == UserRole.LECTOR
 
     def test_create_db_user_with_gestor_role(self):
         """Verify create_db_user creates user with GESTOR role."""

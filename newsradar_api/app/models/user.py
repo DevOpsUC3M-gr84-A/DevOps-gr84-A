@@ -9,6 +9,7 @@ from app.database.database import Base
 class UserRole(str, enum.Enum):
     """Define los roles de usuario válidos."""
 
+    ADMIN = "Admin"
     GESTOR = "Gestor"
     LECTOR = "Lector"
 
@@ -25,8 +26,8 @@ class User(Base):
     organization = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
 
-    # Asumimos que el rol por defecto es "Lector"
-    role = Column(Enum(UserRole), default=UserRole.LECTOR, nullable=False)
+    # El rol por defecto en la creación de usuarios es "Gestor"
+    role = Column(Enum(UserRole), default=UserRole.GESTOR, nullable=False)
 
     # Control de email de verificación
     is_verified = Column(Boolean, default=False)

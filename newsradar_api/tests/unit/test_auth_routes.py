@@ -97,7 +97,6 @@ def test_register_conflict_returns_409():
         first_name="Dup",
         last_name="User",
         organization="QA",
-        role_ids=[1],
         password="secret123",
     )
     db = MagicMock()
@@ -130,7 +129,6 @@ def test_register_success_returns_user_schema(monkeypatch):
         first_name="Ok",
         last_name="User",
         organization="QA",
-        role_ids=[1],
         password="secret123",
         is_verified=False,
         verification_token="token_fake"

@@ -121,7 +121,7 @@ describe("Página de Autenticación", () => {
             first_name: "Juan",
             last_name: "Pérez",
             organization: "UC3M",
-            role_ids: [2],
+            role_ids: [1],
           }),
         }),
       );

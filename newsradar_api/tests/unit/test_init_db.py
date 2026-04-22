@@ -37,7 +37,7 @@ def test_create_initial_admin_creates_user_when_missing():
     created_user = db.add.call_args.args[0]
     assert created_user.email == "admin@newsradar.com"
     assert created_user.hashed_password == "hashed-password"
-    assert created_user.role == UserRole.GESTOR
+    assert created_user.role == UserRole.ADMIN
     assert created_user.is_verified is True
     hash_mock.assert_called_once_with("secret123")
 
