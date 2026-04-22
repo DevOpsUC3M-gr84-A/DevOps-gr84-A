@@ -61,19 +61,21 @@ const LanguageSwitcher = ({
   onLanguageChange: (language: "es" | "en") => void;
 }) => (
   <div className="language-switcher">
-    <span
+    <button
+      type="button"
       className="language-switcher-item"
       onClick={() => onLanguageChange("es")}
     >
       ES
-    </span>
+    </button>
     <span className="language-switcher-separator"> / </span>
-    <span
+    <button
+      type="button"
       className="language-switcher-item"
       onClick={() => onLanguageChange("en")}
     >
       EN
-    </span>
+    </button>
   </div>
 );
 

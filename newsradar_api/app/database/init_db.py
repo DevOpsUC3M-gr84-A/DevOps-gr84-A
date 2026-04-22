@@ -44,6 +44,77 @@ def _map_seed_category_to_iptc(category_text: str | None) -> CategoriaIPTC:
     return category_map.get(category_text.lower(), CategoriaIPTC.OTROS)
 
 
+def _process_and_insert_sources(
+    db: Session, raw_sources: list[dict]
+) -> dict[int, str]:
+    """Procesa e inserta las fuentes de información, devolviendo id->name."""
+    source_names_by_id: dict[int, str] = {}
+    source_models: list[InformationSource] = []
+
+    for source in raw_sources:
+        source_id = source.get("id")
+        source_name = source.get("name")
+        source_url = source.get("url")
+        source_domain = source.get("domain")
+
+        if not source_name:
+            continue
+
+        final_source_url = source_url or (
+            f"https://{source_domain}"
+            if source_domain
+            else f"https://{source_name.lower().replace(' ', '')}.com"
+        )
+
+        source_kwargs = {"name": source_name, "url": final_source_url}
+        if source_id is not None:
+            source_kwargs["id"] = source_id
+            source_names_by_id[source_id] = source_name
+
+        source_models.append(InformationSource(**source_kwargs))
+
+    if source_models:
+        db.add_all(source_models)
+        db.flush()
+
+    return source_names_by_id
+
+
+def _process_and_insert_channels(
+    db: Session, raw_channels: list[dict], source_name_by_id: dict[int, str]
+) -> None:
+    """Procesa e inserta los canales RSS manteniendo el mapeo IPTC."""
+    rss_channel_models: list[RSSChannel] = []
+
+    for channel in raw_channels:
+        channel_id = channel.get("id")
+        source_id = channel.get("information_source_id")
+        channel_url = channel.get("url")
+
+        if not source_id or not channel_url:
+            continue
+
+        media_name = channel.get("media_name") or source_name_by_id.get(source_id, "Unknown")
+        category_text = channel.get("category_iptc")
+        category_id = channel.get("category_id")
+
+        channel_kwargs = {
+            "information_source_id": source_id,
+            "media_name": media_name,
+            "url": channel_url,
+            "category_id": category_id,
+            "iptc_category": _map_seed_category_to_iptc(category_text),
+            "is_active": True,
+        }
+        if channel_id is not None:
+            channel_kwargs["id"] = channel_id
+
+        rss_channel_models.append(RSSChannel(**channel_kwargs))
+
+    if rss_channel_models:
+        db.add_all(rss_channel_models)
+
+
 def load_rss_seed_if_empty(db: Session) -> None:
     """Carga datos seed RSS si la base de datos aún no contiene fuentes/canales."""
     has_sources = db.query(InformationSource.id).first() is not None
@@ -75,68 +146,25 @@ def load_rss_seed_if_empty(db: Session) -> None:
     information_sources_payload = seed_data.get("information_sources", [])
     rss_channels_payload = seed_data.get("rss_channels", [])
 
-    source_names_by_id: dict[int, str] = {}
-    source_models: list[InformationSource] = []
-
-    for source in information_sources_payload:
-        source_id = source.get("id")
-        source_name = source.get("name")
-        source_url = source.get("url")
-        source_domain = source.get("domain")
-
-        if not source_name:
-            continue
-
-        final_source_url = source_url or (
-            f"https://{source_domain}" if source_domain else f"https://{source_name.lower().replace(' ', '')}.com"
-        )
-
-        source_kwargs = {"name": source_name, "url": final_source_url}
-        if source_id is not None:
-            source_kwargs["id"] = source_id
-            source_names_by_id[source_id] = source_name
-
-        source_models.append(InformationSource(**source_kwargs))
-
-    rss_channel_models: list[RSSChannel] = []
-    for channel in rss_channels_payload:
-        channel_id = channel.get("id")
-        source_id = channel.get("information_source_id")
-        channel_url = channel.get("url")
-
-        if not source_id or not channel_url:
-            continue
-
-        media_name = channel.get("media_name") or source_names_by_id.get(source_id, "Unknown")
-        category_text = channel.get("category_iptc")
-        category_id = channel.get("category_id")
-
-        channel_kwargs = {
-            "information_source_id": source_id,
-            "media_name": media_name,
-            "url": channel_url,
-            "category_id": category_id,
-            "iptc_category": _map_seed_category_to_iptc(category_text),
-            "is_active": True,
-        }
-        if channel_id is not None:
-            channel_kwargs["id"] = channel_id
-
-        rss_channel_models.append(RSSChannel(**channel_kwargs))
-
     try:
-        if source_models:
-            db.add_all(source_models)
-            db.flush()
-
-        if rss_channel_models:
-            db.add_all(rss_channel_models)
+        source_names_by_id = _process_and_insert_sources(db, information_sources_payload)
+        _process_and_insert_channels(db, rss_channels_payload, source_names_by_id)
 
         db.commit()
+        inserted_sources_count = len(
+            [source for source in information_sources_payload if source.get("name")]
+        )
+        inserted_channels_count = len(
+            [
+                channel
+                for channel in rss_channels_payload
+                if channel.get("information_source_id") and channel.get("url")
+            ]
+        )
         logger.info(
             "Seed RSS cargado: %s fuentes y %s canales.",
-            len(source_models),
-            len(rss_channel_models),
+            inserted_sources_count,
+            inserted_channels_count,
         )
     except SQLAlchemyError as exc:
         db.rollback()
