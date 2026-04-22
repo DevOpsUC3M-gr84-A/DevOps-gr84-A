@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import App from "./App";
@@ -154,7 +154,9 @@ describe("Componente Raíz App", () => {
     expect(
       screen.getByRole("link", { name: /Gestion del Perfil de Usuario/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Idioma: ES \/ EN/i)).toBeInTheDocument();
+    // Verifica que el selector de idioma esté presente con ES y EN
+    expect(screen.getByText(/ES/)).toBeInTheDocument();
+    expect(screen.getByText(/EN/)).toBeInTheDocument();
   });
 
   test("renderiza marca y logo en modo autenticado", () => {

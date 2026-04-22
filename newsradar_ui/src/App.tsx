@@ -18,6 +18,7 @@ import { useAuth } from "./hooks/useAuth";
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
+  onLanguageChange: (language: "es" | "en") => void;
 }
 
 const DashboardPage = () => (
@@ -54,7 +55,32 @@ const NotificationsPage = () => (
   </section>
 );
 
-const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
+const LanguageSwitcher = ({
+  onLanguageChange,
+}: {
+  onLanguageChange: (language: "es" | "en") => void;
+}) => (
+  <div className="language-switcher">
+    <span
+      className="language-switcher-item"
+      onClick={() => onLanguageChange("es")}
+    >
+      ES
+    </span>
+    <span className="language-switcher-separator"> / </span>
+    <span
+      className="language-switcher-item"
+      onClick={() => onLanguageChange("en")}
+    >
+      EN
+    </span>
+  </div>
+);
+
+const ProtectedLayout = ({
+  handleLogout,
+  onLanguageChange,
+}: ProtectedLayoutProps) => (
   <div className="app-container">
     {/* Sidebar */}
     <aside className="sidebar">
@@ -66,6 +92,8 @@ const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
         />
         <span>NewsRadar</span>
       </div>
+
+      <LanguageSwitcher onLanguageChange={onLanguageChange} />
 
       <nav className="nav-container">
         <ul className="nav-links">
@@ -103,7 +131,6 @@ const ProtectedLayout = ({ handleLogout }: ProtectedLayoutProps) => (
 
         {/* Botón de Logout al final del nav */}
         <div className="nav-footer">
-          <div className="language-placeholder">Idioma: ES / EN</div>
           <button onClick={handleLogout} className="logout-button">
             <LogOut size={20} />
             <span>Cerrar Sesion</span>
@@ -135,7 +162,14 @@ function App() {
       <Route
         path="/"
         element={
-          isAuthenticated ? <ProtectedLayout handleLogout={handleLogout} /> : <Navigate to="/login" replace />
+          isAuthenticated ? (
+            <ProtectedLayout
+              handleLogout={handleLogout}
+              onLanguageChange={() => {}}
+            />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />

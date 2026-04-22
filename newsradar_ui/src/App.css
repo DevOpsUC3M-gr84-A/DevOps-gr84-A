@@ -32,7 +32,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 3rem;
+  margin-bottom: 1rem;
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--primary-blue); /* Logo en azul */
@@ -45,6 +45,21 @@
 .app-brand-logo {
   width: 32px;
   height: 32px;
+}
+
+.language-switcher {
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-gray);
+  text-align: center;
+}
+
+.language-switcher-item {
+  cursor: pointer;
+}
+
+.language-switcher-separator {
+  cursor: default;
 }
 
 .nav-links {
@@ -448,7 +463,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: calc(100% - 80px);
+  height: 100%;
 }
 
 .nav-footer {
