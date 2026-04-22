@@ -345,4 +345,22 @@ describe("Casos de error de API y Red", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Network Error");
   });
+
+  test("conmuta la visibilidad de la contraseña al pulsar el botón", () => {
+    render(<Auth />);
+    const passwordInput = screen.getByPlaceholderText(
+      /••••••••/i,
+    ) as HTMLInputElement;
+    const toggleButton = screen.getByLabelText(/Mostrar contraseña/i);
+
+    expect(passwordInput.type).toBe("password");
+
+    fireEvent.click(toggleButton);
+    expect(passwordInput.type).toBe("text");
+    expect(screen.getByLabelText(/Ocultar contraseña/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/Ocultar contraseña/i));
+    expect(passwordInput.type).toBe("password");
+    expect(screen.getByLabelText(/Mostrar contraseña/i)).toBeInTheDocument();
+  });
 });

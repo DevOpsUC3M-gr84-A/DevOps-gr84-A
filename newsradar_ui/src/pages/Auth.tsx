@@ -1,7 +1,7 @@
 import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { LogIn, UserPlus, Mail, Lock, User, Building } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-// @ts-ignore: CSS module declaration not found
 import "./Auth.css";
 
 const API_BASE_URL =
@@ -70,6 +70,7 @@ export const Auth = () => {
     last_name: "",
     organization: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -260,18 +261,58 @@ export const Auth = () => {
             />
           </div>
 
-          <div className="form-group">
+          <div
+            className="form-group"
+            style={{
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <label htmlFor="password">
               <Lock size={16} /> Contraseña
             </label>
-            <input
-              id="password"
-              type="password"
-              name="password"
-              required
-              placeholder="••••••••"
-              onChange={handleChange}
-            />
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                required
+                placeholder="••••••••"
+                onChange={handleChange}
+                value={formData.password}
+                autoComplete="current-password"
+                style={{ paddingRight: 38, width: "100%" }}
+              />
+              <button
+                type="button"
+                aria-label={
+                  showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#64748b",
+                }}
+                tabIndex={0}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="btn-auth-submit">
