@@ -4,6 +4,21 @@ import { vi } from "vitest";
 import App from "./App";
 import { useAuth } from "./hooks/useAuth";
 
+const { mockedNavigate } = vi.hoisted(() => ({
+  mockedNavigate: vi.fn(),
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+
+  return {
+    ...actual,
+    useNavigate: () => mockedNavigate,
+  };
+});
+
 vi.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
 vi.mock("./pages/AlertsManagement", () => ({
   AlertsManagement: () => <div>ALERTS_VIEW</div>,
@@ -22,22 +37,17 @@ vi.mock("./hooks/useAuth");
 const mockedUseAuth = vi.mocked(useAuth);
 
 describe("Componente Raíz App", () => {
-  const getItemSpy = jest.spyOn(Storage.prototype, "getItem");
-  const removeItemSpy = jest.spyOn(Storage.prototype, "removeItem");
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    getItemSpy.mockReset();
-    removeItemSpy.mockReset();
+    vi.clearAllMocks();
     mockedUseAuth.mockReturnValue({
-      login: jest.fn(),
-      logout: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: null,
+      isAuthenticated: false,
     });
   });
 
   test("renderiza ForgotPassword cuando pathname es /forgot-password", () => {
-    getItemSpy.mockReturnValue(null);
-
     render(
       <MemoryRouter initialEntries={["/forgot-password"]}>
         <App />
@@ -48,9 +58,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza ResetPassword cuando pathname es /reset-password", () => {
-    getItemSpy.mockReturnValueOnce(null);
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
-
     render(
       <MemoryRouter initialEntries={["/reset-password"]}>
         <App />
@@ -61,9 +68,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza Auth cuando no hay token", () => {
-    getItemSpy.mockReturnValueOnce(null);
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
-
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
@@ -74,8 +78,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza VerifyEmail en ruta pública aunque no haya token", () => {
-    getItemSpy.mockReturnValueOnce(null);
-
     render(
       <MemoryRouter initialEntries={["/verify-email?token=test"]}>
         <App />
@@ -86,8 +88,12 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza layout protegido cuando hay token", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/alertas"]}>
@@ -98,13 +104,13 @@ describe("Componente Raíz App", () => {
     expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
   });
 
-  test("al cerrar sesión elimina claves y redirige", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
-    removeItemSpy.mockImplementation(() => {});
-    const logoutSpy = jest.fn();
+  test("al cerrar sesión navega a /login y ejecuta logout", () => {
+    const logoutSpy = vi.fn();
     mockedUseAuth.mockReturnValue({
-      login: jest.fn(),
+      login: vi.fn(),
       logout: logoutSpy,
+      token: "fake-token",
+      isAuthenticated: true,
     });
 
     render(
@@ -115,15 +121,17 @@ describe("Componente Raíz App", () => {
 
     fireEvent.click(screen.getByText(/Cerrar Sesión/i));
 
-    expect(removeItemSpy).toHaveBeenCalledWith("token");
-    expect(removeItemSpy).toHaveBeenCalledWith("userId");
-    expect(removeItemSpy).toHaveBeenCalledWith("userRoles");
-    expect(removeItemSpy).toHaveBeenCalledWith("userEmail");
     expect(logoutSpy).toHaveBeenCalled();
+    expect(mockedNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });
 
   test("renderiza los enlaces de navegación principales en modo autenticado", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -137,7 +145,12 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza marca y logo en modo autenticado", () => {
-    getItemSpy.mockReturnValueOnce("fake-token");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/"]}>
