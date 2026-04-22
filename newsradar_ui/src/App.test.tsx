@@ -119,7 +119,7 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByText(/Cerrar Sesión/i));
+    fireEvent.click(screen.getByText(/Cerrar Sesion/i));
 
     expect(logoutSpy).toHaveBeenCalled();
     expect(mockedNavigate).toHaveBeenCalledWith("/login", { replace: true });
@@ -139,9 +139,22 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mis Alertas/i)).toBeInTheDocument();
-    expect(screen.getByText(/Configuración/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Dashboard \/ Resumen/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Gestion de Alertas/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Buzon de Notificaciones/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Gestion del Perfil de Usuario/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Idioma: ES \/ EN/i)).toBeInTheDocument();
   });
 
   test("renderiza marca y logo en modo autenticado", () => {
