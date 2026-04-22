@@ -50,6 +50,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./newsradar_ui/build
+          publish_dir: ./newsradar_ui/dist
           cname: ""
           force_orphan: true
