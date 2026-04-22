@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { LogIn, UserPlus, Mail, Lock, User, Building } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-// @ts-ignore: CSS module declaration not found
 import "./Auth.css";
 
 const API_BASE_URL =
