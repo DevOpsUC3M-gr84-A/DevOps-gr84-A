@@ -87,6 +87,13 @@ def test_monitor_match_indexes_document(db_session, seeded_user):
     assert document["title"] == "Technology market update"
     assert document["link"] == "https://example.test/article-1"
     assert document["summary"] == "A story that matches the descriptor"
+    assert document["notification_title"] == "Actualización de RF01 Alert en 31/03/2026 10:00"
+    assert document["notification_message"] == (
+        "Origen: RF01 Media\n"
+        "Fecha: 2026-03-31T10:00:00+00:00\n"
+        "Título: Technology market update\n"
+        "Resumen: A story that matches the descriptor"
+    )
     assert document["alert_id"] == alert.id
     assert document["user_id"] == seeded_user.id
     assert document["channel_id"] == channel.id
@@ -245,6 +252,13 @@ def test_build_article_document_includes_required_fields(db_session, seeded_user
     assert document["title"] == "Technology headline"
     assert document["link"] == "https://example.test/article-doc"
     assert document["summary"] == "Some summary"
+    assert document["notification_title"] == "Actualización de RF01 Alert en 31/03/2026 10:30"
+    assert document["notification_message"] == (
+        "Origen: RF01 Media\n"
+        "Fecha: 2026-03-31T10:30:00+00:00\n"
+        "Título: Technology headline\n"
+        "Resumen: Some summary"
+    )
     assert document["alert_id"] == alert.id
     assert document["user_id"] == seeded_user.id
 

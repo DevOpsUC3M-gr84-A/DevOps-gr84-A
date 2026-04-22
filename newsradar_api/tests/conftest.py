@@ -164,15 +164,7 @@ def api_client(test_session_factory, seeded_user):
             db.close()
 
     def _override_current_user() -> UserInDB:
-        return UserInDB(
-            id=seeded_user.id,
-            email=seeded_user.email,
-            first_name=seeded_user.name,
-            last_name=seeded_user.surname,
-            organization=seeded_user.organization or "",
-            role_ids=[1],
-            password=seeded_user.hashed_password,
-        )
+        return seeded_user
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[deps_module.get_current_user] = _override_current_user
@@ -218,15 +210,7 @@ def api_client_lector(test_session_factory, seeded_lector_user):
             db.close()
 
     def _override_current_user() -> UserInDB:
-        return UserInDB(
-            id=seeded_lector_user.id,
-            email=seeded_lector_user.email,
-            first_name=seeded_lector_user.name,
-            last_name=seeded_lector_user.surname,
-            organization=seeded_lector_user.organization or "",
-            role_ids=[2],
-            password=seeded_lector_user.hashed_password,
-        )
+        return seeded_lector_user
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[deps_module.get_current_user] = _override_current_user

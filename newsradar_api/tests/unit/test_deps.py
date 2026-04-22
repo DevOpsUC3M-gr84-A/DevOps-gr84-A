@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.stores.memory import active_tokens
+from app.models.user import UserRole
 from app.utils.deps import get_current_gestor, get_current_user
 
 
@@ -57,7 +58,7 @@ def test_get_current_user_with_unknown_db_user_raises_401():
 
 @pytest.mark.unit
 def test_get_current_gestor_rejects_non_manager():
-    current_user = MagicMock(role_ids=[2])
+    current_user = MagicMock(role=UserRole.LECTOR)
 
     with pytest.raises(HTTPException) as exc_info:
         get_current_gestor(current_user=current_user)
@@ -67,5 +68,5 @@ def test_get_current_gestor_rejects_non_manager():
 
 @pytest.mark.unit
 def test_get_current_gestor_accepts_manager():
-    current_user = MagicMock(role_ids=[1])
+    current_user = MagicMock(role=UserRole.GESTOR)
     assert get_current_gestor(current_user=current_user) is current_user

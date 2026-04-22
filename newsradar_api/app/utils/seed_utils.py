@@ -24,6 +24,8 @@ def create_seed_data() -> None:
         organization="NewsRadar",
         role_ids=[admin_role_id],
         password=admin_password,
+        is_verified=True,
+        verification_token=None,
     )
 
     lector_user_id = next_id("users")

@@ -1,10 +1,12 @@
 """Este módulo contiene funciones relacionadas con la lógica de verificación de usuarios"""
-
+import uuid
+import secrets
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import config
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -38,11 +40,13 @@ def role_ids_from_role(role: UserRole) -> list[int]:
 
 def create_db_user(db: Session, payload: UserCreate) -> User:
     """Crea un usuario persistente en SQL y devuelve la entidad."""
+    token = str(uuid.uuid4())
     db_user = User(
         email=payload.email,
         name=payload.first_name,
         surname=payload.last_name,
         organization=payload.organization,
+        verification_token=token,
         hashed_password=get_password_hash(payload.password),
         role=role_from_role_ids(payload.role_ids),
         is_verified=False,
@@ -130,3 +134,57 @@ def update_user_role(db: Session, user_id: int, new_role: UserRole) -> bool:
     db.commit()
     db.refresh(user)
     return True
+
+# Recuperación de contraseña
+
+def generate_reset_token(db: Session, email: str) -> str | None:
+    """
+    Genera un token seguro de reset para el usuario con ese email y lo persiste en BD.
+
+    Devuelve el token si el usuario existe, None si no (el caller no debe revelar
+    esta diferencia al cliente para evitar enumeración de usuarios).
+    """
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        return None
+
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(hours=config.RESET_TOKEN_EXPIRE_HOURS)
+
+    user.reset_password_token = token
+    user.reset_password_token_expires = expires
+    db.commit()
+    return token
+
+
+def reset_password_with_token(db: Session, token: str, new_password: str) -> tuple[bool, str]:
+    """
+    Valida el token de reset y actualiza la contraseña si es válido y no ha expirado.
+
+    Devuelve (True, mensaje_ok) o (False, mensaje_error).
+    """
+    user = db.query(User).filter(User.reset_password_token == token).first()
+
+    if user is None:
+        return False, "Token inválido o ya utilizado."
+
+    now = datetime.now(timezone.utc)
+    expires = user.reset_password_token_expires
+
+    # Normalizar zona horaria si la BD devuelve datetime naive
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+
+    if expires is None or now > expires:
+        # Limpiar token expirado
+        user.reset_password_token = None
+        user.reset_password_token_expires = None
+        db.commit()
+        return False, "El enlace de recuperación ha expirado. Solicita uno nuevo."
+
+    # Token válido: actualizar contraseña e invalidar token
+    user.hashed_password = get_password_hash(new_password)
+    user.reset_password_token = None
+    user.reset_password_token_expires = None
+    db.commit()
+    return True, "Contraseña actualizada correctamente."
