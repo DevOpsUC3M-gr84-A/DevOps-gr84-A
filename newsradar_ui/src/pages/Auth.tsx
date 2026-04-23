@@ -20,7 +20,7 @@ interface ApiErrorResponse {
 interface AuthResponse extends ApiErrorResponse {
   access_token?: string;
   user_id?: number;
-  role_ids?: number[];
+  role_ids?: (number | string)[];
 }
 
 const formatApiError = (data: ApiErrorResponse): string => {
@@ -131,10 +131,21 @@ export const Auth = () => {
       }
 
       if (isLogin) {
+        // Normalize role_ids to numbers to handle both API string responses and numeric IDs
+        const normalizedRoleIds = (data.role_ids ?? []).map((roleId) => {
+          if (typeof roleId === 'number') return roleId;
+          // Map string enum values to numeric IDs
+          const roleMap: Record<string, number> = {
+            'Admin': 3, 'ADMIN': 3,
+            'Gestor': 1, 'GESTOR': 1,
+            'Lector': 2, 'LECTOR': 2,
+          };
+          return roleMap[roleId] ?? 2; // Default to LECTOR (2) for unknown
+        });
         login({
           access_token: data.access_token ?? "",
           user_id: data.user_id ?? 0,
-          role_ids: data.role_ids ?? [],
+          role_ids: normalizedRoleIds,
         });
         navigate("/dashboard", { replace: true });
       } else {

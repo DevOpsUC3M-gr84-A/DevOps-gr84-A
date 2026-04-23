@@ -146,6 +146,80 @@ describe("Componente Raíz App", () => {
     expect(screen.queryByText("ALERTS_VIEW")).not.toBeInTheDocument();
   });
 
+  test("renderiza alertas para Admin con role_ids string 'Admin'", () => {
+    localStorage.setItem("userRoles", JSON.stringify(["Admin"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+  });
+
+  test("renderiza fuentes RSS para Gestor con role_ids string 'Gestor'", () => {
+    localStorage.setItem("userRoles", JSON.stringify(["Gestor"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+  });
+
+  test("bloquea alertas con role_ids string 'Lector'", () => {
+    localStorage.setItem("userRoles", JSON.stringify(["Lector"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: /Dashboard \/ Resumen/i })).toBeInTheDocument();
+    expect(screen.queryByText("ALERTS_VIEW")).not.toBeInTheDocument();
+  });
+
+  test("maneja role_ids mixtos (números y strings) - Admin tiene acceso", () => {
+    localStorage.setItem("userRoles", JSON.stringify([3, "Gestor", "Lector"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    // Should have access because [3] (Admin) is present
+    expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+  });
+
   test("al cerrar sesión navega a /login y ejecuta logout", () => {
     localStorage.setItem("userRoles", JSON.stringify([1]));
     const logoutSpy = vi.fn();

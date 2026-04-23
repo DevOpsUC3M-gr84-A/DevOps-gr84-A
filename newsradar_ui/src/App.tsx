@@ -36,8 +36,22 @@ const getStoredUserRoles = (): number[] => {
   try {
     const rawRoles = globalThis.localStorage.getItem("userRoles") || "[]";
     const parsedRoles = JSON.parse(rawRoles) as unknown;
+    
+    // Map string enum values to numeric IDs if needed
+    const roleMap: Record<string, number> = {
+      'Admin': 3, 'ADMIN': 3,
+      'Gestor': 1, 'GESTOR': 1,
+      'Lector': 2, 'LECTOR': 2,
+    };
+    
     return Array.isArray(parsedRoles)
-      ? parsedRoles.filter((role): role is number => typeof role === "number")
+      ? parsedRoles.map((role) => {
+          if (typeof role === 'number') return role;
+          if (typeof role === 'string') {
+            return roleMap[role] ?? 2; // Default to LECTOR for unknown
+          }
+          return 2; // Default fallback
+        }).filter((role): role is number => typeof role === 'number')
       : [];
   } catch {
     return [];
