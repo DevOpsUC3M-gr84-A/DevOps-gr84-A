@@ -21,7 +21,63 @@ interface AuthResponse extends ApiErrorResponse {
   access_token?: string;
   user_id?: number;
   role_ids?: (number | string)[];
+  role?: number | string;
+  roles?: (number | string)[];
 }
+
+const ROLE_ID_BY_NAME: Record<string, number> = {
+  admin: 3,
+  gestor: 1,
+  lector: 2,
+};
+
+const normalizeRoleToId = (role: unknown): number | null => {
+  if (typeof role === "number") {
+    return Number.isInteger(role) ? role : null;
+  }
+
+  if (typeof role !== "string") {
+    return null;
+  }
+
+  const trimmed = role.trim();
+  if (trimmed === "") {
+    return null;
+  }
+
+  const numericRole = Number(trimmed);
+  if (Number.isInteger(numericRole)) {
+    return numericRole;
+  }
+
+  return ROLE_ID_BY_NAME[trimmed.toLowerCase()] ?? null;
+};
+
+const extractRoleIds = (data: AuthResponse): number[] => {
+  const candidates: unknown[] = [];
+
+  if (Array.isArray(data.role_ids)) {
+    candidates.push(...data.role_ids);
+  } else if (data.role_ids != null) {
+    candidates.push(data.role_ids);
+  }
+
+  if (Array.isArray(data.roles)) {
+    candidates.push(...data.roles);
+  } else if (data.roles != null) {
+    candidates.push(data.roles);
+  }
+
+  if (data.role != null) {
+    candidates.push(data.role);
+  }
+
+  const normalized = candidates
+    .map(normalizeRoleToId)
+    .filter((roleId): roleId is number => roleId !== null);
+
+  return normalized.length > 0 ? normalized : [2];
+};
 
 const formatApiError = (data: ApiErrorResponse): string => {
   if (typeof data.detail === "string") {
@@ -131,17 +187,7 @@ export const Auth = () => {
       }
 
       if (isLogin) {
-        // Normalize role_ids to numbers to handle both API string responses and numeric IDs
-        const normalizedRoleIds = (data.role_ids ?? []).map((roleId) => {
-          if (typeof roleId === 'number') return roleId;
-          // Map string enum values to numeric IDs
-          const roleMap: Record<string, number> = {
-            'Admin': 3, 'ADMIN': 3,
-            'Gestor': 1, 'GESTOR': 1,
-            'Lector': 2, 'LECTOR': 2,
-          };
-          return roleMap[roleId] ?? 2; // Default to LECTOR (2) for unknown
-        });
+        const normalizedRoleIds = extractRoleIds(data);
         login({
           access_token: data.access_token ?? "",
           user_id: data.user_id ?? 0,

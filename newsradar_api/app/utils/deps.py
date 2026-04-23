@@ -38,3 +38,13 @@ def get_current_gestor(current_user: DBUser = Depends(get_current_user)) -> DBUs
             detail="No tienes los permisos necesarios (rol de gestión).",
         )
     return current_user
+
+
+def get_current_admin(current_user: DBUser = Depends(get_current_user)) -> DBUser:
+    """Valida que el usuario actual tenga el rol ADMIN."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes los permisos necesarios (rol de administrador).",
+        )
+    return current_user

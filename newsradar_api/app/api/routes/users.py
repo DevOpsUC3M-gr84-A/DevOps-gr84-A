@@ -5,14 +5,17 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.models.user import User as DBUser
-from app.schemas.user import User, UserCreate, UserUpdate, UserInDB
+from app.schemas.user import User, UserCreate, UserUpdate, UserInDB, UserListItem, UpdateUserRoleRequest
 from app.stores.memory import users_store, alerts_store, notifications_store
 from app.services.user_service import (
     create_db_user,
     update_db_user,
+    list_all_users,
+    update_user_role_by_role_id,
+    role_ids_from_role,
 )
 from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
-from app.utils.deps import get_current_user
+from app.utils.deps import get_current_user, get_current_admin
 
 users_router = APIRouter()
 
@@ -27,14 +30,26 @@ def _get_user_or_404(user_id: int, db: Session) -> DBUser:
 @users_router.get("/users", tags=["users"])
 def list_users(
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[UserInDB, Depends(get_current_user)] = None,
-) -> List[User]:
-    db_users = db.query(DBUser).all()
-    if db_users:
-        for user in db_users:
-            sync_memory_user(user)
-        return [to_user_schema(user) for user in db_users]
-    return []
+    _: Annotated[DBUser, Depends(get_current_admin)] = None,
+) -> List[UserListItem]:
+    """Lista de usuarios para gestión administrativa (solo Admin)."""
+    try:
+        users = list_all_users(db)
+        return [
+            UserListItem(
+                id=user.id,
+                email=user.email,
+                first_name=user.name,
+                last_name=user.surname,
+                role_ids=role_ids_from_role(user.role),
+            )
+            for user in users
+        ]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Error al obtener la lista de usuarios",
+        ) from exc
 
 
 @users_router.post(
@@ -127,3 +142,40 @@ def delete_user(
     db.delete(user)
     db.commit()
     users_store.pop(user_id, None)
+
+
+@users_router.patch(
+    "/users/{user_id}/role",
+    tags=["users", "admin"],
+    response_model=UserListItem,
+    responses={
+        403: {"description": "No autorizado (requiere rol Admin)"},
+        404: {"description": "Usuario no encontrado"},
+        400: {"description": "Rol inválido"},
+    },
+)
+def update_user_role_admin(
+    user_id: int,
+    payload: UpdateUserRoleRequest,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[DBUser, Depends(get_current_admin)] = None,
+) -> UserListItem:
+    """Actualiza el rol de un usuario. Solo accesible por Admin."""
+    try:
+        user = update_user_role_by_role_id(db, user_id, payload.role_id)
+        sync_memory_user(user)
+        return UserListItem(
+            id=user.id,
+            email=user.email,
+            first_name=user.name,
+            last_name=user.surname,
+            role_ids=role_ids_from_role(user.role),
+        )
+    except ValueError as exc:
+        if "no encontrado" in str(exc).lower():
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail="Error al actualizar el rol del usuario"
+        ) from exc

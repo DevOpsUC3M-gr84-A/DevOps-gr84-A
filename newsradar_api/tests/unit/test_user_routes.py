@@ -14,8 +14,8 @@ class TestUsersAPIEndpoints:
 	def bypass_role_check(self, monkeypatch):
 		monkeypatch.setattr("app.api.routes.users.ensure_role_ids_exist", lambda _role_ids: None)
 
-	def test_list_users_api(self, api_client, auth_headers):
-		response = api_client.get("/api/v1/users", headers=auth_headers)
+	def test_list_users_api(self, api_client_admin, admin_auth_headers):
+		response = api_client_admin.get("/api/v1/users", headers=admin_auth_headers)
 		assert response.status_code == 200
 		assert isinstance(response.json(), list)
 

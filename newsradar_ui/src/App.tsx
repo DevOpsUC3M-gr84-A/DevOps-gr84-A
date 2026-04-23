@@ -23,6 +23,7 @@ import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import { useAuth } from "./hooks/useAuth";
 import { SourcesRss } from "./pages/SourcesRss";
+import { ProfilePage } from "./pages/ProfilePage";
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
@@ -32,27 +33,46 @@ interface ProtectedLayoutProps {
 
 const MANAGEMENT_ROLE_IDS = [1, 3];
 
+const ROLE_ID_BY_NAME: Record<string, number> = {
+  admin: 3,
+  gestor: 1,
+  lector: 2,
+};
+
+const normalizeRoleToId = (role: unknown): number | null => {
+  if (typeof role === "number") {
+    return Number.isInteger(role) ? role : null;
+  }
+
+  if (typeof role !== "string") {
+    return null;
+  }
+
+  const trimmed = role.trim();
+  if (trimmed === "") {
+    return null;
+  }
+
+  const numericRole = Number(trimmed);
+  if (Number.isInteger(numericRole)) {
+    return numericRole;
+  }
+
+  return ROLE_ID_BY_NAME[trimmed.toLowerCase()] ?? null;
+};
+
 const getStoredUserRoles = (): number[] => {
   try {
     const rawRoles = globalThis.localStorage.getItem("userRoles") || "[]";
     const parsedRoles = JSON.parse(rawRoles) as unknown;
-    
-    // Map string enum values to numeric IDs if needed
-    const roleMap: Record<string, number> = {
-      'Admin': 3, 'ADMIN': 3,
-      'Gestor': 1, 'GESTOR': 1,
-      'Lector': 2, 'LECTOR': 2,
-    };
-    
-    return Array.isArray(parsedRoles)
-      ? parsedRoles.map((role) => {
-          if (typeof role === 'number') return role;
-          if (typeof role === 'string') {
-            return roleMap[role] ?? 2; // Default to LECTOR for unknown
-          }
-          return 2; // Default fallback
-        }).filter((role): role is number => typeof role === 'number')
-      : [];
+
+    const normalizedRoles = Array.isArray(parsedRoles)
+      ? parsedRoles
+      : [parsedRoles];
+
+    return normalizedRoles
+      .map(normalizeRoleToId)
+      .filter((roleId): roleId is number => roleId !== null);
   } catch {
     return [];
   }
@@ -68,13 +88,6 @@ const DashboardPage = () => (
       Aqui iran las estadisticas globales (Issue #85) y nubes de palabras (Issue
       #85).
     </p>
-  </section>
-);
-
-const ProfilePage = () => (
-  <section className="main-content">
-    <h1>Gestion del Perfil de Usuario</h1>
-    <p>Edicion de datos personales, organizacion y seguridad (Issue #86).</p>
   </section>
 );
 
