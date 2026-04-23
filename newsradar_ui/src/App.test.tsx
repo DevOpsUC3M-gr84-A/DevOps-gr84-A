@@ -4,6 +4,21 @@ import { vi } from "vitest";
 import App from "./App";
 import { useAuth } from "./hooks/useAuth";
 
+const { mockedNavigate } = vi.hoisted(() => ({
+  mockedNavigate: vi.fn(),
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+
+  return {
+    ...actual,
+    useNavigate: () => mockedNavigate,
+  };
+});
+
 vi.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
 vi.mock("./pages/AlertsManagement", () => ({
   AlertsManagement: () => <div>ALERTS_VIEW</div>,
@@ -25,15 +40,14 @@ vi.mock("./hooks/useAuth");
 const mockedUseAuth = vi.mocked(useAuth);
 
 describe("Componente Raíz App", () => {
-  const removeItemSpy = jest.spyOn(Storage.prototype, "removeItem");
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    removeItemSpy.mockReset();
+    vi.clearAllMocks();
     localStorage.clear();
     mockedUseAuth.mockReturnValue({
-      login: jest.fn(),
-      logout: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: null,
+      isAuthenticated: false,
     });
   });
 
@@ -48,8 +62,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza ResetPassword cuando pathname es /reset-password", () => {
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
-
     render(
       <MemoryRouter initialEntries={["/reset-password"]}>
         <App />
@@ -60,8 +72,6 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza Auth cuando no hay token", () => {
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
-
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
@@ -82,9 +92,13 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza layout protegido cuando hay token", () => {
-    localStorage.setItem("token", "fake-token");
     localStorage.setItem("userRoles", JSON.stringify([1]));
-    mockedUseAuth.mockReturnValue({ login: jest.fn(), logout: jest.fn() });
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/alertas"]}>
@@ -96,8 +110,13 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza fuentes rss para usuarios con permisos de gestión", () => {
-    localStorage.setItem("token", "fake-token");
     localStorage.setItem("userRoles", JSON.stringify([3]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/fuentes-rss"]}>
@@ -106,12 +125,16 @@ describe("Componente Raíz App", () => {
     );
 
     expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
-    expect(screen.getByText(/Fuentes RSS/i)).toBeInTheDocument();
   });
 
-  test("bloquea alertas a usuarios sin permisos de gestión", () => {
-    localStorage.setItem("token", "fake-token");
+  test("bloquea alertas para rol LECTOR", () => {
     localStorage.setItem("userRoles", JSON.stringify([2]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/alertas"]}>
@@ -119,18 +142,18 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/Panel general/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Dashboard \/ Resumen/i })).toBeInTheDocument();
     expect(screen.queryByText("ALERTS_VIEW")).not.toBeInTheDocument();
   });
 
-  test("al cerrar sesión elimina claves y redirige", () => {
-    localStorage.setItem("token", "fake-token");
+  test("al cerrar sesión navega a /login y ejecuta logout", () => {
     localStorage.setItem("userRoles", JSON.stringify([1]));
-    removeItemSpy.mockImplementation(() => {});
-    const logoutSpy = jest.fn();
+    const logoutSpy = vi.fn();
     mockedUseAuth.mockReturnValue({
-      login: jest.fn(),
+      login: vi.fn(),
       logout: logoutSpy,
+      token: "fake-token",
+      isAuthenticated: true,
     });
 
     render(
@@ -139,18 +162,20 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByText(/Cerrar Sesión/i));
+    fireEvent.click(screen.getByText(/Cerrar Sesion/i));
 
-    expect(removeItemSpy).toHaveBeenCalledWith("token");
-    expect(removeItemSpy).toHaveBeenCalledWith("userId");
-    expect(removeItemSpy).toHaveBeenCalledWith("userRoles");
-    expect(removeItemSpy).toHaveBeenCalledWith("userEmail");
     expect(logoutSpy).toHaveBeenCalled();
+    expect(mockedNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });
 
   test("renderiza los enlaces de navegación principales en modo autenticado", () => {
-    localStorage.setItem("token", "fake-token");
     localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -158,15 +183,50 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mis Alertas/i)).toBeInTheDocument();
-    expect(screen.getByText(/Fuentes RSS/i)).toBeInTheDocument();
-    expect(screen.getByText(/Configuración/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Dashboard \/ Resumen/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Gestion de Alertas/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Buzon de Notificaciones/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Gestion del Perfil de Usuario/i }),
+    ).toBeInTheDocument();
+  });
+
+  test("renderiza selector de idioma con botones accesibles", () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "ES" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument();
   });
 
   test("renderiza marca y logo en modo autenticado", () => {
-    localStorage.setItem("token", "fake-token");
     localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
 
     render(
       <MemoryRouter initialEntries={["/"]}>
