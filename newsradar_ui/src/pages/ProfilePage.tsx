@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { normalizeRoleToId } from "../utils/roleUtils";
 import "./ProfilePage.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -74,46 +73,45 @@ export const ProfilePage: React.FC = () => {
 
   if (loading) {
     return (
-      <section className="profile-page" role="main">
+      <main className="profile-page">
         <div className="loading-state" role="status" aria-live="polite">
           <p>Cargando perfil...</p>
         </div>
-      </section>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <section className="profile-page" role="main">
+      <main className="profile-page">
         <div role="alert" className="error-alert">
           {error}
         </div>
-      </section>
+      </main>
     );
   }
 
   if (!profile) {
     return (
-      <section className="profile-page" role="main">
+      <main className="profile-page">
         <div role="alert" className="error-alert">
           No se pudo cargar el perfil
         </div>
-      </section>
+      </main>
     );
   }
 
-  const normalizedRoleIds = profile.role_ids
-    .map(normalizeRoleToId)
-    .filter((roleId): roleId is number => roleId !== null);
+  const roleSet = new Set(profile.role_ids);
+  let roleLabel = "Lector";
 
-  const roleLabel = normalizedRoleIds.includes(3)
-    ? "Administrador"
-    : normalizedRoleIds.includes(1)
-      ? "Gestor"
-      : "Lector";
+  if (roleSet.has(3)) {
+    roleLabel = "Administrador";
+  } else if (roleSet.has(1)) {
+    roleLabel = "Gestor";
+  }
 
   return (
-    <section className="profile-page" role="main" aria-labelledby="profile-title">
+    <main className="profile-page" aria-labelledby="profile-title">
       <div className="profile-container">
         <h1 id="profile-title">Perfil de Usuario</h1>
 
@@ -146,6 +144,6 @@ export const ProfilePage: React.FC = () => {
           </div>
         </article>
       </div>
-    </section>
+    </main>
   );
 };

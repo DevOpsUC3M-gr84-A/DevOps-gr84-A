@@ -27,7 +27,11 @@ def _get_user_or_404(user_id: int, db: Session) -> DBUser:
     return user
 
 
-@users_router.get("/users", tags=["users"])
+@users_router.get(
+    "/users",
+    tags=["users"],
+    responses={500: {"description": "Internal Server Error"}},
+)
 def list_users(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[DBUser, Depends(get_current_admin)] = None,
@@ -147,11 +151,11 @@ def delete_user(
 @users_router.patch(
     "/users/{user_id}/role",
     tags=["users", "admin"],
-    response_model=UserListItem,
     responses={
         403: {"description": "No autorizado (requiere rol Admin)"},
         404: {"description": "Usuario no encontrado"},
         400: {"description": "Rol inválido"},
+        500: {"description": "Internal Server Error"},
     },
 )
 def update_user_role_admin(

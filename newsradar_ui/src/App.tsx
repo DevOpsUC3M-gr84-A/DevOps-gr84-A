@@ -32,8 +32,6 @@ interface ProtectedLayoutProps {
   onLanguageChange: (language: "es" | "en") => void;
 }
 
-const MANAGEMENT_ROLE_IDS = [1, 3];
-
 const getStoredUserRoles = (): number[] => {
   const normalizeAndFilterRoles = (roles: unknown): number[] => {
     const normalizedRoles = Array.isArray(roles) ? roles : [roles];
