@@ -1,4 +1,6 @@
 // @ts-ignore: CSS module declaration not found
+import React, { useState, useEffect } from "react";
+
 import "./App.css";
 import {
   Bell,
@@ -249,8 +251,18 @@ const ProtectedLayout = ({
 function App() {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const userRoles = getStoredUserRoles();
-  const canManageSections = canAccessManagementSections(userRoles);
+  // ✅ 1. Lo convertimos en un estado reactivo
+  const [canManageSections, setCanManageSections] = useState(false);
+  
+  // ✅ 2. Obligamos a React a recalcular los roles CADA VEZ que te logueas o deslogueas
+  useEffect(() => {
+    if (isAuthenticated) {
+      const userRoles = getStoredUserRoles();
+      setCanManageSections(canAccessManagementSections(userRoles));
+    } else {
+      setCanManageSections(false);
+    }
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     logout();

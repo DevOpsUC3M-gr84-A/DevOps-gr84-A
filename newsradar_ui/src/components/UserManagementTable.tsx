@@ -98,6 +98,8 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
     fetchUsers();
   }, [isAdmin]);
 
+  const myOwnId = Number(globalThis.localStorage.getItem("userId"));
+
   const handleRoleChange = async (userId: number, newRoleId: number) => {
     setUpdatingUserId(userId);
     setError(null);
@@ -216,7 +218,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
                       onChange={(event) =>
                         handleRoleChange(user.id, Number.parseInt(event.target.value, 10))
                       }
-                      disabled={updatingUserId === user.id}
+                      disabled={updatingUserId === user.id || user.id === myOwnId}
                       aria-label={`Cambiar rol de usuario ${user.email}`}
                       className="role-select"
                     >
