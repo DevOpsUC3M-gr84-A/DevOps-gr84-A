@@ -35,24 +35,43 @@ interface ProtectedLayoutProps {
 const MANAGEMENT_ROLE_IDS = [1, 3];
 
 const getStoredUserRoles = (): number[] => {
-  try {
-    const rawRoles = globalThis.localStorage.getItem("userRoles") || "[]";
-    const parsedRoles = JSON.parse(rawRoles) as unknown;
-
-    const normalizedRoles = Array.isArray(parsedRoles)
-      ? parsedRoles
-      : [parsedRoles];
+  const normalizeAndFilterRoles = (roles: unknown): number[] => {
+    const normalizedRoles = Array.isArray(roles) ? roles : [roles];
 
     return normalizedRoles
       .map(normalizeRoleToId)
       .filter((roleId): roleId is number => roleId !== null);
+  };
+
+  try {
+    const rawRoles = globalThis.localStorage.getItem("userRoles");
+
+    if (!rawRoles) {
+      return [];
+    }
+
+    const parsedRoles = JSON.parse(rawRoles) as unknown;
+    return normalizeAndFilterRoles(parsedRoles);
   } catch {
-    return [];
+    // Fallback for legacy values stored as plain text (e.g. "Admin").
+    const rawRoles = globalThis.localStorage.getItem("userRoles");
+    if (!rawRoles) {
+      return [];
+    }
+
+    const commaSeparatedRoles = rawRoles
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return normalizeAndFilterRoles(
+      commaSeparatedRoles.length > 0 ? commaSeparatedRoles : rawRoles,
+    );
   }
 };
 
 const canAccessManagementSections = (roles: number[]): boolean =>
-  roles.some((roleId) => MANAGEMENT_ROLE_IDS.includes(roleId));
+  roles.some((roleId) => roleId === 1 || roleId === 3);
 
 const DashboardPage = () => (
   <section className="main-content">

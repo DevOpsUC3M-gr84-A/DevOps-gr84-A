@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { UserManagementTable } from "../components/UserManagementTable";
+import { normalizeRoleToId } from "../utils/roleUtils";
 import "./ProfilePage.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -23,9 +23,6 @@ export const ProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Determinar si es admin (role_id 3)
-  const isAdmin = profile?.role_ids?.includes(3) ?? false;
 
   useEffect(() => {
     if (!token) {
@@ -105,6 +102,16 @@ export const ProfilePage: React.FC = () => {
     );
   }
 
+  const normalizedRoleIds = profile.role_ids
+    .map(normalizeRoleToId)
+    .filter((roleId): roleId is number => roleId !== null);
+
+  const roleLabel = normalizedRoleIds.includes(3)
+    ? "Administrador"
+    : normalizedRoleIds.includes(1)
+      ? "Gestor"
+      : "Lector";
+
   return (
     <section className="profile-page" role="main" aria-labelledby="profile-title">
       <div className="profile-container">
@@ -135,17 +142,9 @@ export const ProfilePage: React.FC = () => {
 
           <div className="profile-field">
             <label htmlFor="role-display">Rol:</label>
-            <p id="role-display">
-              {profile.role_ids.includes(3)
-                ? "Administrador"
-                : profile.role_ids.includes(1)
-                  ? "Gestor"
-                  : "Lector"}
-            </p>
+            <p id="role-display">{roleLabel}</p>
           </div>
         </article>
-
-        {isAdmin && <UserManagementTable isAdmin={true} />}
       </div>
     </section>
   );
