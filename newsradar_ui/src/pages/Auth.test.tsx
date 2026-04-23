@@ -442,6 +442,69 @@ describe("Casos de error de API y Red", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Network Error");
   });
 
+  test("formatApiError: detail array de validaciones múltiples", async () => {
+    const errorData = {
+      detail: [
+        { loc: ["body", "email"], msg: "invalid email" },
+        { loc: ["body", "password"], msg: "too short" },
+      ],
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("email: invalid email");
+      expect(screen.getByRole("alert")).toHaveTextContent("password: too short");
+    });
+  });
+
+  test("formatApiError: detail objeto anidado genérico", async () => {
+    const errorData = {
+      detail: {
+        error: {
+          code: "E500",
+          message: "Unexpected",
+        },
+      },
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        JSON.stringify(errorData.detail),
+      );
+    });
+  });
+
   test("conmuta la visibilidad de la contraseña al pulsar el botón", () => {
     render(<Auth />);
     const passwordInput = screen.getByPlaceholderText(

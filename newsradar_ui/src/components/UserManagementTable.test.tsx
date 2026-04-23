@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, test, expect, beforeEach, vi, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { UserManagementTable } from "./UserManagementTable";
 
 const mockFetch = vi.fn();
@@ -174,5 +174,188 @@ describe("UserManagementTable", () => {
     await waitFor(() => {
       expect(screen.getByText("No se pudo actualizar")).toBeInTheDocument();
     });
+  });
+
+  test("muestra error si no hay token al cargar usuarios", async () => {
+    localStorage.removeItem("token");
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No autenticado")).toBeInTheDocument();
+    });
+
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  test("muestra error si no hay token al intentar PATCH", async () => {
+    const mockUsers = [
+      {
+        id: 2,
+        email: "user@test.com",
+        first_name: "Test",
+        last_name: "User",
+        role_ids: [1],
+      },
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockUsers,
+    });
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Cambiar rol de usuario user@test.com")).toBeInTheDocument();
+    });
+
+    localStorage.removeItem("token");
+    fireEvent.change(screen.getByLabelText("Cambiar rol de usuario user@test.com"), {
+      target: { value: "3" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("No autenticado")).toBeInTheDocument();
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("muestra error cuando GET lanza error de red", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network failure"));
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Network failure")).toBeInTheDocument();
+    });
+  });
+
+  test("muestra error cuando PATCH lanza error de red", async () => {
+    const mockUsers = [
+      {
+        id: 2,
+        email: "user@test.com",
+        first_name: "Test",
+        last_name: "User",
+        role_ids: [1],
+      },
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockUsers,
+    });
+
+    mockFetch.mockRejectedValueOnce(new Error("Network failure"));
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Cambiar rol de usuario user@test.com")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Cambiar rol de usuario user@test.com"), {
+      target: { value: "3" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Network failure")).toBeInTheDocument();
+    });
+  });
+
+  test("si PATCH es ok pero json falla, actualiza rol local con fallback", async () => {
+    const mockUsers = [
+      {
+        id: 2,
+        email: "user@test.com",
+        first_name: "Test",
+        last_name: "User",
+        role_ids: [1],
+      },
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockUsers,
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => {
+        throw new Error("invalid json");
+      },
+    });
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Cambiar rol de usuario user@test.com")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Cambiar rol de usuario user@test.com"), {
+      target: { value: "3" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("cell", { name: "Administrador" })).toBeInTheDocument();
+    });
+  });
+
+  test("limpia successMessage tras el temporizador", async () => {
+    vi.useFakeTimers();
+
+    const mockUsers = [
+      {
+        id: 2,
+        email: "user@test.com",
+        first_name: "Test",
+        last_name: "User",
+        role_ids: [1],
+      },
+    ];
+
+    const updatedUser = {
+      id: 2,
+      email: "user@test.com",
+      first_name: "Test",
+      last_name: "User",
+      role_ids: [3],
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockUsers,
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => updatedUser,
+    });
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Cambiar rol de usuario user@test.com")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Cambiar rol de usuario user@test.com"), {
+      target: { value: "3" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Rol actualizado correctamente")).toBeInTheDocument();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Rol actualizado correctamente")).not.toBeInTheDocument();
+    });
+
+    vi.useRealTimers();
   });
 });

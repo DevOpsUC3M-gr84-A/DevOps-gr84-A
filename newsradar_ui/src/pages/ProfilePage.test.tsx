@@ -140,4 +140,20 @@ describe("ProfilePage", () => {
     expect(screen.getByText("ID de usuario no encontrado")).toBeInTheDocument();
     expect(mockFetch).not.toHaveBeenCalled();
   });
+
+  test("muestra error cuando fetch del perfil lanza excepción", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("API caída"));
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("API caída")).toBeInTheDocument();
+  });
 });

@@ -220,6 +220,117 @@ describe("Componente Raíz App", () => {
     expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
   });
 
+  test("habilita gestión cuando userRoles es objeto con role_ids", () => {
+    localStorage.setItem("userRoles", JSON.stringify({ role_ids: [3] }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+  });
+
+  test("habilita gestión cuando userRoles es objeto con role", () => {
+    localStorage.setItem("userRoles", JSON.stringify({ role: 1 }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+  });
+
+  test("habilita gestión cuando userRoles es objeto con name admin", () => {
+    localStorage.setItem("userRoles", JSON.stringify({ name: "admin" }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+  });
+
+  test("habilita gestión con fallback de userRoles legacy por comas", () => {
+    localStorage.setItem("userRoles", "Admin, Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+  });
+
+  test("usa fallback legacy role_ids cuando userRoles no existe", () => {
+    localStorage.removeItem("userRoles");
+    localStorage.setItem("role_ids", JSON.stringify([3]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+  });
+
+  test("usa fallback legacy userRole cuando faltan userRoles y role_ids", () => {
+    localStorage.removeItem("userRoles");
+    localStorage.removeItem("role_ids");
+    localStorage.setItem("userRole", "Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+  });
+
   test("al cerrar sesión navega a /login y ejecuta logout", () => {
     localStorage.setItem("userRoles", JSON.stringify([1]));
     const logoutSpy = vi.fn();
