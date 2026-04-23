@@ -66,6 +66,7 @@ describe("useAuth hook", () => {
 
     expect(removeItemSpy).toHaveBeenCalledWith("token");
     expect(removeItemSpy).toHaveBeenCalledWith("userId");
+    expect(removeItemSpy).toHaveBeenCalledWith("user_id");
     expect(removeItemSpy).toHaveBeenCalledWith("userRoles");
     expect(removeItemSpy).toHaveBeenCalledWith("userEmail");
     expect(result.current.token).toBeNull();

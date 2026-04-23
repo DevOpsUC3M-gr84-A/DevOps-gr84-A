@@ -62,8 +62,8 @@ def login(
             )
         
         sync_memory_user(db_user)
-        ids = role_ids_from_role(db_user.role)
-        return _issue_token(db_user.id, ids)
+        fresh_role_ids = role_ids_from_role(db_user.role)
+        return _issue_token(db_user.id, fresh_role_ids)
 
     user = _find_legacy_user_by_email(payload.email)
     if user is None:

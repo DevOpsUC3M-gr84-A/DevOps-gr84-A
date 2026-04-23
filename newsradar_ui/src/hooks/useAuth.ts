@@ -36,6 +36,7 @@ export const useAuth = () => {
   const logout = () => {
     globalThis.localStorage.removeItem("token");
     globalThis.localStorage.removeItem("userId");
+    globalThis.localStorage.removeItem("user_id");
     globalThis.localStorage.removeItem("userRoles");
     globalThis.localStorage.removeItem("userEmail");
     setToken(null);
