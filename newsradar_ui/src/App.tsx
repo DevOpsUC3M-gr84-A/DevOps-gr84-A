@@ -32,7 +32,11 @@ interface ProtectedLayoutProps {
   onLanguageChange: (language: "es" | "en") => void;
 }
 
-const getStoredUserRoles = (): number[] => {
+const parseStoredRoles = (rawRoles: string | null): number[] => {
+  if (!rawRoles) {
+    return [];
+  }
+
   const normalizeAndFilterRoles = (roles: unknown): number[] => {
     const normalizedRoles = Array.isArray(roles) ? roles : [roles];
 
@@ -42,21 +46,8 @@ const getStoredUserRoles = (): number[] => {
   };
 
   try {
-    const rawRoles = globalThis.localStorage.getItem("userRoles");
-
-    if (!rawRoles) {
-      return [];
-    }
-
-    const parsedRoles = JSON.parse(rawRoles) as unknown;
-    return normalizeAndFilterRoles(parsedRoles);
+    return normalizeAndFilterRoles(JSON.parse(rawRoles) as unknown);
   } catch {
-    // Fallback for legacy values stored as plain text (e.g. "Admin").
-    const rawRoles = globalThis.localStorage.getItem("userRoles");
-    if (!rawRoles) {
-      return [];
-    }
-
     const commaSeparatedRoles = rawRoles
       .split(",")
       .map((value) => value.trim())
@@ -66,6 +57,24 @@ const getStoredUserRoles = (): number[] => {
       commaSeparatedRoles.length > 0 ? commaSeparatedRoles : rawRoles,
     );
   }
+};
+
+const getStoredUserRoles = (): number[] => {
+  const primaryRoles = parseStoredRoles(
+    globalThis.localStorage.getItem("userRoles"),
+  );
+
+  if (primaryRoles.length > 0) {
+    return primaryRoles;
+  }
+
+  // Fallback for older localStorage keys.
+  const legacyRoles = parseStoredRoles(globalThis.localStorage.getItem("role_ids"));
+  if (legacyRoles.length > 0) {
+    return legacyRoles;
+  }
+
+  return parseStoredRoles(globalThis.localStorage.getItem("userRole"));
 };
 
 const canAccessManagementSections = (roles: number[]): boolean =>

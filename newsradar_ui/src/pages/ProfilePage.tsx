@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { UserManagementTable } from "../components/UserManagementTable";
 import "./ProfilePage.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -110,6 +111,8 @@ export const ProfilePage: React.FC = () => {
     roleLabel = "Gestor";
   }
 
+  const isAdmin = roleSet.has(3);
+
   return (
     <main className="profile-page" aria-labelledby="profile-title">
       <div className="profile-container">
@@ -143,6 +146,8 @@ export const ProfilePage: React.FC = () => {
             <p id="role-display">{roleLabel}</p>
           </div>
         </article>
+
+        {isAdmin && <UserManagementTable isAdmin={true} />}
       </div>
     </main>
   );

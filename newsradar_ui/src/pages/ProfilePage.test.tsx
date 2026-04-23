@@ -12,6 +12,11 @@ vi.mock("../hooks/useAuth", () => ({
   }),
 }));
 
+vi.mock("../components/UserManagementTable", () => ({
+  UserManagementTable: ({ isAdmin }: { isAdmin: boolean }) =>
+    isAdmin ? <div data-testid="user-management-table">USER_MANAGEMENT_TABLE</div> : null,
+}));
+
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -38,7 +43,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Cargando perfil...")).toBeInTheDocument();
   });
 
-  test("renderiza perfil de admin en modo solo lectura", async () => {
+  test("renderiza perfil de admin y muestra gestión de usuarios", async () => {
     const adminProfile = {
       id: 1,
       email: "admin@test.com",
@@ -67,9 +72,10 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Admin")).toBeInTheDocument();
     expect(screen.getByText("User")).toBeInTheDocument();
     expect(screen.getByText("Administrador")).toBeInTheDocument();
+    expect(screen.getByTestId("user-management-table")).toBeInTheDocument();
   });
 
-  test("renderiza perfil de gestor en modo solo lectura", async () => {
+  test("renderiza perfil de gestor sin gestión de usuarios", async () => {
     const gestorProfile = {
       id: 2,
       email: "gestor@test.com",
@@ -96,6 +102,7 @@ describe("ProfilePage", () => {
 
     expect(screen.getByText("gestor@test.com")).toBeInTheDocument();
     expect(screen.getByText("Gestor", { selector: "#role-display" })).toBeInTheDocument();
+    expect(screen.queryByTestId("user-management-table")).not.toBeInTheDocument();
   });
 
   test("muestra error cuando falla carga de perfil", async () => {
