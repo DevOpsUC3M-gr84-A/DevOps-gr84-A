@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { LogIn, UserPlus, Mail, Lock, User, Building } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { normalizeRoleToId } from "../utils/roleUtils";
 import "./Auth.css";
 
 const API_BASE_URL =
@@ -24,34 +25,6 @@ interface AuthResponse extends ApiErrorResponse {
   role?: number | string;
   roles?: (number | string)[];
 }
-
-const ROLE_ID_BY_NAME: Record<string, number> = {
-  admin: 3,
-  gestor: 1,
-  lector: 2,
-};
-
-const normalizeRoleToId = (role: unknown): number | null => {
-  if (typeof role === "number") {
-    return Number.isInteger(role) ? role : null;
-  }
-
-  if (typeof role !== "string") {
-    return null;
-  }
-
-  const trimmed = role.trim();
-  if (trimmed === "") {
-    return null;
-  }
-
-  const numericRole = Number(trimmed);
-  if (Number.isInteger(numericRole)) {
-    return numericRole;
-  }
-
-  return ROLE_ID_BY_NAME[trimmed.toLowerCase()] ?? null;
-};
 
 const extractRoleIds = (data: AuthResponse): number[] => {
   const candidates: unknown[] = [];

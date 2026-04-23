@@ -12,8 +12,11 @@ from app.services.user_service import (
     create_db_user,
     get_password_hash,
     is_verification_expired,
+    list_all_users,
     role_from_role_ids,
     role_ids_from_role,
+    update_user_role,
+    update_user_role_by_role_id,
     update_db_user,
     verify_password,
     verify_user_email,
@@ -484,3 +487,62 @@ class TestVerifyUserEmail:
         assert "éxito" in message
         db.commit.assert_called_once()
         db.refresh.assert_called_once_with(user)
+
+
+@pytest.mark.unit
+class TestRollbackCoverage:
+    """Tests that force generic exceptions to cover rollback branches."""
+
+    def test_list_all_users_rolls_back_on_generic_exception(self, mocker):
+        db = MagicMock()
+        db.rollback = MagicMock()
+        mocker.patch.object(db, "query", side_effect=Exception("boom"))
+
+        with pytest.raises(Exception, match="boom"):
+            list_all_users(db)
+
+        db.rollback.assert_called_once()
+
+    def test_update_user_role_rolls_back_on_generic_exception(self, mocker):
+        db = MagicMock()
+        db.rollback = MagicMock()
+        query_result = MagicMock()
+        query_result.filter.return_value.first.return_value = User(
+            id=1,
+            email="test@test.com",
+            name="Test",
+            surname="User",
+            organization="Org",
+            hashed_password="hash",
+            role=UserRole.LECTOR,
+            is_verified=True,
+        )
+        mocker.patch.object(db, "query", return_value=query_result)
+        mocker.patch.object(db, "commit", side_effect=Exception("commit failed"))
+
+        with pytest.raises(Exception, match="commit failed"):
+            update_user_role_by_role_id(db, 1, 2)
+
+        db.rollback.assert_called_once()
+
+    def test_update_user_role_legacy_helper_rolls_back_on_generic_exception(self, mocker):
+        db = MagicMock()
+        db.rollback = MagicMock()
+        query_result = MagicMock()
+        query_result.filter.return_value.first.return_value = User(
+            id=1,
+            email="test2@test.com",
+            name="Test",
+            surname="User",
+            organization="Org",
+            hashed_password="hash",
+            role=UserRole.LECTOR,
+            is_verified=True,
+        )
+        mocker.patch.object(db, "query", return_value=query_result)
+        mocker.patch.object(db, "commit", side_effect=Exception("commit failed"))
+
+        with pytest.raises(Exception, match="commit failed"):
+            update_user_role(db, 1, UserRole.GESTOR)
+
+        db.rollback.assert_called_once()

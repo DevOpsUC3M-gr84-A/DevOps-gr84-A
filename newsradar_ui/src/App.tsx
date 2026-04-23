@@ -24,6 +24,7 @@ import { ResetPassword } from "./pages/ResetPassword";
 import { useAuth } from "./hooks/useAuth";
 import { SourcesRss } from "./pages/SourcesRss";
 import { ProfilePage } from "./pages/ProfilePage";
+import { normalizeRoleToId } from "./utils/roleUtils";
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
@@ -32,34 +33,6 @@ interface ProtectedLayoutProps {
 }
 
 const MANAGEMENT_ROLE_IDS = [1, 3];
-
-const ROLE_ID_BY_NAME: Record<string, number> = {
-  admin: 3,
-  gestor: 1,
-  lector: 2,
-};
-
-const normalizeRoleToId = (role: unknown): number | null => {
-  if (typeof role === "number") {
-    return Number.isInteger(role) ? role : null;
-  }
-
-  if (typeof role !== "string") {
-    return null;
-  }
-
-  const trimmed = role.trim();
-  if (trimmed === "") {
-    return null;
-  }
-
-  const numericRole = Number(trimmed);
-  if (Number.isInteger(numericRole)) {
-    return numericRole;
-  }
-
-  return ROLE_ID_BY_NAME[trimmed.toLowerCase()] ?? null;
-};
 
 const getStoredUserRoles = (): number[] => {
   try {

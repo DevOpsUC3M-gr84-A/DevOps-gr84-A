@@ -98,6 +98,80 @@ describe("Página de Autenticación", () => {
     });
   });
 
+  test("normaliza un mix de role_ids, roles y role antes de llamar login", async () => {
+    const mockResponse = {
+      access_token: "token-mixed",
+      user_id: 7,
+      role_ids: [3, "Gestor", "invalido"],
+      roles: ["ADMIN", "??"],
+      role: "2",
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "mixed@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-mixed",
+        user_id: 7,
+        role_ids: [3, 1, 3, 2],
+      });
+    });
+  });
+
+  test("usa lector por defecto cuando la API devuelve roles inválidos", async () => {
+    const mockResponse = {
+      access_token: "token-default",
+      user_id: 8,
+      role_ids: ["???"],
+      roles: [""],
+      role: null,
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "default@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-default",
+        user_id: 8,
+        role_ids: [2],
+      });
+    });
+  });
+
   test("envía registro por fetch y muestra mensaje de confirmación de email", async () => {
     jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,

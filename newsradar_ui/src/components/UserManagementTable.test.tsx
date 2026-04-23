@@ -117,6 +117,18 @@ describe("UserManagementTable", () => {
     expect(screen.getByText("No autorizado")).toBeInTheDocument();
   });
 
+  test("muestra error cuando falla la red al cargar usuarios", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network down"));
+
+    render(<UserManagementTable isAdmin={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Network down");
+  });
+
   test("actualiza rol de usuario al cambiar select", async () => {
     const mockUsers = [
       {

@@ -129,6 +129,27 @@ class TestAdminUserManagement:
 
         assert response.status_code == 400
 
+    def test_list_users_admin_generic_exception_returns_500(self, api_client_admin, mocker):
+        """Si el servicio falla, la ruta devuelve 500."""
+        mocker.patch("app.api.routes.users.list_all_users", side_effect=Exception("boom"))
+
+        response = api_client_admin.get("/api/v1/users")
+
+        assert response.status_code == 500
+        assert response.json()["detail"] == "Error al obtener la lista de usuarios"
+
+    def test_update_user_role_admin_generic_exception_returns_500(self, api_client_admin, mocker):
+        """Si la actualización falla, la ruta devuelve 500."""
+        mocker.patch(
+            "app.api.routes.users.update_user_role_by_role_id",
+            side_effect=Exception("boom"),
+        )
+
+        response = api_client_admin.patch("/api/v1/users/1/role", json={"role_id": 2})
+
+        assert response.status_code == 500
+        assert response.json()["detail"] == "Error al actualizar el rol del usuario"
+
     def test_update_user_role_lector_forbidden(self, api_client_lector, test_session_factory):
         """Lector NO puede actualizar roles de usuarios."""
         # Crear un usuario
