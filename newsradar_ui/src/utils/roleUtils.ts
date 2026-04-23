@@ -4,24 +4,26 @@ export const ROLE_ID_BY_NAME: Record<string, number> = {
   lector: 2,
 };
 
-export const normalizeRoleToId = (role: unknown): number | null => {
-  if (typeof role === "number") {
-    return Number.isInteger(role) ? role : null;
+export const normalizeRoleToId = (role: unknown): number => {
+  if (role === 1 || role === "1") {
+    return 1;
   }
 
-  if (typeof role !== "string") {
-    return null;
+  if (role === 3 || role === "3") {
+    return 3;
   }
 
-  const trimmed = role.trim();
-  if (trimmed === "") {
-    return null;
+  if (typeof role === "string") {
+    const normalized = role.trim().toLowerCase();
+
+    if (normalized === "gestor") {
+      return 1;
+    }
+
+    if (normalized === "admin") {
+      return 3;
+    }
   }
 
-  const numericRole = Number(trimmed);
-  if (Number.isInteger(numericRole)) {
-    return numericRole;
-  }
-
-  return ROLE_ID_BY_NAME[trimmed.toLowerCase()] ?? null;
+  return 2;
 };

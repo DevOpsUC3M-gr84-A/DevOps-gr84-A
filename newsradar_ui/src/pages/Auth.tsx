@@ -45,9 +45,27 @@ const extractRoleIds = (data: AuthResponse): number[] => {
     candidates.push(data.role);
   }
 
+  const isValidRoleInput = (value: unknown): boolean => {
+    if (value === 1 || value === 2 || value === 3) {
+      return true;
+    }
+
+    if (typeof value !== "string") {
+      return false;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1"
+      || normalized === "2"
+      || normalized === "3"
+      || normalized === "gestor"
+      || normalized === "admin"
+      || normalized === "lector";
+  };
+
   const normalized = candidates
-    .map(normalizeRoleToId)
-    .filter((roleId): roleId is number => roleId !== null);
+    .filter(isValidRoleInput)
+    .map(normalizeRoleToId);
 
   return normalized.length > 0 ? normalized : [2];
 };

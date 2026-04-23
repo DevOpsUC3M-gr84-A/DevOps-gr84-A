@@ -34,7 +34,22 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeoutId = globalThis.setTimeout(() => {
+      setSuccessMessage(null);
+    }, 2500);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [successMessage]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -86,6 +101,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
   const handleRoleChange = async (userId: number, newRoleId: number) => {
     setUpdatingUserId(userId);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const token = globalThis.localStorage.getItem("token");
@@ -111,10 +127,33 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
         return;
       }
 
-      const updatedUser: User = await response.json();
+      let updatedUser: Partial<User> | null = null;
+
+      try {
+        updatedUser = (await response.json()) as Partial<User>;
+      } catch {
+        updatedUser = null;
+      }
+
       setUsers((prevUsers) =>
-        prevUsers.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
+        prevUsers.map((user) => {
+          if (user.id !== userId) {
+            return user;
+          }
+
+          const nextRoleIds =
+            updatedUser?.role_ids && updatedUser.role_ids.length > 0
+              ? updatedUser.role_ids
+              : [newRoleId];
+
+          return {
+            ...user,
+            ...updatedUser,
+            role_ids: nextRoleIds,
+          };
+        }),
       );
+      setSuccessMessage("Rol actualizado correctamente");
     } catch (err) {
       setError(
         err instanceof Error
@@ -138,6 +177,12 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
         <div className="error-message" role="alert" aria-live="polite">
           <AlertCircle size={20} aria-hidden="true" />
           <p>{error}</p>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="success-message" role="status" aria-live="polite">
+          <p>{successMessage}</p>
         </div>
       )}
 

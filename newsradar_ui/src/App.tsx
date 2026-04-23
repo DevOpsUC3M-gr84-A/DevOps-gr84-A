@@ -37,12 +37,68 @@ const parseStoredRoles = (rawRoles: string | null): number[] => {
     return [];
   }
 
-  const normalizeAndFilterRoles = (roles: unknown): number[] => {
-    const normalizedRoles = Array.isArray(roles) ? roles : [roles];
+  const extractCandidates = (roles: unknown): unknown[] => {
+    if (Array.isArray(roles)) {
+      return roles;
+    }
 
-    return normalizedRoles
-      .map(normalizeRoleToId)
-      .filter((roleId): roleId is number => roleId !== null);
+    if (roles && typeof roles === "object") {
+      const roleObject = roles as Record<string, unknown>;
+
+      if (Array.isArray(roleObject.role_ids)) {
+        return roleObject.role_ids;
+      }
+
+      if (Array.isArray(roleObject.roles)) {
+        return roleObject.roles;
+      }
+
+      if (roleObject.role != null) {
+        return [roleObject.role];
+      }
+
+      if (roleObject.role_id != null) {
+        return [roleObject.role_id];
+      }
+
+      if (roleObject.id != null) {
+        return [roleObject.id];
+      }
+
+      if (roleObject.name != null) {
+        return [roleObject.name];
+      }
+    }
+
+    return [roles];
+  };
+
+  const normalizeCandidate = (candidate: unknown): number => {
+    if (candidate && typeof candidate === "object") {
+      const candidateObject = candidate as Record<string, unknown>;
+
+      if (candidateObject.role_id != null) {
+        return normalizeRoleToId(candidateObject.role_id);
+      }
+
+      if (candidateObject.role != null) {
+        return normalizeRoleToId(candidateObject.role);
+      }
+
+      if (candidateObject.id != null) {
+        return normalizeRoleToId(candidateObject.id);
+      }
+
+      if (candidateObject.name != null) {
+        return normalizeRoleToId(candidateObject.name);
+      }
+    }
+
+    return normalizeRoleToId(candidate);
+  };
+
+  const normalizeAndFilterRoles = (roles: unknown): number[] => {
+    return extractCandidates(roles).map(normalizeCandidate);
   };
 
   try {
@@ -78,7 +134,7 @@ const getStoredUserRoles = (): number[] => {
 };
 
 const canAccessManagementSections = (roles: number[]): boolean =>
-  roles.some((roleId) => roleId === 1 || roleId === 3);
+  roles.includes(1) || roles.includes(3);
 
 const DashboardPage = () => (
   <section className="main-content">
