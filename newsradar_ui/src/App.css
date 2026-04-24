@@ -69,18 +69,18 @@
   width: fit-content;
   margin: 0 auto 1.5rem;
   font-size: 0.9rem;
-  color: #1e293b;
+  color: #f8fafc;
   text-align: center;
   padding: 0.25rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.15);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .language-switcher-item {
   cursor: pointer;
   background: none;
   border: none;
-  color: #334155;
+  color: #f1f5f9;
   font: inherit;
   font-weight: 600;
   padding: 0.25rem 0.55rem;
@@ -89,8 +89,8 @@
 }
 
 .language-switcher-item:hover {
-  background: rgba(15, 23, 42, 0.1);
-  color: #0f172a; /* Azul casi negro para máximo contraste */
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff; /* Blanco puro en hover */
 }
 
 .language-switcher-item.is-active {
