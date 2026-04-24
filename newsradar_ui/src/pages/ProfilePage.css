@@ -224,8 +224,9 @@
   gap: 0.75rem;
   padding: 0.9rem 1rem;
   border-radius: 12px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #7f1d1d;
+  background: #fef2f2; /* Un rojo muy, muy pálido de fondo */
+  color: #991b1b;      /* Un rojo oscuro muy sólido para el texto */
+  border: 1px solid #fee2e2;
 }
 
 .danger-warning p {
@@ -242,8 +243,8 @@
   padding: 0.9rem 1rem;
   border: none;
   border-radius: 12px;
-  background: #dc2626;
-  color: #ffffff;
+  background: #b91c1c; /* Rojo oscuro */
+  color: #ffffff;      /* Blanco sobre rojo oscuro SIEMPRE pasa */
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
