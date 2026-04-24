@@ -156,4 +156,82 @@ describe("ProfilePage", () => {
 
     expect(screen.getByText("API caída")).toBeInTheDocument();
   });
+
+  test("muestra email verificado (CheckCircle verde) cuando is_active es true", async () => {
+    const verifiedProfile = {
+      id: 1,
+      email: "verified@test.com",
+      first_name: "Verified",
+      last_name: "User",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: true,
+      email_verified: true,
+      is_verified: true,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => verifiedProfile,
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Perfil de Usuario")).toBeInTheDocument();
+    });
+
+    // Buscar el estado de verificación del email
+    const emailStatusElement = screen.getByText("Email Verificado");
+    expect(emailStatusElement).toBeInTheDocument();
+
+    // Verificar que el botón "Verificar email" está deshabilitado
+    const verifyButton = screen.getByRole("button", {
+      name: /Verificar email/i,
+    });
+    expect(verifyButton).toBeDisabled();
+  });
+
+  test("muestra email no verificado (XCircle naranja) cuando is_active es false", async () => {
+    const notVerifiedProfile = {
+      id: 2,
+      email: "notverified@test.com",
+      first_name: "NotVerified",
+      last_name: "User",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => notVerifiedProfile,
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Perfil de Usuario")).toBeInTheDocument();
+    });
+
+    // Buscar el estado de no verificación del email
+    const emailStatusElement = screen.getByText("No verificado");
+    expect(emailStatusElement).toBeInTheDocument();
+
+    // Verificar que el botón "Verificar email" está habilitado
+    const verifyButton = screen.getByRole("button", {
+      name: /Verificar email/i,
+    });
+    expect(verifyButton).not.toBeDisabled();
+  });
 });

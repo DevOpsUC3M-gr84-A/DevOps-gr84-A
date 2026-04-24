@@ -27,6 +27,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   align-items: end;
+  margin-bottom: 1.5rem;
 }
 
 .form-row-split .profile-field {
@@ -83,7 +84,7 @@
   width: 100%;
   display: grid;
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 1.5rem;
 }
 
 .profile-field:last-child {

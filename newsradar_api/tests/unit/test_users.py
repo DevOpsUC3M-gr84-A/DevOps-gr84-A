@@ -46,7 +46,7 @@ class TestUsersEndpointIntegration:
             name="UpdateTest",
             surname="User",
             organization="OldOrg",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("Password@123"),
             role=UserRole.LECTOR,
             is_verified=True,
         )
@@ -67,7 +67,7 @@ class TestUsersEndpointIntegration:
             name="ToDelete",
             surname="User",
             organization="TestOrg",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("Password@123"),
             role=UserRole.LECTOR,
             is_verified=True,
         )
@@ -88,7 +88,7 @@ class TestUsersEndpointIntegration:
             name="VerifyTest",
             surname="User",
             organization="TestOrg",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash("Password@123"),
             role=UserRole.LECTOR,
             is_verified=False,
             created_at=datetime.now(timezone.utc),

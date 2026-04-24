@@ -201,7 +201,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   return (
     <>
       <main className="main-content">
-        <header className="header-actions">
+        <div className="alerts-header">
           <div className="page-heading">
             <h1 className="section-title">Gestión de Alertas</h1>
             <p className="section-subtitle">
@@ -213,7 +213,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
               <Plus size={18} /> Crear Nueva Alerta
             </button>
           )}
-        </header>
+        </div>
 
         {alertFeedback && (
           <div

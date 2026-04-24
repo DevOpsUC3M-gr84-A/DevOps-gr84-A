@@ -550,4 +550,90 @@ describe("Componente Raíz App", () => {
     expect(screen.getByAltText(/NewsRadar Logo/i)).toBeInTheDocument();
     expect(screen.getByText(/NewsRadar/i)).toBeInTheDocument();
   });
+
+  test("hamburger menu button es clickeable y el sidebar cambia clase", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const menuButton = screen.getByRole("button", {
+      name: /abrir menú lateral|cerrar menú lateral/i,
+    });
+    expect(menuButton).toBeInTheDocument();
+
+    // El sidebar debe estar abierto inicialmente (sin clase "closed")
+    let sidebar = screen.getByRole("complementary");
+    expect(sidebar).toHaveClass("sidebar");
+    expect(sidebar).not.toHaveClass("closed");
+
+    // Hacer click en el botón del menú
+    fireEvent.click(menuButton);
+
+    // Después del click, el sidebar debe tener la clase "closed"
+    await waitFor(() => {
+      sidebar = screen.getByRole("complementary");
+      expect(sidebar).toHaveClass("closed");
+    });
+
+    // Hacer click nuevamente
+    fireEvent.click(menuButton);
+
+    // Después del segundo click, la clase "closed" debe removerse
+    await waitFor(() => {
+      sidebar = screen.getByRole("complementary");
+      expect(sidebar).not.toHaveClass("closed");
+    });
+  });
+
+  test("top-bar muestra título dinámico correcto por ruta", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/ALERTAS/i)).toBeInTheDocument();
+    });
+
+    // Cambiar a ruta /fuentes-rss
+    rerender(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/FUENTES Y RSS/i)).toBeInTheDocument();
+    });
+
+    // Cambiar a ruta /perfil
+    rerender(
+      <MemoryRouter initialEntries={["/perfil"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/PERFIL/i)).toBeInTheDocument();
+    });
+  });
 });

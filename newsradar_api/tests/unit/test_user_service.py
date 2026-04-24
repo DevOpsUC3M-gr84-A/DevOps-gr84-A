@@ -35,7 +35,7 @@ class TestUserCreateSchemaValidation:
                 first_name="Weak",
                 last_name="User",
                 organization="TestOrg",
-                password="password1!",
+                password="weakpass12",
             )
 
 
@@ -45,7 +45,7 @@ class TestPasswordHashingAndVerification:
 
     def test_get_password_hash_returns_string(self):
         """Verify get_password_hash generates a valid hash string."""
-        password = "secret123"
+        password = "Secret@123"
         hashed = get_password_hash(password)
         assert isinstance(hashed, str)
         assert len(hashed) > 0
@@ -53,14 +53,14 @@ class TestPasswordHashingAndVerification:
 
     def test_verify_password_correct_password_returns_true(self):
         """Verify password verification succeeds with correct password."""
-        password = "correct_password"
+        password = "Correct@Pass123"
         hashed = get_password_hash(password)
         assert verify_password(password, hashed) is True
 
     def test_verify_password_wrong_password_returns_false(self):
         """Verify password verification fails with wrong password."""
-        password = "correct_password"
-        wrong_password = "wrong_password"
+        password = "Correct@Pass123"
+        wrong_password = "Wrong@Pass123"
         hashed = get_password_hash(password)
         assert verify_password(wrong_password, hashed) is False
 
@@ -247,14 +247,14 @@ class TestUpdateDBUser:
             is_verified=False,
         )
 
-        payload = UserUpdate(password="newpassword123")
+        payload = UserUpdate(password="NewPassword@123")
 
         result = update_db_user(db, db_user, payload)
 
         assert result is db_user
         # Verify password was hashed (won't be the same as before and not plaintext)
         assert result.hashed_password != "old_hash"
-        assert verify_password("newpassword123", result.hashed_password)
+        assert verify_password("NewPassword@123", result.hashed_password)
 
     def test_update_db_user_role(self):
         """Verify update_db_user updates user role."""

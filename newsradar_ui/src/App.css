@@ -285,6 +285,24 @@
   margin-bottom: 2rem;
 }
 
+.alerts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.alerts-header .page-heading {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.alerts-header .btn-primary {
+  white-space: nowrap;
+  margin-top: 0.25rem;
+}
+
 .page-title {
   font-size: 1.875rem;
   font-weight: 600;
