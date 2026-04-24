@@ -276,7 +276,7 @@ const ProtectedLayout = ({
         const lastInitial = lastName.charAt(0).toUpperCase();
         const initials = `${firstInitial}${lastInitial}` || "US";
         const parsedRoleIds = parseStoredRoles(
-          data.role_ids != null ? JSON.stringify(data.role_ids) : null,
+          data.role_ids ? JSON.stringify(data.role_ids) : null
         );
 
         setUserName(fullName);

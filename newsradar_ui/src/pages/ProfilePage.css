@@ -202,7 +202,7 @@
   opacity: 0.5;
   cursor: not-allowed;
   background: #e5e7eb;
-  color: #64748b;
+  color: #475569;
   border-color: #cbd5e1;
   transform: none;
 }
@@ -225,7 +225,7 @@
   padding: 0.9rem 1rem;
   border-radius: 12px;
   background: rgba(239, 68, 68, 0.08);
-  color: #991b1b;
+  color: #7f1d1d;
 }
 
 .danger-warning p {
@@ -242,7 +242,7 @@
   padding: 0.9rem 1rem;
   border: none;
   border-radius: 12px;
-  background: #ef4444;
+  background: #dc2626;
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
@@ -250,7 +250,7 @@
 }
 
 .danger-button:hover {
-  background: #dc2626;
+  background: #b91c1c;
   transform: translateY(-1px);
 }
 
