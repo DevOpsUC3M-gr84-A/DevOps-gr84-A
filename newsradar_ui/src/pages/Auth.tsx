@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { LogIn, UserPlus, Mail, Lock, User, Building } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { normalizeRoleToId } from "../utils/roleUtils";
 import "./Auth.css";
 
 const API_BASE_URL =
@@ -20,8 +21,54 @@ interface ApiErrorResponse {
 interface AuthResponse extends ApiErrorResponse {
   access_token?: string;
   user_id?: number;
-  role_ids?: number[];
+  role_ids?: (number | string)[];
+  role?: number | string;
+  roles?: (number | string)[];
 }
+
+const extractRoleIds = (data: AuthResponse): number[] => {
+  const candidates: unknown[] = [];
+
+  if (Array.isArray(data.role_ids)) {
+    candidates.push(...data.role_ids);
+  } else if (data.role_ids != null) {
+    candidates.push(data.role_ids);
+  }
+
+  if (Array.isArray(data.roles)) {
+    candidates.push(...data.roles);
+  } else if (data.roles != null) {
+    candidates.push(data.roles);
+  }
+
+  if (data.role != null) {
+    candidates.push(data.role);
+  }
+
+  const isValidRoleInput = (value: unknown): boolean => {
+    if (value === 1 || value === 2 || value === 3) {
+      return true;
+    }
+
+    if (typeof value !== "string") {
+      return false;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1"
+      || normalized === "2"
+      || normalized === "3"
+      || normalized === "gestor"
+      || normalized === "admin"
+      || normalized === "lector";
+  };
+
+  const normalized = candidates
+    .filter(isValidRoleInput)
+    .map(normalizeRoleToId);
+
+  return normalized.length > 0 ? normalized : [2];
+};
 
 const formatApiError = (data: ApiErrorResponse): string => {
   if (typeof data.detail === "string") {
@@ -108,7 +155,7 @@ export const Auth = () => {
       ? { email: formData.email, password: formData.password }
       : {
           ...formData,
-          role_ids: [2],
+          role_ids: [1],
         };
 
     try {
@@ -131,10 +178,11 @@ export const Auth = () => {
       }
 
       if (isLogin) {
+        const normalizedRoleIds = extractRoleIds(data);
         login({
           access_token: data.access_token ?? "",
           user_id: data.user_id ?? 0,
-          role_ids: data.role_ids ?? [],
+          role_ids: normalizedRoleIds,
         });
         navigate("/dashboard", { replace: true });
       } else {

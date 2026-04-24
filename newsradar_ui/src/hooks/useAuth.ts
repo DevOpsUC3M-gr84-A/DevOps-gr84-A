@@ -25,7 +25,7 @@ export const useAuth = () => {
     };
   }, []);
 
-  const login = (data: { access_token: string; user_id: number; role_ids: number[] }) => {
+  const login = (data: { access_token: string; user_id: number; role_ids: (number | string)[] }) => {
     globalThis.localStorage.setItem("token", data.access_token);
     globalThis.localStorage.setItem("userId", data.user_id.toString());
     globalThis.localStorage.setItem("userRoles", JSON.stringify(data.role_ids));
@@ -36,6 +36,7 @@ export const useAuth = () => {
   const logout = () => {
     globalThis.localStorage.removeItem("token");
     globalThis.localStorage.removeItem("userId");
+    globalThis.localStorage.removeItem("user_id");
     globalThis.localStorage.removeItem("userRoles");
     globalThis.localStorage.removeItem("userEmail");
     setToken(null);

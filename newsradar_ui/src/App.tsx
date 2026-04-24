@@ -1,4 +1,6 @@
 // @ts-ignore: CSS module declaration not found
+import React, { useState, useEffect } from "react";
+
 import "./App.css";
 import {
   Bell,
@@ -8,48 +10,146 @@ import {
   Inbox,
   LogOut,
 } from "lucide-react";
-import { Navigate, NavLink, Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import {
+  Navigate,
+  NavLink,
+  Outlet,
+  Route,
+  Routes,
+  useNavigate,
+} from "react-router-dom";
 import { AlertsManagement } from "./pages/AlertsManagement";
 import { Auth } from "./pages/Auth";
 import { VerifyEmail } from "./pages/VerifyEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ResetPassword } from "./pages/ResetPassword";
 import { useAuth } from "./hooks/useAuth";
+import { SourcesRss } from "./pages/SourcesRss";
+import { ProfilePage } from "./pages/ProfilePage";
+import { normalizeRoleToId } from "./utils/roleUtils";
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
+  canManageSections: boolean;
   onLanguageChange: (language: "es" | "en") => void;
 }
 
+const parseStoredRoles = (rawRoles: string | null): number[] => {
+  if (!rawRoles) {
+    return [];
+  }
+
+  const extractCandidates = (roles: unknown): unknown[] => {
+    if (Array.isArray(roles)) {
+      return roles;
+    }
+
+    if (roles && typeof roles === "object") {
+      const roleObject = roles as Record<string, unknown>;
+
+      if (Array.isArray(roleObject.role_ids)) {
+        return roleObject.role_ids;
+      }
+
+      if (Array.isArray(roleObject.roles)) {
+        return roleObject.roles;
+      }
+
+      if (roleObject.role != null) {
+        return [roleObject.role];
+      }
+
+      if (roleObject.role_id != null) {
+        return [roleObject.role_id];
+      }
+
+      if (roleObject.id != null) {
+        return [roleObject.id];
+      }
+
+      if (roleObject.name != null) {
+        return [roleObject.name];
+      }
+    }
+
+    return [roles];
+  };
+
+  const normalizeCandidate = (candidate: unknown): number => {
+    if (candidate && typeof candidate === "object") {
+      const candidateObject = candidate as Record<string, unknown>;
+
+      if (candidateObject.role_id != null) {
+        return normalizeRoleToId(candidateObject.role_id);
+      }
+
+      if (candidateObject.role != null) {
+        return normalizeRoleToId(candidateObject.role);
+      }
+
+      if (candidateObject.id != null) {
+        return normalizeRoleToId(candidateObject.id);
+      }
+
+      if (candidateObject.name != null) {
+        return normalizeRoleToId(candidateObject.name);
+      }
+    }
+
+    return normalizeRoleToId(candidate);
+  };
+
+  const normalizeAndFilterRoles = (roles: unknown): number[] => {
+    return extractCandidates(roles).map(normalizeCandidate);
+  };
+
+  try {
+    return normalizeAndFilterRoles(JSON.parse(rawRoles) as unknown);
+  } catch {
+    const commaSeparatedRoles = rawRoles
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return normalizeAndFilterRoles(
+      commaSeparatedRoles.length > 0 ? commaSeparatedRoles : rawRoles,
+    );
+  }
+};
+
+const getStoredUserRoles = (): number[] => {
+  const primaryRoles = parseStoredRoles(
+    globalThis.localStorage.getItem("userRoles"),
+  );
+
+  if (primaryRoles.length > 0) {
+    return primaryRoles;
+  }
+
+  // Fallback for older localStorage keys.
+  const legacyRoles = parseStoredRoles(globalThis.localStorage.getItem("role_ids"));
+  if (legacyRoles.length > 0) {
+    return legacyRoles;
+  }
+
+  return parseStoredRoles(globalThis.localStorage.getItem("userRole"));
+};
+
+const canAccessManagementSections = (roles: number[]): boolean =>
+  roles.includes(1) || roles.includes(3);
+
 const DashboardPage = () => (
   <section className="main-content">
-    {/* Sprint 4 placeholder: estadísticas globales y nubes de palabras */}
     <h1>Dashboard / Resumen</h1>
     <p>
-      Aqui iran las estadisticas globales (Issue #85) y nubes de palabras (Issue #85).
+      Aqui iran las estadisticas globales (Issue #85) y nubes de palabras (Issue
+      #85).
     </p>
-  </section>
-);
-
-const SourcesRssPage = () => (
-  <section className="main-content">
-    {/* Sprint 4 placeholder: gestión de fuentes RSS y categorías IPTC */}
-    <h1>Gestion de Fuentes y canales RSS</h1>
-    <p>CRUD de Fuentes y categorias IPTC (Issue #86).</p>
-  </section>
-);
-
-const ProfilePage = () => (
-  <section className="main-content">
-    {/* Sprint 4 placeholder: edición de perfil y seguridad */}
-    <h1>Gestion del Perfil de Usuario</h1>
-    <p>Edicion de datos personales, organizacion y seguridad (Issue #86).</p>
   </section>
 );
 
 const NotificationsPage = () => (
   <section className="main-content">
-    {/* Sprint 4 placeholder: buzón de notificaciones de indexación */}
     <h1>Buzon de Notificaciones</h1>
     <p>Buzon de notificaciones de indexacion.</p>
   </section>
@@ -81,10 +181,10 @@ const LanguageSwitcher = ({
 
 const ProtectedLayout = ({
   handleLogout,
+  canManageSections,
   onLanguageChange,
 }: ProtectedLayoutProps) => (
   <div className="app-container">
-    {/* Sidebar */}
     <aside className="sidebar">
       <div className="brand-section app-brand-section">
         <img
@@ -105,18 +205,22 @@ const ProtectedLayout = ({
               <span>Dashboard / Resumen</span>
             </NavLink>
           </li>
-          <li>
-            <NavLink to="/alertas" className="nav-item">
-              <Bell size={20} />
-              <span>Gestion de Alertas</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/fuentes-rss" className="nav-item">
-              <Rss size={20} />
-              <span>Gestion de Fuentes y canales RSS</span>
-            </NavLink>
-          </li>
+          {canManageSections && (
+            <>
+              <li>
+                <NavLink to="/alertas" className="nav-item">
+                  <Bell size={20} />
+                  <span>Gestion de Alertas</span>
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/fuentes-rss" className="nav-item">
+                  <Rss size={20} />
+                  <span>Gestion de Fuentes y canales RSS</span>
+                </NavLink>
+              </li>
+            </>
+          )}
           <li>
             <NavLink to="/notificaciones" className="nav-item">
               <Inbox size={20} />
@@ -131,7 +235,6 @@ const ProtectedLayout = ({
           </li>
         </ul>
 
-        {/* Botón de Logout al final del nav */}
         <div className="nav-footer">
           <button onClick={handleLogout} className="logout-button">
             <LogOut size={20} />
@@ -141,7 +244,6 @@ const ProtectedLayout = ({
       </nav>
     </aside>
 
-    {/* Main Content */}
     <Outlet />
   </div>
 );
@@ -149,8 +251,19 @@ const ProtectedLayout = ({
 function App() {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  // ✅ 1. Lo convertimos en un estado reactivo
+  const [canManageSections, setCanManageSections] = useState(false);
+  
+  // ✅ 2. Obligamos a React a recalcular los roles CADA VEZ que te logueas o deslogueas
+  useEffect(() => {
+    if (isAuthenticated) {
+      const userRoles = getStoredUserRoles();
+      setCanManageSections(canAccessManagementSections(userRoles));
+    } else {
+      setCanManageSections(false);
+    }
+  }, [isAuthenticated]);
 
-  // Función para cerrar sesión
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
@@ -167,6 +280,7 @@ function App() {
           isAuthenticated ? (
             <ProtectedLayout
               handleLogout={handleLogout}
+              canManageSections={canManageSections}
               onLanguageChange={() => {}}
             />
           ) : (
@@ -176,8 +290,26 @@ function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="alertas" element={<AlertsManagement onLogout={handleLogout} />} />
-        <Route path="fuentes-rss" element={<SourcesRssPage />} />
+        <Route
+          path="alertas"
+          element={
+            canManageSections ? (
+              <AlertsManagement onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
+          path="fuentes-rss"
+          element={
+            canManageSections ? (
+              <SourcesRss />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
         <Route path="notificaciones" element={<NotificationsPage />} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>
@@ -185,7 +317,11 @@ function App() {
       <Route
         path="*"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+          isAuthenticated ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
     </Routes>

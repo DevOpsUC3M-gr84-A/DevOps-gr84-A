@@ -12,8 +12,11 @@ from app.services.user_service import (
     create_db_user,
     get_password_hash,
     is_verification_expired,
+    list_all_users,
     role_from_role_ids,
     role_ids_from_role,
+    update_user_role,
+    update_user_role_by_role_id,
     update_db_user,
     verify_password,
     verify_user_email,
@@ -55,14 +58,25 @@ class TestRoleMapping:
         assert role_from_role_ids([1]) == UserRole.GESTOR
         assert role_from_role_ids([1, 2]) == UserRole.GESTOR  # GESTOR takes precedence
 
+    def test_role_from_role_ids_admin(self):
+        """Verify role_from_role_ids returns ADMIN for role_id 3."""
+        assert role_from_role_ids([3]) == UserRole.ADMIN
+
+    def test_role_from_role_ids_default_gestor(self):
+        """Verify role_from_role_ids defaults to GESTOR when no role ids are provided."""
+        assert role_from_role_ids([]) == UserRole.GESTOR
+
     def test_role_from_role_ids_lector(self):
         """Verify role_from_role_ids returns LECTOR for role_id 2."""
         assert role_from_role_ids([2]) == UserRole.LECTOR
-        assert role_from_role_ids([]) == UserRole.LECTOR  # Default
 
     def test_role_ids_from_role_gestor(self):
         """Verify role_ids_from_role returns [1] for GESTOR."""
         assert role_ids_from_role(UserRole.GESTOR) == [1]
+
+    def test_role_ids_from_role_admin(self):
+        """Verify role_ids_from_role returns [3] for ADMIN."""
+        assert role_ids_from_role(UserRole.ADMIN) == [3]
 
     def test_role_ids_from_role_lector(self):
         """Verify role_ids_from_role returns [2] for LECTOR."""
@@ -85,7 +99,6 @@ class TestCreateDBUser:
             last_name="User",
             organization="TestOrg",
             password="password123",
-            role_ids=[2],
         )
 
         user = create_db_user(db, payload)
@@ -94,11 +107,30 @@ class TestCreateDBUser:
         assert user.name == "New"
         assert user.surname == "User"
         assert user.organization == "TestOrg"
-        assert user.role == UserRole.LECTOR
+        assert user.role == UserRole.GESTOR
         assert user.is_verified is False
         db.add.assert_called_once_with(user)
         db.commit.assert_called_once()
         db.refresh.assert_called_once_with(user)
+
+    def test_create_db_user_with_lector_role(self):
+        """Verify create_db_user still supports explicit LECTOR creation."""
+        db = MagicMock()
+        db.commit = MagicMock()
+        db.refresh = MagicMock()
+
+        payload = UserCreate(
+            email="lector@test.com",
+            first_name="Lector",
+            last_name="User",
+            organization="Public",
+            password="password123",
+            role_ids=[2],
+        )
+
+        user = create_db_user(db, payload)
+
+        assert user.role == UserRole.LECTOR
 
     def test_create_db_user_with_gestor_role(self):
         """Verify create_db_user creates user with GESTOR role."""
@@ -455,3 +487,62 @@ class TestVerifyUserEmail:
         assert "éxito" in message
         db.commit.assert_called_once()
         db.refresh.assert_called_once_with(user)
+
+
+@pytest.mark.unit
+class TestRollbackCoverage:
+    """Tests that force generic exceptions to cover rollback branches."""
+
+    def test_list_all_users_rolls_back_on_generic_exception(self, mocker):
+        db = MagicMock()
+        db.rollback = MagicMock()
+        mocker.patch.object(db, "query", side_effect=Exception("boom"))
+
+        with pytest.raises(Exception, match="boom"):
+            list_all_users(db)
+
+        db.rollback.assert_called_once()
+
+    def test_update_user_role_rolls_back_on_generic_exception(self, mocker):
+        db = MagicMock()
+        db.rollback = MagicMock()
+        query_result = MagicMock()
+        query_result.filter.return_value.first.return_value = User(
+            id=1,
+            email="test@test.com",
+            name="Test",
+            surname="User",
+            organization="Org",
+            hashed_password="hash",
+            role=UserRole.LECTOR,
+            is_verified=True,
+        )
+        mocker.patch.object(db, "query", return_value=query_result)
+        mocker.patch.object(db, "commit", side_effect=Exception("commit failed"))
+
+        with pytest.raises(Exception, match="commit failed"):
+            update_user_role_by_role_id(db, 1, 2)
+
+        db.rollback.assert_called_once()
+
+    def test_update_user_role_legacy_helper_rolls_back_on_generic_exception(self, mocker):
+        db = MagicMock()
+        db.rollback = MagicMock()
+        query_result = MagicMock()
+        query_result.filter.return_value.first.return_value = User(
+            id=1,
+            email="test2@test.com",
+            name="Test",
+            surname="User",
+            organization="Org",
+            hashed_password="hash",
+            role=UserRole.LECTOR,
+            is_verified=True,
+        )
+        mocker.patch.object(db, "query", return_value=query_result)
+        mocker.patch.object(db, "commit", side_effect=Exception("commit failed"))
+
+        with pytest.raises(Exception, match="commit failed"):
+            update_user_role(db, 1, UserRole.GESTOR)
+
+        db.rollback.assert_called_once()

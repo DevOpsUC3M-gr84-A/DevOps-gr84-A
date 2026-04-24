@@ -34,8 +34,10 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const userRoles = JSON.parse(
     globalThis.localStorage.getItem("userRoles") || "[]",
   );
-  const isGestor = userRoles.includes(1);
-  const canManageAlerts = isGestor && Boolean(userId) && Boolean(token);
+  const canManageAlerts =
+    userRoles.some((roleId: number) => roleId === 1 || roleId === 3) &&
+    Boolean(userId) &&
+    Boolean(token);
 
   const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => ({
     id: item.id,

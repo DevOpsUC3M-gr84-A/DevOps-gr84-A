@@ -38,3 +38,20 @@ class UserInDB(User):
 
 class TokenVerification(BaseModel):
     token: str
+
+
+class UserListItem(BaseModel):
+    """Esquema para listar usuarios (solo Admin)."""
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    role_ids: List[int]
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateUserRoleRequest(BaseModel):
+    """Esquema para actualizar el rol de un usuario."""
+    role_id: int = Field(..., description="ID del nuevo rol (1=Gestor, 2=Lector, 3=Admin)")

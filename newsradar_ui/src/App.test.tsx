@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import App from "./App";
@@ -23,6 +23,9 @@ vi.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
 vi.mock("./pages/AlertsManagement", () => ({
   AlertsManagement: () => <div>ALERTS_VIEW</div>,
 }));
+vi.mock("./pages/SourcesRss", () => ({
+  SourcesRss: () => <div>SOURCES_RSS_VIEW</div>,
+}));
 vi.mock("./pages/VerifyEmail", () => ({
   VerifyEmail: () => <div>VERIFY_EMAIL_VIEW</div>,
 }));
@@ -39,6 +42,7 @@ const mockedUseAuth = vi.mocked(useAuth);
 describe("Componente Raíz App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mockedUseAuth.mockReturnValue({
       login: vi.fn(),
       logout: vi.fn(),
@@ -87,7 +91,8 @@ describe("Componente Raíz App", () => {
     expect(screen.getByText("VERIFY_EMAIL_VIEW")).toBeInTheDocument();
   });
 
-  test("renderiza layout protegido cuando hay token", () => {
+  test("renderiza layout protegido cuando hay token", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
     mockedUseAuth.mockReturnValue({
       login: vi.fn(),
       logout: vi.fn(),
@@ -96,15 +101,365 @@ describe("Componente Raíz App", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/alertas"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("renderiza fuentes rss para usuarios con permisos de gestión", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([3]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("bloquea alertas para rol LECTOR", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([2]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Gestion de Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("renderiza alertas para Admin con role_ids string 'Admin'", async () => {
+    localStorage.setItem("userRoles", JSON.stringify(["Admin"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("renderiza fuentes RSS para Gestor con role_ids string 'Gestor'", async () => {
+    localStorage.setItem("userRoles", JSON.stringify(["Gestor"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("bloquea alertas con role_ids string 'Lector'", async () => {
+    localStorage.setItem("userRoles", JSON.stringify(["Lector"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Gestion de Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("maneja role_ids mixtos (números y strings) - Admin tiene acceso", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([3, "Gestor", "Lector"]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles es objeto con role_ids", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ role_ids: [3] }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles es objeto con role", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ role: 1 }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles es objeto con name admin", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ name: "admin" }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión con fallback de userRoles legacy por comas", async () => {
+    localStorage.setItem("userRoles", "Admin, Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("usa fallback legacy role_ids cuando userRoles no existe", async () => {
+    localStorage.removeItem("userRoles");
+    localStorage.setItem("role_ids", JSON.stringify([3]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("usa fallback legacy userRole cuando faltan userRoles y role_ids", async () => {
+    localStorage.removeItem("userRoles");
+    localStorage.removeItem("role_ids");
+    localStorage.setItem("userRole", "Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
   });
 
   test("al cerrar sesión navega a /login y ejecuta logout", () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
     const logoutSpy = vi.fn();
     mockedUseAuth.mockReturnValue({
       login: vi.fn(),
@@ -126,6 +481,7 @@ describe("Componente Raíz App", () => {
   });
 
   test("renderiza los enlaces de navegación principales en modo autenticado", () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
     mockedUseAuth.mockReturnValue({
       login: vi.fn(),
       logout: vi.fn(),
@@ -154,12 +510,29 @@ describe("Componente Raíz App", () => {
     expect(
       screen.getByRole("link", { name: /Gestion del Perfil de Usuario/i }),
     ).toBeInTheDocument();
-    // Verifica que el selector de idioma esté presente con ES y EN
-    expect(screen.getByText(/ES/)).toBeInTheDocument();
-    expect(screen.getByText(/EN/)).toBeInTheDocument();
+  });
+
+  test("renderiza selector de idioma con botones accesibles", () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "ES" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument();
   });
 
   test("renderiza marca y logo en modo autenticado", () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
     mockedUseAuth.mockReturnValue({
       login: vi.fn(),
       logout: vi.fn(),

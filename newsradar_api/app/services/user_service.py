@@ -26,13 +26,20 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def role_from_role_ids(role_ids: list[int]) -> UserRole:
     """Mapea los role_ids legacy a un rol del modelo SQL."""
+    if 3 in role_ids:
+        return UserRole.ADMIN
     if 1 in role_ids:
         return UserRole.GESTOR
-    return UserRole.LECTOR
+    if 2 in role_ids:
+        return UserRole.LECTOR
+    # Por defecto, los nuevos registros deben ser Gestor.
+    return UserRole.GESTOR
 
 
 def role_ids_from_role(role: UserRole) -> list[int]:
     """Mapea el rol SQL a role_ids esperados por los schemas actuales."""
+    if role == UserRole.ADMIN:
+        return [3]
     if role == UserRole.GESTOR:
         return [1]
     return [2]
@@ -126,14 +133,18 @@ def verify_user_email(user: User, db: Session) -> tuple[bool, str]:
 
 def update_user_role(db: Session, user_id: int, new_role: UserRole) -> bool:
     """Permite al administrador asignar un nuevo rol a un usuario existente."""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        return False
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
 
-    user.role = new_role
-    db.commit()
-    db.refresh(user)
-    return True
+        user.role = new_role
+        db.commit()
+        db.refresh(user)
+        return True
+    except Exception:
+        db.rollback()
+        raise
 
 # Recuperación de contraseña
 
@@ -188,3 +199,34 @@ def reset_password_with_token(db: Session, token: str, new_password: str) -> tup
     user.reset_password_token_expires = None
     db.commit()
     return True, "Contraseña actualizada correctamente."
+
+
+def list_all_users(db: Session) -> list[User]:
+    """Devuelve la lista de todos los usuarios de la base de datos."""
+    try:
+        users = db.query(User).all()
+        return users
+    except Exception:
+        db.rollback()
+        raise
+
+
+def update_user_role_by_role_id(db: Session, user_id: int, role_id: int) -> User:
+    """Actualiza el rol de un usuario basado en role_id (1=Gestor, 2=Lector, 3=Admin)."""
+    try:
+        # Mapear role_id a UserRole
+        role_map = {1: UserRole.GESTOR, 2: UserRole.LECTOR, 3: UserRole.ADMIN}
+        if role_id not in role_map:
+            raise ValueError(f"Role ID inválido: {role_id}")
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise ValueError(f"Usuario no encontrado: {user_id}")
+
+        user.role = role_map[role_id]
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception:
+        db.rollback()
+        raise

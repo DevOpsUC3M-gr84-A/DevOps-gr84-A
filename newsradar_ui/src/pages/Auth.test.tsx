@@ -98,6 +98,80 @@ describe("Página de Autenticación", () => {
     });
   });
 
+  test("normaliza un mix de role_ids, roles y role antes de llamar login", async () => {
+    const mockResponse = {
+      access_token: "token-mixed",
+      user_id: 7,
+      role_ids: [3, "Gestor", "invalido"],
+      roles: ["ADMIN", "??"],
+      role: "2",
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "mixed@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-mixed",
+        user_id: 7,
+        role_ids: [3, 1, 3, 2],
+      });
+    });
+  });
+
+  test("usa lector por defecto cuando la API devuelve roles inválidos", async () => {
+    const mockResponse = {
+      access_token: "token-default",
+      user_id: 8,
+      role_ids: ["???"],
+      roles: [""],
+      role: null,
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "default@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-default",
+        user_id: 8,
+        role_ids: [2],
+      });
+    });
+  });
+
   test("envía registro por fetch y muestra mensaje de confirmación de email", async () => {
     jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
@@ -143,7 +217,7 @@ describe("Página de Autenticación", () => {
             first_name: "Juan",
             last_name: "Pérez",
             organization: "UC3M",
-            role_ids: [2],
+            role_ids: [1],
           }),
         }),
       );
@@ -366,6 +440,69 @@ describe("Casos de error de API y Red", () => {
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Network Error");
+  });
+
+  test("formatApiError: detail array de validaciones múltiples", async () => {
+    const errorData = {
+      detail: [
+        { loc: ["body", "email"], msg: "invalid email" },
+        { loc: ["body", "password"], msg: "too short" },
+      ],
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("email: invalid email");
+      expect(screen.getByRole("alert")).toHaveTextContent("password: too short");
+    });
+  });
+
+  test("formatApiError: detail objeto anidado genérico", async () => {
+    const errorData = {
+      detail: {
+        error: {
+          code: "E500",
+          message: "Unexpected",
+        },
+      },
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        JSON.stringify(errorData.detail),
+      );
+    });
   });
 
   test("conmuta la visibilidad de la contraseña al pulsar el botón", () => {

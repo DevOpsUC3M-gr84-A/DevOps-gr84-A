@@ -172,14 +172,14 @@ def load_rss_seed_if_empty(db: Session) -> None:
 
 
 def create_initial_admin(db: Session) -> None:
-    """Crea un usuario Gestor inicial verificado si no existe ninguno en la plataforma."""
+    """Crea un usuario Admin inicial verificado si no existe ninguno en la plataforma."""
 
-    # Comprobar si ya existe algún usuario con el rol de GESTOR
-    admin = db.query(User).filter(User.role == UserRole.GESTOR).first()
+    # Comprobar si ya existe algún usuario con el rol de ADMIN
+    admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
 
     # Si no existe, crearlo
     if not admin:
-        logger.info("No se encontró ningún administrador. Creando Gestor inicial...")
+        logger.info("No se encontró ningún administrador. Creando Admin inicial...")
 
         admin_email = "admin@newsradar.com"
         admin_password = os.getenv("NEWSRADAR_ADMIN_PASSWORD")
@@ -193,7 +193,7 @@ def create_initial_admin(db: Session) -> None:
             surname="Inicial",
             organization="NewsRadar Admin",
             hashed_password=get_password_hash(admin_password),
-            role=UserRole.GESTOR,
+            role=UserRole.ADMIN,
             is_verified=True,
         )
 
@@ -201,10 +201,10 @@ def create_initial_admin(db: Session) -> None:
         db.commit()
         db.refresh(new_admin)
 
-        logger.info("Gestor inicial creado exitosamente con el email: %s", admin_email)
+        logger.info("Admin inicial creado exitosamente con el email: %s", admin_email)
     else:
         logger.info(
-            "El Gestor inicial %s ya existe. No se ha realizado ninguna acción.",
+            "El Admin inicial %s ya existe. No se ha realizado ninguna acción.",
             admin.email,
         )
 
