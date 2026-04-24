@@ -202,7 +202,12 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     <>
       <main className="main-content">
         <header className="header-actions">
-          <h2>Gestión de Alertas</h2>
+          <div className="page-heading">
+            <h1 className="section-title">Gestión de Alertas</h1>
+            <p className="section-subtitle">
+              Configura tus radares de información personalizados.
+            </p>
+          </div>
           {canManageAlerts && (
             <button className="btn-primary" onClick={handleOpenCreateModal}>
               <Plus size={18} /> Crear Nueva Alerta
@@ -232,7 +237,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
               </label>
               <select
                 id="alertsIptcFilter"
-                className="form-input"
+                className="form-input alerts-filter-select"
                 value={selectedIptcCategory}
                 onChange={(e) => setSelectedIptcCategory(e.target.value)}
               >

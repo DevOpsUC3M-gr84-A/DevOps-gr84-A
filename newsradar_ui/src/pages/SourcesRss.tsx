@@ -1,7 +1,12 @@
 export const SourcesRss = () => (
   <main className="main-content">
     <div className="header-actions">
-      <h2 className="page-title">Fuentes RSS</h2>
+      <div className="page-heading">
+        <h1 className="section-title">Fuentes RSS</h1>
+        <p className="section-subtitle">
+          Administra los origenes y canales de noticias.
+        </p>
+      </div>
     </div>
 
     <div className="table-container">

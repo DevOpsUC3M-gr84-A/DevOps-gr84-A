@@ -108,11 +108,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -136,12 +136,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -166,7 +166,7 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("link", { name: /Gestion de Alertas/i }),
+        screen.queryByRole("link", { name: /Alertas/i }),
       ).not.toBeInTheDocument();
     });
   });
@@ -188,11 +188,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -216,12 +216,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -246,7 +246,7 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("link", { name: /Gestion de Alertas/i }),
+        screen.queryByRole("link", { name: /Alertas/i }),
       ).not.toBeInTheDocument();
     });
   });
@@ -268,12 +268,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -298,11 +298,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -326,12 +326,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -356,11 +356,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -384,12 +384,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -415,11 +415,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -445,12 +445,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -496,19 +496,20 @@ describe("Componente Raíz App", () => {
     );
 
     expect(
-      screen.getByRole("link", { name: /Dashboard \/ Resumen/i }),
+      screen.getByRole("link", { name: /Dashboard/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Resumen/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Alertas/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Notificaciones/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Buzon de Notificaciones/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Gestion del Perfil de Usuario/i }),
+      screen.getByRole("link", { name: "Perfil" }),
     ).toBeInTheDocument();
   });
 
