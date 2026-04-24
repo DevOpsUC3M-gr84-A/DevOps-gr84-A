@@ -636,4 +636,54 @@ describe("Componente Raíz App", () => {
       expect(screen.getByText(/PERFIL/i)).toBeInTheDocument();
     });
   });
+
+  describe('Nuevas funcionalidades UI (Sidebar, Idioma y Perfil)', () => {
+    beforeEach(() => {
+      globalThis.localStorage.setItem('token', 'fake-token');
+      globalThis.localStorage.setItem('userId', '1');
+      globalThis.localStorage.setItem('userRoles', JSON.stringify([1]));
+
+      // Usamos el mock que ya tienes configurado arriba
+      mockedUseAuth.mockReturnValue({
+        login: vi.fn(),
+        logout: vi.fn(),
+        token: "fake-token",
+        isAuthenticated: true,
+      });
+    });
+
+    test('hace fetch del perfil, abre/cierra sidebar y cambia idioma', async () => {
+      // 1. Mockeamos la respuesta del backend para el perfil
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ first_name: 'Eloy', last_name: 'Martin', role_ids: [1] }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // 2. Verificamos que el nombre carga en la Top Bar
+      await waitFor(() => {
+        expect(screen.getByText('Eloy Martin')).toBeInTheDocument();
+      });
+
+      // 3. Probamos el botón hamburguesa
+      const toggleBtn = screen.getByRole('button', { name: /Cerrar menú lateral|Abrir menú lateral/i });
+      fireEvent.click(toggleBtn);
+      await waitFor(() => {
+        expect(toggleBtn).toHaveAttribute('aria-label', 'Abrir menú lateral');
+      });
+
+      // 4. Probamos el selector de idiomas
+      const enBtn = screen.getByRole('button', { name: 'EN' });
+      fireEvent.click(enBtn);
+      await waitFor(() => {
+        expect(enBtn).toHaveClass('is-active');
+      });
+    });
+  });
+
 });
