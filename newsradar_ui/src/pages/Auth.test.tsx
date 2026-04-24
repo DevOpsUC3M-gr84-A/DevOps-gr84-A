@@ -68,7 +68,7 @@ describe("Página de Autenticación", () => {
       target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
 
     const form = container.querySelector("form");
@@ -83,7 +83,7 @@ describe("Página de Autenticación", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: "test@test.com",
-            password: "password123",
+            password: "Password123!",
           }),
         }),
       );
@@ -119,7 +119,7 @@ describe("Página de Autenticación", () => {
       target: { value: "mixed@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
 
     const form = container.querySelector("form");
@@ -156,7 +156,7 @@ describe("Página de Autenticación", () => {
       target: { value: "default@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
 
     const form = container.querySelector("form");
@@ -198,7 +198,7 @@ describe("Página de Autenticación", () => {
       target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
 
     const form = container.querySelector("form");
@@ -213,7 +213,7 @@ describe("Página de Autenticación", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: "test@test.com",
-            password: "password123",
+            password: "Password123!",
             first_name: "Juan",
             last_name: "Pérez",
             organization: "UC3M",
@@ -233,33 +233,35 @@ describe("Página de Autenticación", () => {
     expect(screen.getByText(/Iniciar Sesión/i)).toBeInTheDocument();
   });
 
-  test("muestra alerta si el email no es válido", () => {
+  test("muestra alerta si la contraseña de registro es débil", () => {
     render(<Auth />);
 
-    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: "email-invalido" },
+    fireEvent.click(screen.getByText(/Regístrate ahora/i));
+    fireEvent.change(screen.getByPlaceholderText(/Ej: Juan/i), {
+      target: { value: "Juan" },
     });
-    const form = screen.getByText(/Entrar al sistema/i).closest("form");
-    expect(form).not.toBeNull();
-    fireEvent.submit(form as HTMLFormElement);
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Email no válido");
-  });
-
-  test("muestra alerta si la contraseña es muy corta", () => {
-    render(<Auth />);
-
+    fireEvent.change(screen.getByPlaceholderText(/Ej: Pérez/i), {
+      target: { value: "Pérez" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Nombre de tu empresa\/institución/i),
+      {
+        target: { value: "UC3M" },
+      },
+    );
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
       target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "123" },
+      target: { value: "12345" },
     });
-    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    fireEvent.click(screen.getByText(/Crear mi cuenta/i));
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "La contraseña debe tener al menos 6 caracteres",
+      "La contraseña no cumple los requisitos de seguridad",
     );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   test("muestra el error devuelto por la API si el login falla", async () => {

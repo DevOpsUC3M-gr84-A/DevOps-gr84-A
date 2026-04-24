@@ -1,5 +1,7 @@
+import re
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserBase(BaseModel):
@@ -11,7 +13,18 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if (
+            not re.search(r"[A-Z]", value)
+            or not re.search(r"\d", value)
+            or not re.search(r"[^A-Za-z0-9]", value)
+        ):
+            raise ValueError("La contraseña no cumple los requisitos de seguridad")
+        return value
 
 class UserResponse(UserBase):
     id: int

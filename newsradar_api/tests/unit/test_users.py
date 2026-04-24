@@ -20,7 +20,7 @@ class TestUsersEndpointIntegration:
             first_name="Integration",
             last_name="Test",
             organization="TestOrg",
-            password="test123",
+            password="Test123!",
             role_ids=[2],
         )
 

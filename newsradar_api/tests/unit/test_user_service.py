@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
 import pytest
+from pydantic import ValidationError
 
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserUpdate
@@ -21,6 +22,21 @@ from app.services.user_service import (
     verify_password,
     verify_user_email,
 )
+
+
+@pytest.mark.unit
+class TestUserCreateSchemaValidation:
+    """Tests for registration schema password validation."""
+
+    def test_user_create_rejects_weak_password(self):
+        with pytest.raises(ValidationError, match="La contraseña no cumple los requisitos de seguridad"):
+            UserCreate(
+                email="weak@test.com",
+                first_name="Weak",
+                last_name="User",
+                organization="TestOrg",
+                password="password1!",
+            )
 
 
 @pytest.mark.unit
@@ -98,7 +114,7 @@ class TestCreateDBUser:
             first_name="New",
             last_name="User",
             organization="TestOrg",
-            password="password123",
+            password="Password123!",
         )
 
         user = create_db_user(db, payload)
@@ -124,7 +140,7 @@ class TestCreateDBUser:
             first_name="Lector",
             last_name="User",
             organization="Public",
-            password="password123",
+            password="Password123!",
             role_ids=[2],
         )
 
@@ -143,7 +159,7 @@ class TestCreateDBUser:
             first_name="Gestor",
             last_name="User",
             organization="Admin",
-            password="secure123",
+            password="Secure123!",
             role_ids=[1],
         )
 
@@ -168,7 +184,7 @@ class TestCreateDBUser:
             first_name="Dup",
             last_name="User",
             organization="Test",
-            password="pwd123",  # Minimum 6 chars
+            password="Pwd1234!",
             role_ids=[2],
         )
 
@@ -493,17 +509,17 @@ class TestVerifyUserEmail:
 class TestRollbackCoverage:
     """Tests that force generic exceptions to cover rollback branches."""
 
-    def test_list_all_users_rolls_back_on_generic_exception(self, mocker):
+    def test_list_all_users_rolls_back_on_generic_exception(self, monkeypatch):
         db = MagicMock()
         db.rollback = MagicMock()
-        mocker.patch.object(db, "query", side_effect=Exception("boom"))
+        monkeypatch.setattr(db, "query", MagicMock(side_effect=Exception("boom")))
 
         with pytest.raises(Exception, match="boom"):
             list_all_users(db)
 
         db.rollback.assert_called_once()
 
-    def test_update_user_role_rolls_back_on_generic_exception(self, mocker):
+    def test_update_user_role_rolls_back_on_generic_exception(self, monkeypatch):
         db = MagicMock()
         db.rollback = MagicMock()
         query_result = MagicMock()
@@ -517,15 +533,15 @@ class TestRollbackCoverage:
             role=UserRole.LECTOR,
             is_verified=True,
         )
-        mocker.patch.object(db, "query", return_value=query_result)
-        mocker.patch.object(db, "commit", side_effect=Exception("commit failed"))
+        monkeypatch.setattr(db, "query", MagicMock(return_value=query_result))
+        monkeypatch.setattr(db, "commit", MagicMock(side_effect=Exception("commit failed")))
 
         with pytest.raises(Exception, match="commit failed"):
             update_user_role_by_role_id(db, 1, 2)
 
         db.rollback.assert_called_once()
 
-    def test_update_user_role_legacy_helper_rolls_back_on_generic_exception(self, mocker):
+    def test_update_user_role_legacy_helper_rolls_back_on_generic_exception(self, monkeypatch):
         db = MagicMock()
         db.rollback = MagicMock()
         query_result = MagicMock()
@@ -539,8 +555,8 @@ class TestRollbackCoverage:
             role=UserRole.LECTOR,
             is_verified=True,
         )
-        mocker.patch.object(db, "query", return_value=query_result)
-        mocker.patch.object(db, "commit", side_effect=Exception("commit failed"))
+        monkeypatch.setattr(db, "query", MagicMock(return_value=query_result))
+        monkeypatch.setattr(db, "commit", MagicMock(side_effect=Exception("commit failed")))
 
         with pytest.raises(Exception, match="commit failed"):
             update_user_role(db, 1, UserRole.GESTOR)

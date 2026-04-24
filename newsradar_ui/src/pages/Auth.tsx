@@ -90,6 +90,12 @@ const formatApiError = (data: ApiErrorResponse): string => {
   return "Error en la operación";
 };
 
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+const STRONG_PASSWORD_REGEX =
+  /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
 const normalizeLoginErrorMessage = (
   status: number,
   message: string,
@@ -125,16 +131,12 @@ export const Auth = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const validate = () => {
-    const emailRegex =
-      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!emailRegex.test(formData.email)) return "Email no válido";
-    if (formData.password.length < 6)
-      return "La contraseña debe tener al menos 6 caracteres";
-    if (
-      !isLogin &&
-      (!formData.first_name || !formData.last_name || !formData.organization)
-    ) {
+  const validateRegistration = () => {
+    if (!EMAIL_REGEX.test(formData.email)) return "Email no válido";
+    if (!STRONG_PASSWORD_REGEX.test(formData.password)) {
+      return "La contraseña no cumple los requisitos de seguridad";
+    }
+    if (!formData.first_name || !formData.last_name || !formData.organization) {
       return "Todos los campos de registro son obligatorios";
     }
     return null;
@@ -143,10 +145,12 @@ export const Auth = () => {
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setAuthError(null);
-    const errorMsg = validate();
-    if (errorMsg) {
-      setAuthError(errorMsg);
-      return;
+    if (!isLogin) {
+      const errorMsg = validateRegistration();
+      if (errorMsg) {
+        setAuthError(errorMsg);
+        return;
+      }
     }
 
     const endpoint = isLogin ? "/api/v1/auth/login" : "/api/v1/auth/register";

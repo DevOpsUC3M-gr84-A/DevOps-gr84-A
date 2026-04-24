@@ -26,6 +26,18 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  align-items: end;
+}
+
+.form-row-split .profile-field {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.form-row-split .profile-field label,
+.form-row-split .profile-field p {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .profile-main-column,
