@@ -15,7 +15,7 @@ describe("ForgotPassword", () => {
     expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Volver al Login/i }),
-    ).toHaveAttribute("href", "/");
+    ).toHaveAttribute("href", "/login");
   });
 
   test("muestra error si el email está vacío al enviar", async () => {

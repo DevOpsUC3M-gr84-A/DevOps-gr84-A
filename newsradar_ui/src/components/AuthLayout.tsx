@@ -48,7 +48,7 @@ export const AuthLayout = ({
             {submitText}
           </button>
 
-          <a href="/" className="btn-toggle-auth auth-layout-back-link">
+          <a href="/login" className="btn-toggle-auth auth-layout-back-link">
             Volver al Login
           </a>
         </form>

@@ -106,6 +106,7 @@ def test_register_conflict_returns_409():
     original_create = auth_module.create_db_user
 
     auth_module.ensure_role_ids_exist = lambda _role_ids: None
+    auth_module.existe_dominio = lambda _email: True
 
     def _raise_conflict(_db, _payload):
         raise ValueError("duplicated")
@@ -148,6 +149,7 @@ def test_register_success_returns_user_schema(monkeypatch):
 
     monkeypatch.setattr("app.api.routes.auth.ensure_role_ids_exist", lambda _role_ids: None)
     monkeypatch.setattr("app.api.routes.auth.create_db_user", lambda _db, _payload: fake_db_user)
+    monkeypatch.setattr("app.api.routes.auth.existe_dominio", lambda _email: True)
 
     db = MagicMock()
     response = register(payload=payload, db=db)
@@ -244,3 +246,19 @@ def test_verify_email_endpoint_success(monkeypatch):
     
     # Limpiar los overrides
     app.dependency_overrides.clear()
+
+    def test_register_rechaza_dominio_falso(self, api_client, monkeypatch):
+        # Devuelve dominio falso
+        monkeypatch.setattr("app.api.routes.auth._dominio_tiene_email", lambda x: False)
+        
+        # Intentar registro
+        payload = {
+            "email": "test@falso.com", "password": "password123",
+            "first_name": "Test", "last_name": "Falso", 
+            "organization": "Org", "role_ids": [2]
+        }
+        response = api_client.post("/api/v1/auth/register", json=payload)
+        
+        # Comprobar error 400 por dominio sin MX
+        assert response.status_code == 400
+        assert "no existe o no admite correos" in response.json()["detail"]

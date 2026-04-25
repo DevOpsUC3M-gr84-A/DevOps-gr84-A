@@ -1,4 +1,5 @@
 from uuid import uuid4
+import dns.resolver
 from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,6 +30,15 @@ from app.services.user_service import (
 
 api_auth_router = APIRouter()
 
+
+def existe_dominio(email: str) -> bool:
+    """Verifica si el dominio del email tiene registros MX (servidores de correo activos)"""
+    dominio = email.split('@')[1]
+    try:
+        dns.resolver.resolve(dominio, 'MX')
+        return True
+    except Exception:
+        return False
 
 def _issue_token(user_id: int, role_ids: List[int]) -> TokenResponse:
     token = str(uuid4())
@@ -87,6 +97,11 @@ def login(
 )
 def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
     ensure_role_ids_exist(payload.role_ids)
+    if not existe_dominio(payload.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="El dominio del email proporcionado no existe o no admite correos."
+        )
     try:
         user_db = create_db_user(db, payload)
     except ValueError as exc:
