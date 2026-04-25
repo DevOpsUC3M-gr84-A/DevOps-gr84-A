@@ -247,18 +247,18 @@ def test_verify_email_endpoint_success(monkeypatch):
     # Limpiar los overrides
     app.dependency_overrides.clear()
 
-    def test_register_rechaza_dominio_falso(self, api_client, monkeypatch):
-        # Devuelve dominio falso
-        monkeypatch.setattr("app.api.routes.auth._dominio_tiene_email", lambda x: False)
-        
-        # Intentar registro
-        payload = {
-            "email": "test@falso.com", "password": "password123",
-            "first_name": "Test", "last_name": "Falso", 
-            "organization": "Org", "role_ids": [2]
-        }
-        response = api_client.post("/api/v1/auth/register", json=payload)
-        
-        # Comprobar error 400 por dominio sin MX
-        assert response.status_code == 400
-        assert "no existe o no admite correos" in response.json()["detail"]
+def test_register_rechaza_dominio_falso(api_client, monkeypatch):
+    # Devuelve dominio falso
+    monkeypatch.setattr("app.api.routes.auth.existe_dominio", lambda x: False)
+    
+    # Intentar registro
+    payload = {
+        "email": "test@falso.com", "password": "password123",
+        "first_name": "Test", "last_name": "Falso", 
+        "organization": "Org", "role_ids": [2]
+    }
+    response = api_client.post("/api/v1/auth/register", json=payload)
+    
+    # Comprobar error 400 por dominio sin MX
+    assert response.status_code == 400
+    assert "no existe o no admite correos" in response.json()["detail"]
