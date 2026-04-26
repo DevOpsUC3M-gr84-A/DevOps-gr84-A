@@ -181,3 +181,46 @@
 .btn-toggle-auth:hover {
   color: #1e3a8a;
 }
+
+.verify-email-card {
+  max-width: 700px;
+  margin: 2rem auto;
+}
+
+.verify-email-title {
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.verify-email-status-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.verify-email-icon {
+  color: #1e40af;
+  flex-shrink: 0;
+}
+
+.verify-email-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #1e40af;
+  background-color: #1e40af;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.verify-email-action-link:hover {
+  background-color: #1e3a8a;
+  border-color: #1e3a8a;
+  color: #ffffff;
+}

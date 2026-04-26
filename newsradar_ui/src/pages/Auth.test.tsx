@@ -444,6 +444,26 @@ describe("Casos de error de API y Red", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Network Error");
   });
 
+  test("Catch genérico: cuando fetch lanza valor no Error muestra mensaje por defecto", async () => {
+    jest.spyOn(globalThis, "fetch").mockRejectedValueOnce("unexpected failure");
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Error inesperado en autenticación",
+      );
+    });
+  });
+
   test("formatApiError: detail array de validaciones múltiples", async () => {
     const errorData = {
       detail: [

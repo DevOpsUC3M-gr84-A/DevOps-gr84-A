@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
+import { CheckCircle2, AlertCircle, MailCheck } from "lucide-react";
+import "./Auth.css";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -23,8 +25,6 @@ export const VerifyEmail: React.FC = () => {
         setMessage("Token de verificación no proporcionado.");
         return;
       }
-
-      hasCalled.current = true;
 
       hasCalled.current = true;
 
@@ -71,24 +71,28 @@ export const VerifyEmail: React.FC = () => {
   return (
     <main className="main-content" aria-labelledby="verify-email-title">
       <section
-        className="table-container"
-        style={{ maxWidth: 700, margin: "2rem auto" }}
+        className="table-container verify-email-card"
       >
-        <h2 id="verify-email-title">Verificación de Cuenta</h2>
+        <h2 id="verify-email-title" className="verify-email-title">
+          Verificación de Cuenta
+        </h2>
 
         {status === "loading" && (
-          <p role="status" aria-live="polite">
+          <p role="status" aria-live="polite" className="verify-email-status-row">
+            <MailCheck size={18} className="verify-email-icon" aria-hidden="true" />
             Cargando...
           </p>
         )}
 
         {status === "success" && (
           <div role="status" aria-live="polite">
-            <p>{message}</p>
+            <p className="verify-email-status-row">
+              <CheckCircle2 size={18} className="verify-email-icon" aria-hidden="true" />
+              <span>{message}</span>
+            </p>
             <a
               href="/"
-              className="btn-primary"
-              style={{ display: "inline-block", marginTop: "1rem" }}
+              className="verify-email-action-link"
             >
               Ir al Login
             </a>
@@ -101,11 +105,13 @@ export const VerifyEmail: React.FC = () => {
             aria-live="assertive"
             className="alert-feedback alert-feedback-error"
           >
-            <p>{message}</p>
+            <p className="verify-email-status-row">
+              <AlertCircle size={18} className="verify-email-icon" aria-hidden="true" />
+              <span>{message}</span>
+            </p>
             <a
               href="/login"
-              className="btn-secondary"
-              style={{ display: "inline-block", marginTop: "1rem" }}
+              className="verify-email-action-link"
             >
               Volver al Login
             </a>

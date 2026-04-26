@@ -637,6 +637,52 @@ describe("Componente Raíz App", () => {
     });
   });
 
+  test("usa fallback por comas cuando userRoles no es JSON válido", async () => {
+    localStorage.setItem("userRoles", "Admin, Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("usa fallback de userRole cuando faltan userRoles y role_ids", async () => {
+    localStorage.removeItem("userRoles");
+    localStorage.removeItem("role_ids");
+    localStorage.setItem("userRole", "Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe('Nuevas funcionalidades UI (Sidebar, Idioma y Perfil)', () => {
     beforeEach(() => {
       globalThis.localStorage.setItem('token', 'fake-token');
@@ -682,6 +728,48 @@ describe("Componente Raíz App", () => {
       fireEvent.click(enBtn);
       await waitFor(() => {
         expect(enBtn).toHaveClass('is-active');
+      });
+    });
+
+    test('mapea role_ids a etiqueta Admin en el badge de usuario', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          first_name: 'Ada',
+          last_name: 'Lovelace',
+          role_ids: [3],
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Admin')).toBeInTheDocument();
+      });
+    });
+
+    test('mapea role_ids a etiqueta Lector en el badge de usuario', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          first_name: 'Alan',
+          last_name: 'Turing',
+          role_ids: [2],
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Lector')).toBeInTheDocument();
       });
     });
   });

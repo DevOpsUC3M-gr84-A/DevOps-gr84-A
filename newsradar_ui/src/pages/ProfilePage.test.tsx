@@ -157,6 +157,28 @@ describe("ProfilePage", () => {
     expect(screen.getByText("API caída")).toBeInTheDocument();
   });
 
+  test("muestra error cuando API responde 500 y falla al leer el cuerpo", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error("Error 500 interno");
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Error 500 interno")).toBeInTheDocument();
+  });
+
   test("muestra email verificado (CheckCircle verde) cuando is_active es true", async () => {
     const verifiedProfile = {
       id: 1,
