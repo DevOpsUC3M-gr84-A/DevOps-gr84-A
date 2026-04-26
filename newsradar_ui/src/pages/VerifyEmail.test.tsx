@@ -22,7 +22,7 @@ describe("VerifyEmail Page", () => {
     render(<VerifyEmail />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Token de verificacion no proporcionado.",
+      "Token de verificación no proporcionado.",
     );
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });

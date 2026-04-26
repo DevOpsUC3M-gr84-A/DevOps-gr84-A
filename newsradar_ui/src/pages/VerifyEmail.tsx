@@ -20,7 +20,7 @@ export const VerifyEmail: React.FC = () => {
 
       if (!token) {
         setStatus("error");
-        setMessage("Token de verificacion no proporcionado.");
+        setMessage("Token de verificación no proporcionado.");
         return;
       }
 
@@ -47,19 +47,19 @@ export const VerifyEmail: React.FC = () => {
           const detail =
             typeof errorData.detail === "string"
               ? errorData.detail
-              : "El enlace de verificacion es invalido o ha expirado.";
+              : "El enlace de verificación es inválido o ha expirado.";
           throw new Error(detail);
         }
 
         setStatus("success");
         setMessage(
-          "Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesion.",
+          "Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesión.",
         );
       } catch (error) {
         const errorMessage =
           error instanceof Error
             ? error.message
-            : "No se pudo verificar la cuenta. Intentalo de nuevo mas tarde.";
+            : "No se pudo verificar la cuenta. Inténtalo de nuevo mas tarde.";
         setStatus("error");
         setMessage(errorMessage);
       }
@@ -74,7 +74,7 @@ export const VerifyEmail: React.FC = () => {
         className="table-container"
         style={{ maxWidth: 700, margin: "2rem auto" }}
       >
-        <h2 id="verify-email-title">Verificacion de Cuenta</h2>
+        <h2 id="verify-email-title">Verificación de Cuenta</h2>
 
         {status === "loading" && (
           <p role="status" aria-live="polite">
@@ -103,7 +103,7 @@ export const VerifyEmail: React.FC = () => {
           >
             <p>{message}</p>
             <a
-              href="/"
+              href="/login"
               className="btn-secondary"
               style={{ display: "inline-block", marginTop: "1rem" }}
             >

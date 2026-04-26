@@ -172,7 +172,7 @@ describe("ResetPassword", () => {
 
     expect(
       screen.getByRole("link", { name: /Volver al Login/i }),
-    ).toHaveAttribute("href", "/");
+    ).toHaveAttribute("href", "/login");
   });
 
   test("muestra error si el token no está presente en la URL", async () => {
