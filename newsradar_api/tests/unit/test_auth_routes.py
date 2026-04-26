@@ -253,7 +253,7 @@ def test_register_rechaza_dominio_falso(api_client, monkeypatch):
     
     # Intentar registro
     payload = {
-        "email": "test@falso.com", "password": "password123",
+        "email": "test@falso.com", "password": "Test@1234!",
         "first_name": "Test", "last_name": "Falso", 
         "organization": "Org", "role_ids": [2]
     }
