@@ -124,13 +124,8 @@ export const ProfilePage: React.FC = () => {
 
   const isAdmin = roleSet.has(3);
   console.log("PERFIL COMPLETO:", profile);
-  const isEmailVerified =
-    profile.is_verified === true ||
-    profile.is_verified === "true" ||
-    profile.is_verified === 1 ||
-    profile.is_active === true ||
-    profile.is_active === "true" ||
-    profile.is_active === 1;
+  
+  const isEmailVerified = profile.is_verified === true || profile.email_verified === true || profile.is_active === true;
 
   const handleResendVerification = async () => {
     setVerificationMessage(null);
