@@ -77,33 +77,31 @@ export const VerifyEmail: React.FC = () => {
       return;
     }
 
-    let fallbackTimer: number | undefined;
     const timer = globalThis.setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          globalThis.clearInterval(timer);
-          globalThis.close();
-
-          fallbackTimer = globalThis.setTimeout(() => {
-            if (!globalThis.closed) {
-              navigate("/login", { replace: true });
-            }
-          }, 500);
-
-          return 0;
-        }
-
-        return prev - 1;
-      });
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
 
     return () => {
       globalThis.clearInterval(timer);
-      if (fallbackTimer) {
-        globalThis.clearTimeout(fallbackTimer);
-      }
     };
-  }, [navigate, status]);
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "success" || countdown !== 0) {
+      return;
+    }
+
+    globalThis.close();
+    const fallbackTimer = globalThis.setTimeout(() => {
+      if (!globalThis.closed) {
+        navigate("/login", { replace: true });
+      }
+    }, 500);
+
+    return () => {
+      globalThis.clearTimeout(fallbackTimer);
+    };
+  }, [countdown, navigate, status]);
 
   return (
     <div className="auth-page">

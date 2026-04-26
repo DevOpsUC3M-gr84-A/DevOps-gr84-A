@@ -368,11 +368,10 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {isDeleteModalOpen && (
-        <div className="delete-account-modal-overlay" role="presentation">
-          <div
+        <div className="delete-account-modal-overlay">
+          <dialog
+            open
             className="delete-account-modal-card"
-            role="dialog"
-            aria-modal="true"
             aria-labelledby="delete-account-title"
           >
             <h2 id="delete-account-title">Confirmar eliminación de cuenta</h2>
@@ -417,7 +416,7 @@ export const ProfilePage: React.FC = () => {
                 {isDeleting ? "Eliminando..." : "Eliminar definitivamente"}
               </button>
             </div>
-          </div>
+          </dialog>
         </div>
       )}
     </main>

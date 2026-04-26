@@ -214,7 +214,7 @@
 
 .security-actions button:disabled {
   background: #f8fafc;
-  color: #94a3b8;
+  color: #475569;
   cursor: not-allowed;
   border-color: #e2e8f0;
   opacity: 0.8;
