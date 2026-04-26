@@ -339,6 +339,226 @@ describe("Componente Raíz App", () => {
     });
   });
 
+  test("habilita gestión cuando userRoles usa formato { roles: [1] }", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ roles: [1] }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles usa formato { role_id: 3 }", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ role_id: 3 }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Alertas/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles usa formato { id: 1 }", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ id: 1 }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles usa fallback extractCandidates con valor primitivo JSON", async () => {
+    localStorage.setItem("userRoles", "2");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con role_id", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ role_id: 1 }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con role", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ role: 3 }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Alertas/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con id", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ id: 1 }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con name", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ name: "admin" }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Alertas/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles usa objeto desconocido y cae en fallback de extracción", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ unknown: true }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles usa rama catch con lista vacía y fallback a rawRoles", async () => {
+    localStorage.setItem("userRoles", " , , ");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   test("habilita gestión cuando userRoles es objeto con name admin", async () => {
     localStorage.setItem("userRoles", JSON.stringify({ name: "admin" }));
     mockedUseAuth.mockReturnValue({
@@ -637,6 +857,46 @@ describe("Componente Raíz App", () => {
     });
   });
 
+  test("renderiza contenido de Resumen en /resumen", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/resumen"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Resumen ejecutivo de actividad/i)).toBeInTheDocument();
+    });
+  });
+
+  test("renderiza contenido de Notificaciones en /notificaciones", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/notificaciones"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Buzon de avisos y alertas detectadas/i)).toBeInTheDocument();
+    });
+  });
+
   test("usa fallback por comas cuando userRoles no es JSON válido", async () => {
     localStorage.setItem("userRoles", "Admin, Gestor");
     mockedUseAuth.mockReturnValue({
@@ -729,6 +989,12 @@ describe("Componente Raíz App", () => {
       await waitFor(() => {
         expect(enBtn).toHaveClass('is-active');
       });
+
+      const esBtn = screen.getByRole('button', { name: 'ES' });
+      fireEvent.click(esBtn);
+      await waitFor(() => {
+        expect(esBtn).toHaveClass('is-active');
+      });
     });
 
     test('mapea role_ids a etiqueta Admin en el badge de usuario', async () => {
@@ -771,6 +1037,112 @@ describe("Componente Raíz App", () => {
       await waitFor(() => {
         expect(screen.getByText('Lector')).toBeInTheDocument();
       });
+    });
+
+    test('fetchCurrentUser no rompe UI cuando fetch rechaza (catch)', async () => {
+      global.fetch = vi.fn().mockRejectedValueOnce(new Error('fallo de red'));
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Usuario logueado')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Usuario')).toBeInTheDocument();
+    });
+
+    test('fetchCurrentUser no actualiza perfil cuando response.ok es false', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ detail: 'No autorizado' }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Usuario logueado')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Usuario')).toBeInTheDocument();
+    });
+
+    test('fetchCurrentUser aplica fallbacks cuando faltan first_name, last_name y role_ids', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          first_name: "",
+          last_name: "",
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('US')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Lector')).toBeInTheDocument();
+    });
+
+    test('fetchCurrentUser aplica fallback nullish para first_name y last_name', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Usuario')).toBeInTheDocument();
+      });
+    });
+
+    test('fetchCurrentUser usa URL por defecto cuando VITE_API_BASE_URL es undefined', async () => {
+      const originalBaseUrl = (import.meta as ImportMeta & {
+        env: Record<string, string | undefined>;
+      }).env.VITE_API_BASE_URL;
+
+      (import.meta as ImportMeta & {
+        env: Record<string, string | undefined>;
+      }).env.VITE_API_BASE_URL = undefined;
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ first_name: 'Test', last_name: 'Fallback', role_ids: [1] }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('http://localhost:8000/api/v1/users/1'),
+          expect.any(Object),
+        );
+      });
+
+      (import.meta as ImportMeta & {
+        env: Record<string, string | undefined>;
+      }).env.VITE_API_BASE_URL = originalBaseUrl;
     });
   });
 

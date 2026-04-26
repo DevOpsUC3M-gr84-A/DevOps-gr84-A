@@ -69,55 +69,60 @@ export const VerifyEmail: React.FC = () => {
   }, []);
 
   return (
-    <main className="main-content" aria-labelledby="verify-email-title">
-      <section
-        className="table-container verify-email-card"
-      >
-        <h2 id="verify-email-title" className="verify-email-title">
-          Verificación de Cuenta
-        </h2>
-
-        {status === "loading" && (
-          <p role="status" aria-live="polite" className="verify-email-status-row">
-            <MailCheck size={18} className="verify-email-icon" aria-hidden="true" />
-            Cargando...
-          </p>
-        )}
-
-        {status === "success" && (
-          <div role="status" aria-live="polite">
-            <p className="verify-email-status-row">
-              <CheckCircle2 size={18} className="verify-email-icon" aria-hidden="true" />
-              <span>{message}</span>
-            </p>
-            <a
-              href="/"
-              className="verify-email-action-link"
-            >
-              Ir al Login
-            </a>
+    <div className="auth-page">
+      <div className="auth-card verify-email-panel" aria-labelledby="verify-email-title">
+        <header className="auth-header">
+          <div className="auth-logo">
+            <img
+              src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
+              alt="NewsRadar Logo"
+              className="auth-logo-image"
+            />
+            <span>NewsRadar</span>
           </div>
-        )}
+          <h2 id="verify-email-title">Verificación de Cuenta</h2>
+          <p className="auth-subtitle">Confirma el estado de tu email para acceder al panel.</p>
+        </header>
 
-        {status === "error" && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="alert-feedback alert-feedback-error"
-          >
-            <p className="verify-email-status-row">
-              <AlertCircle size={18} className="verify-email-icon" aria-hidden="true" />
-              <span>{message}</span>
+        <section className="verify-email-content">
+          {status === "loading" && (
+            <p role="status" aria-live="polite" className="verify-email-status-row">
+              <MailCheck size={18} className="verify-email-icon" aria-hidden="true" />
+              <span>Cargando...</span>
             </p>
-            <a
-              href="/login"
-              className="verify-email-action-link"
-            >
-              Volver al Login
-            </a>
-          </div>
-        )}
-      </section>
-    </main>
+          )}
+
+          {status === "success" && (
+            <>
+              <p role="status" aria-live="polite" className="verify-email-status-row">
+                <CheckCircle2 size={18} className="verify-email-icon" aria-hidden="true" />
+                <span>{message}</span>
+              </p>
+              <a href="/" className="btn-auth-submit verify-email-submit-link">
+                Ir al Login
+              </a>
+            </>
+          )}
+
+          {status === "error" && (
+            <>
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="alert-feedback alert-feedback-error verify-email-feedback"
+              >
+                <p className="verify-email-status-row">
+                  <AlertCircle size={18} className="verify-email-icon" aria-hidden="true" />
+                  <span>{message}</span>
+                </p>
+              </div>
+              <a href="/login" className="btn-auth-submit verify-email-submit-link">
+                Volver al Login
+              </a>
+            </>
+          )}
+        </section>
+      </div>
+    </div>
   );
 };

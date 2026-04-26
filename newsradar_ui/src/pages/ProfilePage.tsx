@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Key,
   RefreshCw,
@@ -34,10 +34,13 @@ interface UserProfile {
  */
 export const ProfilePage: React.FC = () => {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [verificationMessage, setVerificationMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -47,7 +50,6 @@ export const ProfilePage: React.FC = () => {
 
     const fetchProfile = async () => {
       try {
-        // Obtener información del perfil del usuario actual
         const userId = globalThis.localStorage.getItem("userId");
         if (!userId) {
           setError("ID de usuario no encontrado");
@@ -64,9 +66,7 @@ export const ProfilePage: React.FC = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          setError(
-            errorData.detail || "Error al cargar perfil"
-          );
+          setError(errorData.detail || "Error al cargar perfil");
           setLoading(false);
           return;
         }
@@ -74,11 +74,7 @@ export const ProfilePage: React.FC = () => {
         const data: UserProfile = await response.json();
         setProfile(data);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Error desconocido"
-        );
+        setError(err instanceof Error ? err.message : "Error desconocido");
       } finally {
         setLoading(false);
       }
@@ -128,14 +124,59 @@ export const ProfilePage: React.FC = () => {
 
   const isAdmin = roleSet.has(3);
   const isEmailVerified = Boolean(
-    profile.email_verified ?? profile.is_verified ?? profile.is_active,
+    profile.email_verified || profile.is_verified || profile.is_active,
   );
+
+  const handleResendVerification = async () => {
+    setVerificationMessage(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/resend-verification`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: profile.email }),
+      });
+
+      if (!response.ok) {
+        let detail = "No se pudo reenviar el correo de verificación.";
+
+        try {
+          const errorData = (await response.json()) as { detail?: unknown };
+
+          if (typeof errorData.detail === "string") {
+            detail = errorData.detail;
+          }
+        } catch {
+          // Keep default detail when the API does not return valid JSON.
+        }
+
+        throw new Error(detail);
+      }
+
+      setVerificationMessage({
+        type: "success",
+        text: "Te hemos reenviado un correo de verificación.",
+      });
+    } catch (resendError) {
+      const message =
+        resendError instanceof Error
+          ? resendError.message
+          : "No se pudo reenviar el correo de verificación.";
+
+      setVerificationMessage({ type: "error", text: message });
+    }
+  };
 
   return (
     <main className="profile-page" aria-labelledby="profile-title">
       <div className="profile-container">
         <header className="page-heading">
-          <h1 id="profile-title" className="section-title">Perfil de Usuario</h1>
+          <h1 id="profile-title" className="section-title">
+            Perfil de Usuario
+          </h1>
           <p className="section-subtitle">
             Gestiona tu información personal y configuración de cuenta.
           </p>
@@ -203,13 +244,13 @@ export const ProfilePage: React.FC = () => {
                   <span>Recuperar acceso</span>
                 </Link>
                 <button
-                  type="button"
                   className="security-action-link security-action-button"
-                  onClick={() => navigate("/verify-email")}
+                  type="button"
+                  onClick={handleResendVerification}
                   disabled={isEmailVerified}
                 >
-                  <Mail size={16} />
-                  <span>Verificar email</span>
+                  <Mail size={16} aria-hidden="true" />
+                  {isEmailVerified ? "Correo ya verificado" : "Verificar correo"}
                 </button>
 
                 <div
@@ -220,6 +261,16 @@ export const ProfilePage: React.FC = () => {
                   {isEmailVerified ? <CheckCircle size={16} /> : <XCircle size={16} />}
                   <span>{isEmailVerified ? "Email Verificado" : "No verificado"}</span>
                 </div>
+
+                {verificationMessage && (
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className={`verification-message verification-message-${verificationMessage.type}`}
+                  >
+                    {verificationMessage.text}
+                  </p>
+                )}
               </div>
             </article>
 
@@ -232,8 +283,8 @@ export const ProfilePage: React.FC = () => {
                 <div className="danger-warning">
                   <AlertTriangle size={18} />
                   <p>
-                    Eliminar la cuenta borra el acceso y los datos asociados de
-                    forma permanente.
+                    Eliminar la cuenta borra el acceso y los datos asociados de forma
+                    permanente.
                   </p>
                 </div>
 

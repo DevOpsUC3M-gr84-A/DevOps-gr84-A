@@ -148,6 +148,20 @@
   gap: 0.75rem;
 }
 
+.verification-message {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.verification-message-success {
+  color: #15803d;
+}
+
+.verification-message-error {
+  color: #b91c1c;
+}
+
 .email-verification-status {
   display: inline-flex;
   align-items: center;

@@ -182,26 +182,43 @@
   color: #1e3a8a;
 }
 
-.verify-email-card {
-  max-width: 700px;
-  margin: 2rem auto;
-}
-
-.verify-email-title {
-  color: #1e293b;
-  margin-bottom: 1rem;
+.verify-email-panel {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .verify-email-status-row {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   margin: 0;
+}
+
+.verify-email-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
 }
 
 .verify-email-icon {
   color: #1e40af;
   flex-shrink: 0;
+}
+
+.verify-email-submit-link {
+  width: 100%;
+  max-width: 240px;
+  text-decoration: none;
+}
+
+.verify-email-feedback {
+  width: 100%;
 }
 
 .verify-email-action-link {

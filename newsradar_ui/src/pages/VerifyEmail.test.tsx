@@ -21,6 +21,10 @@ describe("VerifyEmail Page", () => {
 
     render(<VerifyEmail />);
 
+    expect(document.querySelector(".auth-page")).toBeInTheDocument();
+    expect(document.querySelector(".auth-card")).toBeInTheDocument();
+    expect(document.querySelector(".auth-header")).toBeInTheDocument();
+
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Token de verificación no proporcionado.",
     );
@@ -67,7 +71,7 @@ describe("VerifyEmail Page", () => {
   });
 
   test("muestra error cuando el backend rechaza el token", async () => {
-    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: false,
       status: 401,
       json: async () => ({ detail: "Token inválido o expirado" }),
@@ -86,7 +90,7 @@ describe("VerifyEmail Page", () => {
   });
 
   test("muestra mensaje genérico de error si fetch falla con excepción", async () => {
-    jest
+    vi
       .spyOn(globalThis, "fetch")
       .mockRejectedValueOnce(new Error("Network Error"));
     globalThis.history.pushState({}, "", "/verify-email?token=network-failure");
