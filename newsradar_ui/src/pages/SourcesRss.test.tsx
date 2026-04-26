@@ -8,6 +8,6 @@ describe("SourcesRss", () => {
     render(<SourcesRss />);
 
     expect(screen.getByRole("heading", { name: /Fuentes RSS/i })).toBeInTheDocument();
-    expect(screen.getByText(/reservada para usuarios con rol ADMIN o GESTOR/i)).toBeInTheDocument();
+    expect(screen.getByText(/Administra los origenes y canales de noticias/i)).toBeInTheDocument();
   });
 });

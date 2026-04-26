@@ -1,9 +1,10 @@
 .auth-page {
   min-height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
   padding: 20px;
 }
 
@@ -13,7 +14,8 @@
   max-width: 400px;
   padding: 32px;
   border-radius: 12px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 
 .auth-header {
@@ -85,7 +87,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #2563eb;
 }
 
 .password-field-group {
@@ -120,7 +122,7 @@
 
 .btn-auth-submit {
   margin-top: 8px;
-  background-color: #2563eb;
+  background-color: #1e40af;
   color: white;
   border: none;
   padding: 12px;
@@ -139,7 +141,7 @@
 }
 
 .btn-auth-submit:hover {
-  background-color: #1d4ed8;
+  background-color: #1e3a8a;
 }
 
 .forgot-password-link,
@@ -150,6 +152,15 @@
   margin-top: 1rem;
   width: 100%;
   text-align: center;
+  color: #1e40af;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover,
+.auth-layout-back-link:hover {
+  color: #1e3a8a;
 }
 
 .auth-footer {
@@ -162,8 +173,77 @@
 .btn-toggle-auth {
   background: none;
   border: none;
-  color: #3b82f6;
+  color: #1e40af;
   font-weight: 600;
   cursor: pointer;
   font-size: 0.9rem;
+}
+
+.btn-toggle-auth:hover {
+  color: #1e3a8a;
+}
+
+.verify-email-panel {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.verify-email-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+  flex-direction: row;
+  margin: 0;
+}
+
+.verify-email-status-row.success {
+  color: #15803d;
+}
+
+.verify-email-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.verify-email-icon {
+  color: #1e40af;
+  flex-shrink: 0;
+}
+
+.verify-email-submit-link {
+  width: 100%;
+  max-width: 240px;
+  text-decoration: none;
+}
+
+.verify-email-feedback {
+  width: 100%;
+}
+
+.verify-email-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #1e40af;
+  background-color: #1e40af;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.verify-email-action-link:hover {
+  background-color: #1e3a8a;
+  border-color: #1e3a8a;
+  color: #ffffff;
 }

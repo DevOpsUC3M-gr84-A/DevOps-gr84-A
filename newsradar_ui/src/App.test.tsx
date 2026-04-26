@@ -108,11 +108,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -136,12 +136,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -166,7 +166,7 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("link", { name: /Gestion de Alertas/i }),
+        screen.queryByRole("link", { name: /Alertas/i }),
       ).not.toBeInTheDocument();
     });
   });
@@ -188,11 +188,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -216,12 +216,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -246,7 +246,7 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("link", { name: /Gestion de Alertas/i }),
+        screen.queryByRole("link", { name: /Alertas/i }),
       ).not.toBeInTheDocument();
     });
   });
@@ -268,12 +268,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -298,11 +298,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -326,16 +326,236 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
       expect(screen.getByText("SOURCES_RSS_VIEW")).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles usa formato { roles: [1] }", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ roles: [1] }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles usa formato { role_id: 3 }", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ role_id: 3 }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Alertas/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("habilita gestión cuando userRoles usa formato { id: 1 }", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ id: 1 }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles usa fallback extractCandidates con valor primitivo JSON", async () => {
+    localStorage.setItem("userRoles", "2");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con role_id", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ role_id: 1 }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con role", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ role: 3 }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Alertas/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con id", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ id: 1 }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles normaliza candidato objeto con name", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([{ name: "admin" }]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Alertas/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles usa objeto desconocido y cae en fallback de extracción", async () => {
+    localStorage.setItem("userRoles", JSON.stringify({ unknown: true }));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Alertas/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test("parseStoredRoles usa rama catch con lista vacía y fallback a rawRoles", async () => {
+    localStorage.setItem("userRoles", " , , ");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: /Alertas/i }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -356,11 +576,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -384,12 +604,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -415,11 +635,11 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Alertas/i }),
+        screen.getByRole("link", { name: /Alertas/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("link", { name: /Gestion de Alertas/i }));
+    fireEvent.click(screen.getByRole("link", { name: /Alertas/i }));
 
     await waitFor(() => {
       expect(screen.getByText("ALERTS_VIEW")).toBeInTheDocument();
@@ -445,12 +665,12 @@ describe("Componente Raíz App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
       ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     );
 
     await waitFor(() => {
@@ -496,19 +716,20 @@ describe("Componente Raíz App", () => {
     );
 
     expect(
-      screen.getByRole("link", { name: /Dashboard \/ Resumen/i }),
+      screen.getByRole("link", { name: /Dashboard/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Resumen/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Alertas/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Gestion de Alertas/i }),
+      screen.getByRole("link", { name: /Fuentes y RSS/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Gestion de Fuentes y canales RSS/i }),
+      screen.getByRole("link", { name: /Notificaciones/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Buzon de Notificaciones/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Gestion del Perfil de Usuario/i }),
+      screen.getByRole("link", { name: "Perfil" }),
     ).toBeInTheDocument();
   });
 
@@ -549,4 +770,380 @@ describe("Componente Raíz App", () => {
     expect(screen.getByAltText(/NewsRadar Logo/i)).toBeInTheDocument();
     expect(screen.getByText(/NewsRadar/i)).toBeInTheDocument();
   });
+
+  test("hamburger menu button es clickeable y el sidebar cambia clase", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const menuButton = screen.getByRole("button", {
+      name: /abrir menú lateral|cerrar menú lateral/i,
+    });
+    expect(menuButton).toBeInTheDocument();
+
+    // El sidebar debe estar abierto inicialmente (sin clase "closed")
+    let sidebar = screen.getByRole("complementary");
+    expect(sidebar).toHaveClass("sidebar");
+    expect(sidebar).not.toHaveClass("closed");
+
+    // Hacer click en el botón del menú
+    fireEvent.click(menuButton);
+
+    // Después del click, el sidebar debe tener la clase "closed"
+    await waitFor(() => {
+      sidebar = screen.getByRole("complementary");
+      expect(sidebar).toHaveClass("closed");
+    });
+
+    // Hacer click nuevamente
+    fireEvent.click(menuButton);
+
+    // Después del segundo click, la clase "closed" debe removerse
+    await waitFor(() => {
+      sidebar = screen.getByRole("complementary");
+      expect(sidebar).not.toHaveClass("closed");
+    });
+  });
+
+  test("top-bar muestra título dinámico correcto por ruta", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/alertas"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/ALERTAS/i)).toBeInTheDocument();
+    });
+
+    // Cambiar a ruta /fuentes-rss
+    rerender(
+      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/FUENTES Y RSS/i)).toBeInTheDocument();
+    });
+
+    // Cambiar a ruta /perfil
+    rerender(
+      <MemoryRouter initialEntries={["/perfil"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/PERFIL/i)).toBeInTheDocument();
+    });
+  });
+
+  test("renderiza contenido de Resumen en /resumen", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/resumen"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Resumen ejecutivo de actividad/i)).toBeInTheDocument();
+    });
+  });
+
+  test("renderiza contenido de Notificaciones en /notificaciones", async () => {
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/notificaciones"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Buzon de avisos y alertas detectadas/i)).toBeInTheDocument();
+    });
+  });
+
+  test("usa fallback por comas cuando userRoles no es JSON válido", async () => {
+    localStorage.setItem("userRoles", "Admin, Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("usa fallback de userRole cuando faltan userRoles y role_ids", async () => {
+    localStorage.removeItem("userRoles");
+    localStorage.removeItem("role_ids");
+    localStorage.setItem("userRole", "Gestor");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /Fuentes y RSS/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Nuevas funcionalidades UI (Sidebar, Idioma y Perfil)', () => {
+    beforeEach(() => {
+      globalThis.localStorage.setItem('token', 'fake-token');
+      globalThis.localStorage.setItem('userId', '1');
+      globalThis.localStorage.setItem('userRoles', JSON.stringify([1]));
+
+      // Usamos el mock que ya tienes configurado arriba
+      mockedUseAuth.mockReturnValue({
+        login: vi.fn(),
+        logout: vi.fn(),
+        token: "fake-token",
+        isAuthenticated: true,
+      });
+    });
+
+    test('hace fetch del perfil, abre/cierra sidebar y cambia idioma', async () => {
+      // 1. Mockeamos la respuesta del backend para el perfil
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ first_name: 'Eloy', last_name: 'Martin', role_ids: [1] }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      // 2. Verificamos que el nombre carga en la Top Bar
+      await waitFor(() => {
+        expect(screen.getByText('Eloy Martin')).toBeInTheDocument();
+      });
+
+      // 3. Probamos el botón hamburguesa
+      const toggleBtn = screen.getByRole('button', { name: /Cerrar menú lateral|Abrir menú lateral/i });
+      fireEvent.click(toggleBtn);
+      await waitFor(() => {
+        expect(toggleBtn).toHaveAttribute('aria-label', 'Abrir menú lateral');
+      });
+
+      // 4. Probamos el selector de idiomas
+      const enBtn = screen.getByRole('button', { name: 'EN' });
+      fireEvent.click(enBtn);
+      await waitFor(() => {
+        expect(enBtn).toHaveClass('is-active');
+      });
+
+      const esBtn = screen.getByRole('button', { name: 'ES' });
+      fireEvent.click(esBtn);
+      await waitFor(() => {
+        expect(esBtn).toHaveClass('is-active');
+      });
+    });
+
+    test('mapea role_ids a etiqueta Admin en el badge de usuario', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          first_name: 'Ada',
+          last_name: 'Lovelace',
+          role_ids: [3],
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Admin')).toBeInTheDocument();
+      });
+    });
+
+    test('mapea role_ids a etiqueta Lector en el badge de usuario', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          first_name: 'Alan',
+          last_name: 'Turing',
+          role_ids: [2],
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Lector')).toBeInTheDocument();
+      });
+    });
+
+    test('fetchCurrentUser no rompe UI cuando fetch rechaza (catch)', async () => {
+      global.fetch = vi.fn().mockRejectedValueOnce(new Error('fallo de red'));
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Usuario logueado')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Usuario')).toBeInTheDocument();
+    });
+
+    test('fetchCurrentUser no actualiza perfil cuando response.ok es false', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ detail: 'No autorizado' }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Usuario logueado')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Usuario')).toBeInTheDocument();
+    });
+
+    test('fetchCurrentUser aplica fallbacks cuando faltan first_name, last_name y role_ids', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          first_name: "",
+          last_name: "",
+        }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('US')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Lector')).toBeInTheDocument();
+    });
+
+    test('fetchCurrentUser aplica fallback nullish para first_name y last_name', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Usuario')).toBeInTheDocument();
+      });
+    });
+
+    test('fetchCurrentUser usa URL por defecto cuando VITE_API_BASE_URL es undefined', async () => {
+      const originalBaseUrl = (import.meta as ImportMeta & {
+        env: Record<string, string | undefined>;
+      }).env.VITE_API_BASE_URL;
+
+      (import.meta as ImportMeta & {
+        env: Record<string, string | undefined>;
+      }).env.VITE_API_BASE_URL = undefined;
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ first_name: 'Test', last_name: 'Fallback', role_ids: [1] }),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <App />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining('http://localhost:8000/api/v1/users/1'),
+          expect.any(Object),
+        );
+      });
+
+      (import.meta as ImportMeta & {
+        env: Record<string, string | undefined>;
+      }).env.VITE_API_BASE_URL = originalBaseUrl;
+    });
+  });
+
 });

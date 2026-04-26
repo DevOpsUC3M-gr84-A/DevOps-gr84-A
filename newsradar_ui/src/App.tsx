@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import {
   Bell,
+  Menu,
   Rss,
   LayoutDashboard,
   UserCog,
@@ -11,11 +12,13 @@ import {
   LogOut,
 } from "lucide-react";
 import {
+  Link,
   Navigate,
   NavLink,
   Outlet,
   Route,
   Routes,
+  useLocation,
   useNavigate,
 } from "react-router-dom";
 import { AlertsManagement } from "./pages/AlertsManagement";
@@ -140,30 +143,48 @@ const canAccessManagementSections = (roles: number[]): boolean =>
 
 const DashboardPage = () => (
   <section className="main-content">
-    <h1>Dashboard / Resumen</h1>
-    <p>
-      Aqui iran las estadisticas globales (Issue #85) y nubes de palabras (Issue
-      #85).
-    </p>
+    <header className="page-heading">
+      <h1 className="section-title">Dashboard</h1>
+      <p className="section-subtitle">
+        Vision general y metricas clave de tu entorno.
+      </p>
+    </header>
+  </section>
+);
+
+const ResumenPage = () => (
+  <section className="main-content">
+    <header className="page-heading">
+      <h1 className="section-title">Resumen</h1>
+      <p className="section-subtitle">
+        Resumen ejecutivo de actividad y principales indicadores.
+      </p>
+    </header>
   </section>
 );
 
 const NotificationsPage = () => (
   <section className="main-content">
-    <h1>Buzon de Notificaciones</h1>
-    <p>Buzon de notificaciones de indexacion.</p>
+    <header className="page-heading">
+      <h1 className="section-title">Buzon de Notificaciones</h1>
+      <p className="section-subtitle">Buzon de avisos y alertas detectadas.</p>
+    </header>
   </section>
 );
 
 const LanguageSwitcher = ({
+  activeLanguage,
   onLanguageChange,
 }: {
+  activeLanguage: "es" | "en";
   onLanguageChange: (language: "es" | "en") => void;
 }) => (
   <div className="language-switcher">
     <button
       type="button"
-      className="language-switcher-item"
+      className={`language-switcher-item ${
+        activeLanguage === "es" ? "is-active" : ""
+      }`}
       onClick={() => onLanguageChange("es")}
     >
       ES
@@ -171,7 +192,9 @@ const LanguageSwitcher = ({
     <span className="language-switcher-separator"> / </span>
     <button
       type="button"
-      className="language-switcher-item"
+      className={`language-switcher-item ${
+        activeLanguage === "en" ? "is-active" : ""
+      }`}
       onClick={() => onLanguageChange("en")}
     >
       EN
@@ -183,70 +206,207 @@ const ProtectedLayout = ({
   handleLogout,
   canManageSections,
   onLanguageChange,
-}: ProtectedLayoutProps) => (
-  <div className="app-container">
-    <aside className="sidebar">
-      <div className="brand-section app-brand-section">
-        <img
-          src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
-          alt="NewsRadar Logo"
-          className="app-brand-logo"
-        />
-        <span>NewsRadar</span>
-      </div>
+}: ProtectedLayoutProps) => {
+  const location = useLocation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeLanguage, setActiveLanguage] = useState<"es" | "en">("es");
+  const [userName, setUserName] = useState("Usuario");
+  const [userRole, setUserRole] = useState("Lector");
+  const [userInitials, setUserInitials] = useState("US");
 
-      <LanguageSwitcher onLanguageChange={onLanguageChange} />
+  const sectionTitleByPath: Record<string, string> = {
+    "/dashboard": "DASHBOARD",
+    "/resumen": "RESUMEN",
+    "/alertas": "ALERTAS",
+    "/fuentes-rss": "FUENTES Y RSS",
+    "/notificaciones": "NOTIFICACIONES",
+    "/perfil": "PERFIL",
+  };
 
-      <nav className="nav-container">
-        <ul className="nav-links">
-          <li>
-            <NavLink to="/dashboard" className="nav-item">
-              <LayoutDashboard size={20} />
-              <span>Dashboard / Resumen</span>
-            </NavLink>
-          </li>
-          {canManageSections && (
-            <>
-              <li>
-                <NavLink to="/alertas" className="nav-item">
-                  <Bell size={20} />
-                  <span>Gestion de Alertas</span>
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/fuentes-rss" className="nav-item">
-                  <Rss size={20} />
-                  <span>Gestion de Fuentes y canales RSS</span>
-                </NavLink>
-              </li>
-            </>
-          )}
-          <li>
-            <NavLink to="/notificaciones" className="nav-item">
-              <Inbox size={20} />
-              <span>Buzon de Notificaciones</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/perfil" className="nav-item">
-              <UserCog size={20} />
-              <span>Gestion del Perfil de Usuario</span>
-            </NavLink>
-          </li>
-        </ul>
+  const currentSectionTitle = sectionTitleByPath[location.pathname] ?? "DASHBOARD";
 
-        <div className="nav-footer">
-          <button onClick={handleLogout} className="logout-button">
-            <LogOut size={20} />
-            <span>Cerrar Sesion</span>
-          </button>
+  useEffect(() => {
+    const token = globalThis.localStorage.getItem("token");
+    const userId = globalThis.localStorage.getItem("userId");
+
+    if (!token || !userId) {
+      return;
+    }
+
+    const roleIdToLabel = (roleIds: number[]): string => {
+      if (roleIds.includes(3)) {
+        return "Admin";
+      }
+
+      if (roleIds.includes(1)) {
+        return "Gestor";
+      }
+
+      return "Lector";
+    };
+
+    const controller = new AbortController();
+
+    const fetchCurrentUser = async () => {
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+        const response = await fetch(`${apiBaseUrl}/api/v1/users/${userId}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          first_name?: string;
+          last_name?: string;
+          role_ids?: unknown;
+        };
+
+        const firstName = (data.first_name ?? "Usuario").trim();
+        const lastName = (data.last_name ?? "").trim();
+        const fullName = `${firstName} ${lastName}`.trim();
+        const firstInitial = firstName.charAt(0).toUpperCase();
+        const lastInitial = lastName.charAt(0).toUpperCase();
+        const initials = `${firstInitial}${lastInitial}` || "US";
+        const parsedRoleIds = parseStoredRoles(
+          data.role_ids ? JSON.stringify(data.role_ids) : null
+        );
+
+        setUserName(fullName);
+        setUserRole(roleIdToLabel(parsedRoleIds));
+        setUserInitials(initials);
+      } catch {
+        // Keep fallback local values if profile cannot be loaded.
+      }
+    };
+
+    fetchCurrentUser();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  const handleLanguageChange = (language: "es" | "en") => {
+    setActiveLanguage(language);
+    onLanguageChange(language);
+  };
+
+  return (
+    <div className="app-container">
+      <aside className={`sidebar ${isSidebarOpen ? "" : "closed"}`}>
+        <div className="brand-section app-brand-section">
+          <img
+            src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
+            alt="NewsRadar Logo"
+            className="app-brand-logo"
+          />
+          <span>NewsRadar</span>
         </div>
-      </nav>
-    </aside>
 
-    <Outlet />
-  </div>
-);
+        <LanguageSwitcher
+          activeLanguage={activeLanguage}
+          onLanguageChange={handleLanguageChange}
+        />
+
+        <nav className="nav-container">
+          <ul className="nav-links">
+            <li>
+              <NavLink to="/dashboard" className="nav-item">
+                <LayoutDashboard size={20} />
+                <span>Dashboard</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/resumen" className="nav-item">
+                <LayoutDashboard size={20} />
+                <span>Resumen</span>
+              </NavLink>
+            </li>
+            {canManageSections && (
+              <>
+                <li>
+                  <NavLink to="/alertas" className="nav-item">
+                    <Bell size={20} />
+                    <span>Alertas</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/fuentes-rss" className="nav-item">
+                    <Rss size={20} />
+                    <span>Fuentes y RSS</span>
+                  </NavLink>
+                </li>
+              </>
+            )}
+            <li>
+              <NavLink to="/notificaciones" className="nav-item">
+                <Inbox size={20} />
+                <span>Notificaciones</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/perfil" className="nav-item">
+                <UserCog size={20} />
+                <span>Perfil</span>
+              </NavLink>
+            </li>
+          </ul>
+
+          <div className="nav-footer">
+            <button onClick={handleLogout} className="logout-button">
+              <LogOut size={20} />
+              <span>Cerrar Sesion</span>
+            </button>
+          </div>
+        </nav>
+      </aside>
+
+      <main className="layout-main">
+        <header className="top-bar">
+          <div className="top-bar-left">
+            <button
+              type="button"
+              className="sidebar-toggle-button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label={isSidebarOpen ? "Cerrar menú lateral" : "Abrir menú lateral"}
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="top-bar-title">{currentSectionTitle}</h1>
+          </div>
+
+          <Link
+            to="/perfil"
+            className="user-badge-link"
+            aria-label="Ir al perfil del usuario logueado"
+          >
+            <div className="user-badge" aria-label="Usuario logueado">
+              <div className="user-badge-avatar" aria-hidden="true">
+                {userInitials}
+              </div>
+              <div className="user-badge-info">
+                <span className="user-badge-name">{userName}</span>
+                <span className="user-badge-role">{userRole}</span>
+              </div>
+            </div>
+          </Link>
+        </header>
+
+        <div className="layout-content">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
 
 function App() {
   const { logout, isAuthenticated } = useAuth();
@@ -290,6 +450,7 @@ function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="resumen" element={<ResumenPage />} />
         <Route
           path="alertas"
           element={
