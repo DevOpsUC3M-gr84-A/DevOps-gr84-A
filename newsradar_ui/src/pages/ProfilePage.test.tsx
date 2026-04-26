@@ -5,8 +5,24 @@ import { MemoryRouter } from "react-router-dom";
 import { ProfilePage } from "./ProfilePage";
 import { useAuth } from "../hooks/useAuth";
 
+const { mockedNavigate } = vi.hoisted(() => ({
+  mockedNavigate: vi.fn(),
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+
+  return {
+    ...actual,
+    useNavigate: () => mockedNavigate,
+  };
+});
+
 vi.mock("../hooks/useAuth");
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedLogout = vi.fn();
 
 vi.mock("../components/UserManagementTable", () => ({
   UserManagementTable: ({ isAdmin }: { isAdmin: boolean }) =>
@@ -20,9 +36,13 @@ describe("ProfilePage", () => {
   beforeEach(() => {
     localStorage.clear();
     mockFetch.mockClear();
+    mockedLogout.mockClear();
+    mockedNavigate.mockClear();
     mockedUseAuth.mockReturnValue({
       token: "fake-token",
       isAuthenticated: true,
+      logout: mockedLogout,
+      login: vi.fn(),
     });
     localStorage.setItem("userId", "1");
   });
@@ -164,6 +184,8 @@ describe("ProfilePage", () => {
     mockedUseAuth.mockReturnValue({
       token: null,
       isAuthenticated: false,
+      logout: mockedLogout,
+      login: vi.fn(),
     });
 
     render(
@@ -468,5 +490,250 @@ describe("ProfilePage", () => {
     expect(
       await screen.findByText("No se pudo reenviar el correo de verificación."),
     ).toBeInTheDocument();
+  });
+
+  test("abre el modal de borrado y permite cancelarlo", async () => {
+    const profile = {
+      id: 1,
+      email: "user@test.com",
+      first_name: "User",
+      last_name: "Test",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => profile,
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Perfil de Usuario");
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar Cuenta/i }));
+
+    expect(
+      screen.getByRole("dialog", { name: /Confirmar eliminación de cuenta/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Contraseña actual/i), {
+      target: { value: "Secret123!" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Cancelar/i }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("confirma borrado de cuenta con éxito, llama logout y navega a login", async () => {
+    const profile = {
+      id: 1,
+      email: "user@test.com",
+      first_name: "User",
+      last_name: "Test",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => profile,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+      });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Perfil de Usuario");
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar Cuenta/i }));
+    fireEvent.change(screen.getByLabelText(/Contraseña actual/i), {
+      target: { value: "Secret123!" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar definitivamente/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("/api/v1/users/1"),
+        expect.objectContaining({
+          method: "DELETE",
+          body: JSON.stringify({ password: "Secret123!" }),
+        }),
+      );
+    });
+
+    expect(mockedLogout).toHaveBeenCalledTimes(1);
+    expect(mockedNavigate).toHaveBeenCalledWith("/login", { replace: true });
+  });
+
+  test("muestra error si intenta borrar sin contraseña", async () => {
+    const profile = {
+      id: 1,
+      email: "user@test.com",
+      first_name: "User",
+      last_name: "Test",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => profile,
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Perfil de Usuario");
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar Cuenta/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar definitivamente/i }));
+
+    expect(
+      await screen.findByText("Debes introducir tu contraseña para continuar."),
+    ).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("muestra error si falta userId al confirmar borrado", async () => {
+    const profile = {
+      id: 1,
+      email: "user@test.com",
+      first_name: "User",
+      last_name: "Test",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => profile,
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Perfil de Usuario");
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar Cuenta/i }));
+
+    fireEvent.change(screen.getByLabelText(/Contraseña actual/i), {
+      target: { value: "Secret123!" },
+    });
+    localStorage.removeItem("userId");
+
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar definitivamente/i }));
+
+    expect(
+      await screen.findByText("No se encontró el identificador de usuario."),
+    ).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("muestra detalle del backend cuando falla el borrado", async () => {
+    const profile = {
+      id: 1,
+      email: "user@test.com",
+      first_name: "User",
+      last_name: "Test",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => profile,
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ detail: "Contraseña incorrecta" }),
+      });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Perfil de Usuario");
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar Cuenta/i }));
+    fireEvent.change(screen.getByLabelText(/Contraseña actual/i), {
+      target: { value: "wrong-pass" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar definitivamente/i }));
+
+    expect(await screen.findByText("Contraseña incorrecta")).toBeInTheDocument();
+    expect(mockedLogout).not.toHaveBeenCalled();
+  });
+
+  test("usa mensaje fallback si el borrado rechaza con error no tipado", async () => {
+    const profile = {
+      id: 1,
+      email: "user@test.com",
+      first_name: "User",
+      last_name: "Test",
+      organization: "TestOrg",
+      role_ids: [2],
+      is_active: false,
+      email_verified: false,
+      is_verified: false,
+    };
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => profile,
+      })
+      .mockRejectedValueOnce("delete-string-error");
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Perfil de Usuario");
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar Cuenta/i }));
+    fireEvent.change(screen.getByLabelText(/Contraseña actual/i), {
+      target: { value: "Secret123!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Eliminar definitivamente/i }));
+
+    expect(await screen.findByText("No se pudo eliminar la cuenta.")).toBeInTheDocument();
+    expect(mockedLogout).not.toHaveBeenCalled();
   });
 });

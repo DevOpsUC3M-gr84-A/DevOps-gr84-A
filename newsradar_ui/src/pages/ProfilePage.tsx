@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Key,
   RefreshCw,
@@ -33,7 +33,8 @@ interface UserProfile {
  * Muestra información del usuario logueado y gestión de usuarios si es Admin.
  */
 export const ProfilePage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,10 @@ export const ProfilePage: React.FC = () => {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -123,8 +128,6 @@ export const ProfilePage: React.FC = () => {
   }
 
   const isAdmin = roleSet.has(3);
-  console.log("PERFIL COMPLETO:", profile);
-  
   const isEmailVerified = profile.is_verified === true || profile.email_verified === true || profile.is_active === true;
 
   const handleResendVerification = async () => {
@@ -167,6 +170,72 @@ export const ProfilePage: React.FC = () => {
           : "No se pudo reenviar el correo de verificación.";
 
       setVerificationMessage({ type: "error", text: message });
+    }
+  };
+
+  const openDeleteModal = () => {
+    setDeleteError(null);
+    setDeletePassword("");
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setDeleteError(null);
+    setDeletePassword("");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setDeleteError("Debes introducir tu contraseña para continuar.");
+      return;
+    }
+
+    const userId = globalThis.localStorage.getItem("userId");
+
+    if (!userId) {
+      setDeleteError("No se encontró el identificador de usuario.");
+      return;
+    }
+
+    setDeleteError(null);
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+
+      if (!response.ok) {
+        let detail = "No se pudo eliminar la cuenta.";
+
+        try {
+          const errorData = (await response.json()) as { detail?: unknown };
+          if (typeof errorData.detail === "string") {
+            detail = errorData.detail;
+          }
+        } catch {
+          // Keep fallback message when response has no JSON body.
+        }
+
+        throw new Error(detail);
+      }
+
+      logout();
+      navigate("/login", { replace: true });
+    } catch (deleteAccountError) {
+      setDeleteError(
+        deleteAccountError instanceof Error
+          ? deleteAccountError.message
+          : "No se pudo eliminar la cuenta.",
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -288,7 +357,7 @@ export const ProfilePage: React.FC = () => {
                   </p>
                 </div>
 
-                <button type="button" className="danger-button">
+                <button type="button" className="danger-button" onClick={openDeleteModal}>
                   <Trash2 size={16} />
                   <span>Eliminar Cuenta</span>
                 </button>
@@ -297,6 +366,60 @@ export const ProfilePage: React.FC = () => {
           </aside>
         </div>
       </div>
+
+      {isDeleteModalOpen && (
+        <div className="delete-account-modal-overlay" role="presentation">
+          <div
+            className="delete-account-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+          >
+            <h2 id="delete-account-title">Confirmar eliminación de cuenta</h2>
+            <p>
+              Esta acción es irreversible. Introduce tu contraseña para eliminar
+              definitivamente tu cuenta.
+            </p>
+
+            <label htmlFor="delete-password-input" className="delete-account-label">
+              Contraseña actual
+            </label>
+            <input
+              id="delete-password-input"
+              type="password"
+              className="delete-account-input"
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+              placeholder="••••••••"
+            />
+
+            {deleteError && (
+              <p role="alert" className="delete-account-error">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="delete-account-actions">
+              <button
+                type="button"
+                className="delete-account-cancel"
+                onClick={closeDeleteModal}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="delete-account-confirm"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Eliminando..." : "Eliminar definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
