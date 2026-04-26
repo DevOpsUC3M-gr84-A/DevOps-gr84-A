@@ -123,9 +123,14 @@ export const ProfilePage: React.FC = () => {
   }
 
   const isAdmin = roleSet.has(3);
-  const isEmailVerified = Boolean(
-    profile.email_verified || profile.is_verified || profile.is_active,
-  );
+  console.log("PERFIL COMPLETO:", profile);
+  const isEmailVerified =
+    profile.is_verified === true ||
+    profile.is_verified === "true" ||
+    profile.is_verified === 1 ||
+    profile.is_active === true ||
+    profile.is_active === "true" ||
+    profile.is_active === 1;
 
   const handleResendVerification = async () => {
     setVerificationMessage(null);
@@ -250,7 +255,7 @@ export const ProfilePage: React.FC = () => {
                   disabled={isEmailVerified}
                 >
                   <Mail size={16} aria-hidden="true" />
-                  {isEmailVerified ? "Correo ya verificado" : "Verificar correo"}
+                  Verificar correo
                 </button>
 
                 <div

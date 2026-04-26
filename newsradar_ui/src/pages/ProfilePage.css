@@ -172,13 +172,13 @@
   border: 1px solid transparent;
 }
 
-.email-verification-status.verified {
+.verified {
   color: #15803d;
   background: #f0fdf4;
   border-color: #bbf7d0;
 }
 
-.email-verification-status.not-verified {
+.not-verified {
   color: #c2410c;
   background: #fff7ed;
   border-color: #fdba74;
@@ -213,11 +213,11 @@
 }
 
 .security-actions button:disabled {
-  opacity: 0.5;
+  background: #f8fafc;
+  color: #94a3b8;
   cursor: not-allowed;
-  background: #e5e7eb;
-  color: #475569;
-  border-color: #cbd5e1;
+  border-color: #e2e8f0;
+  opacity: 0.8;
   transform: none;
 }
 

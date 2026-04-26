@@ -35,6 +35,8 @@ def to_user_schema(user: DBUser) -> User:
         last_name=user.surname or "Desconocido",
         organization=user.organization or "",
         role_ids=role_ids_from_role(user.role),
+        is_verified=bool(user.is_verified),
+        is_active=bool(user.is_verified),
     )
 
 

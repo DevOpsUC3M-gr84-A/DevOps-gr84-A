@@ -287,7 +287,7 @@ describe("ProfilePage", () => {
 
     // Verificar que el botón de verificación está deshabilitado
     const verifyButton = screen.getByRole("button", {
-      name: /Correo ya verificado/i,
+      name: /Verificar correo/i,
     });
     expect(verifyButton).toBeDisabled();
   });

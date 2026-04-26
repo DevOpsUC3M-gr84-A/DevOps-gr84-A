@@ -9,7 +9,7 @@ type VerificationStatus = "loading" | "success" | "error";
 
 export const VerifyEmail: React.FC = () => {
   const [status, setStatus] = useState<VerificationStatus>("loading");
-  const [message, setMessage] = useState("Validando tu cuenta...");
+  const [message, setMessage] = useState("Cargando...");
 
   const hasCalled = useRef(false);
 
@@ -81,24 +81,23 @@ export const VerifyEmail: React.FC = () => {
             <span>NewsRadar</span>
           </div>
           <h2 id="verify-email-title">Verificación de Cuenta</h2>
-          <p className="auth-subtitle">Confirma el estado de tu email para acceder al panel.</p>
         </header>
 
         <section className="verify-email-content">
           {status === "loading" && (
             <p role="status" aria-live="polite" className="verify-email-status-row">
-              <MailCheck size={18} className="verify-email-icon" aria-hidden="true" />
-              <span>Cargando...</span>
+              <MailCheck size={24} className="verify-email-icon" aria-hidden="true" />
+              <span>{message}</span>
             </p>
           )}
 
           {status === "success" && (
             <>
-              <p role="status" aria-live="polite" className="verify-email-status-row">
-                <CheckCircle2 size={18} className="verify-email-icon" aria-hidden="true" />
+              <p role="status" aria-live="polite" className="verify-email-status-row success">
+                <CheckCircle2 size={24} className="verify-email-icon" aria-hidden="true" />
                 <span>{message}</span>
               </p>
-              <a href="/" className="btn-auth-submit verify-email-submit-link">
+              <a href="/login" className="btn-auth-submit verify-email-submit-link">
                 Ir al Login
               </a>
             </>
@@ -112,7 +111,7 @@ export const VerifyEmail: React.FC = () => {
                 className="alert-feedback alert-feedback-error verify-email-feedback"
               >
                 <p className="verify-email-status-row">
-                  <AlertCircle size={18} className="verify-email-icon" aria-hidden="true" />
+                  <AlertCircle size={20} className="verify-email-icon" aria-hidden="true" />
                   <span>{message}</span>
                 </p>
               </div>

@@ -29,6 +29,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     is_verified: bool
+    is_active: bool
 
     class Config:
         from_attributes = True
@@ -44,6 +45,8 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     id: int
+    is_verified: bool = False
+    is_active: bool = False
 
 
 class UserInDB(User):
