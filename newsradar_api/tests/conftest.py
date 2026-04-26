@@ -298,3 +298,11 @@ def admin_auth_headers(api_client_admin):
     assert response.status_code == 200, response.text
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(autouse=True)
+def disable_real_emails(monkeypatch):
+    """
+    Borra las credenciales SMTP en memoria para que el sistema no envíe mails durante los tests
+    """
+    monkeypatch.setattr("app.config.SMTP_USER", "")
+    monkeypatch.setattr("app.config.SMTP_PASSWORD", "")
