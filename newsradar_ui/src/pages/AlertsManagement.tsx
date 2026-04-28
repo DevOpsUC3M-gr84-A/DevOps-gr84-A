@@ -1,13 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { AlertForm } from "../components/AlertForm";
-import type { AlertFormPayload, AlertTableItem } from "../components/AlertForm";
+import type {
+  AlertCategoryOption,
+  AlertCategoryPayload,
+  AlertFormPayload,
+  AlertTableItem,
+} from "../components/AlertForm";
+
+interface AlertCategory extends AlertCategoryOption {
+  id: number;
+  name?: string;
+  iptc_code?: string | null;
+  iptc_label?: string | null;
+}
 
 interface AlertApiItem {
   id: number;
   name: string;
   descriptors: string[];
   categoria_iptc?: string | null;
+  categories?: Array<string | AlertCategory> | null;
   fuentes_rss?: string[] | null;
 }
 
@@ -16,12 +29,41 @@ interface AlertFeedback {
   message: string;
 }
 
+interface ApiAlertCategoryItem {
+  code: string;
+  label: string;
+}
+
+interface ApiAlertPayload {
+  name: string;
+  descriptors: string[];
+  categories: ApiAlertCategoryItem[];
+  cron_expression: string;
+  rss_channel_ids?: number[];
+  fuentes_rss?: string[];
+}
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+  const IPTC_MAP: Record<string, string> = {
+    "00000000": "General",
+    "01000000": "Arte y Cultura",
+    "04000000": "Economía",
+    "04010000": "Economía",
+    "06000000": "Medio Ambiente",
+    "07000000": "Salud",
+    "08000000": "Tecnología",
+    "11000000": "Política",
+    "13000000": "Ciencia",
+    "14000000": "Deportes",
+    "15000000": "Deportes",
+  };
 
 export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   const [isAlertFormOpen, setIsAlertFormOpen] = useState(false);
   const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
+  const [categories, setCategories] = useState<AlertCategoryOption[]>([]);
   const [alertToEdit, setAlertToEdit] = useState<AlertTableItem | null>(null);
   const [alertFeedback, setAlertFeedback] = useState<AlertFeedback | null>(
     null,
@@ -43,32 +85,45 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     id: item.id,
     nombre: item.name,
     descriptores: (item.descriptors ?? []).join(", "),
-    categoria_iptc: item.categoria_iptc ?? "",
+    categories: Array.isArray(item.categories)
+      ? item.categories
+          .map((cat) => {
+            if (typeof cat === "string") {
+              return cat;
+            }
+
+            if (cat.iptc_code) {
+              return String(cat.iptc_code);
+            }
+
+            return String(cat.id);
+          })
+          .filter((catCode) => catCode !== "")
+      : item.categoria_iptc
+      ? [item.categoria_iptc]
+      : [],
     fuentes_rss: item.fuentes_rss ?? [],
   });
 
-  const availableIptcCategories = Array.from(
-    new Set(
-      alertas
-        .map((alerta) => (alerta.categoria_iptc || "").trim())
-        .filter((categoria) => categoria !== ""),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
+  const availableIptcCategories = Object.entries(IPTC_MAP).map(
+    ([code, label]) => ({ code, label }),
+  );
 
-  const normalizedSourceFilter = sourceFilter.trim().toLowerCase();
+  const normalizedSearch = sourceFilter.trim().toLowerCase();
   const filteredAlertas = alertas.filter((alerta) => {
-    const categoriaIptc = (alerta.categoria_iptc || "").trim();
-    const fuentesRss = alerta.fuentes_rss;
+    const categorias = alerta.categories ?? [];
+    const nameLower = alerta.nombre.toLowerCase();
+    const descriptorsLower = (alerta.descriptores || "").toLowerCase();
 
     const matchesCategory =
-      selectedIptcCategory === "" || categoriaIptc === selectedIptcCategory;
-    const matchesSource =
-      normalizedSourceFilter === "" ||
-      fuentesRss.some((source) =>
-        source?.toLowerCase().includes(normalizedSourceFilter),
-      );
+      selectedIptcCategory === "" || categorias.includes(selectedIptcCategory);
 
-    return matchesCategory && matchesSource;
+    const matchesSearch =
+      normalizedSearch === "" ||
+      nameLower.includes(normalizedSearch) ||
+      descriptorsLower.includes(normalizedSearch);
+
+    return matchesCategory && matchesSearch;
   });
 
   const handleCloseAlertForm = () => {
@@ -108,7 +163,8 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       );
 
       if (response.status === 401) {
-        onLogout();
+        globalThis.localStorage.clear();
+        window.location.assign("/login");
         return;
       }
 
@@ -145,7 +201,8 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       );
 
       if (response.status === 401) {
-        onLogout();
+        globalThis.localStorage.clear();
+        window.location.assign("/login");
         return;
       }
       if (!response.ok) {
@@ -168,12 +225,59 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     }
   }, [userId, token, onLogout]);
 
+  const fetchCategories = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/categories`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        globalThis.localStorage.clear();
+        window.location.assign("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Error al obtener categorías");
+      }
+
+      const data = await response.json();
+      const categoriesFromApi = Array.isArray(data)
+        ? (data as AlertCategory[]).map((category) => ({
+            id: Number(category.id),
+            name: category.name,
+            iptc_code: category.iptc_code,
+            iptc_label: category.iptc_label,
+          }))
+            .filter((category) => Number.isFinite(Number(category.id)))
+        : [];
+
+      setCategories(categoriesFromApi);
+    } catch {
+      const fallbackCategories = Object.entries(IPTC_MAP).map(([code, label], index) => ({
+        id: index + 1,
+        name: label,
+        iptc_code: code,
+        iptc_label: label,
+      }));
+
+      setCategories(fallbackCategories);
+    }
+  }, [token]);
+
   // Carga desde la API
   useEffect(() => {
     if (userId && token) {
       void fetchAlertas();
+      void fetchCategories();
     }
-  }, [userId, token, fetchAlertas]);
+  }, [userId, token, fetchAlertas, fetchCategories]);
 
   useEffect(() => {
     if (!alertFeedback) {
@@ -187,15 +291,111 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     return () => globalThis.clearTimeout(timeoutId);
   }, [alertFeedback]);
 
-  const handleSaveAlert = async (_datos: AlertFormPayload) => {
-    await fetchAlertas();
-    setAlertFeedback({
-      type: "success",
-      message: alertToEdit
-        ? "Alerta actualizada correctamente."
-        : "Alerta creada correctamente.",
-    });
-    handleCloseAlertForm();
+  const handleSaveAlert = async (alertData: AlertFormPayload) => {
+
+    if (!token || !userId) {
+      globalThis.localStorage.clear();
+      window.location.assign("/login");
+      return;
+    }
+
+    const descriptorsArray = Array.isArray(alertData.descriptors)
+      ? alertData.descriptors.map((d) => String(d).trim()).filter((d) => d !== "")
+      : String(alertData.descriptors)
+          .split(",")
+          .map((d) => d.trim())
+          .filter((d) => d !== "");
+
+    const categoriesArray = Array.isArray(alertData.categories)
+      ? alertData.categories
+          .map((category) => ({
+            id: Number(category.id),
+            name: String(category.name ?? "").trim(),
+            iptc_code: String(category.iptc_code ?? "").trim(),
+          }))
+          .filter(
+            (category): category is AlertCategoryPayload =>
+              Number.isFinite(category.id) &&
+              category.name !== "" &&
+              category.iptc_code !== "",
+          )
+      : [];
+
+    const apiCategories: ApiAlertCategoryItem[] = categoriesArray.map(
+      (category) => ({
+        code: category.iptc_code,
+        label: category.name,
+      }),
+    );
+
+    const payload: ApiAlertPayload = {
+      name: alertData.name,
+      descriptors: descriptorsArray,
+      categories: apiCategories,
+      cron_expression: alertData.cron_expression,
+      fuentes_rss: Array.isArray(alertData.fuentes_rss)
+        ? alertData.fuentes_rss.filter((source) => String(source).trim() !== "")
+        : [],
+    };
+
+    if (payload.fuentes_rss && payload.fuentes_rss.length === 0) {
+      delete payload.fuentes_rss;
+    }
+
+    if (payload.fuentes_rss && payload.fuentes_rss.length > 0) {
+      const rssChannelIds = payload.fuentes_rss
+        .map((value) => Number(String(value).trim()))
+        .filter((value) => Number.isInteger(value) && value > 0);
+
+      if (rssChannelIds.length > 0) {
+        payload.rss_channel_ids = rssChannelIds;
+      }
+    }
+
+    delete payload.fuentes_rss;
+
+    console.log("DATOS A ENVIAR:", payload);
+
+    try {
+      const endpoint = alertToEdit
+        ? `${API_BASE_URL}/api/v1/users/${userId}/alerts/${alertToEdit.id}`
+        : `${API_BASE_URL}/api/v1/users/${userId}/alerts`;
+
+      const response = await fetch(endpoint, {
+        method: alertToEdit ? "PUT" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status === 401) {
+        globalThis.localStorage.clear();
+        window.location.assign("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Error al guardar la alerta");
+      }
+
+      await fetchAlertas();
+      setAlertFeedback({
+        type: "success",
+        message: alertToEdit
+          ? "Alerta actualizada correctamente."
+          : "Alerta creada correctamente.",
+      });
+      handleCloseAlertForm();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      setAlertFeedback({
+        type: "error",
+        message: `No se pudo guardar la alerta: ${errorMessage}`,
+      });
+    }
   };
 
   return (
@@ -232,9 +432,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         <section className="table-container">
           <div className="header-actions" aria-label="Filtros de alertas">
             <div className="form-group">
-              <label htmlFor="alertsIptcFilter">
-                Filtrar por categoria IPTC
-              </label>
+              <label htmlFor="alertsIptcFilter">Filtrar por categoria IPTC</label>
               <select
                 id="alertsIptcFilter"
                 className="form-input alerts-filter-select"
@@ -242,21 +440,21 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                 onChange={(e) => setSelectedIptcCategory(e.target.value)}
               >
                 <option value="">Todas las categorias</option>
-                {availableIptcCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {availableIptcCategories.map((opt) => (
+                  <option key={opt.code} value={opt.code}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="alertsSourceFilter">Filtrar por fuente RSS</label>
+              <label htmlFor="alertsSearch">Buscar por Nombre o Descriptor</label>
               <input
-                id="alertsSourceFilter"
+                id="alertsSearch"
                 type="text"
                 className="form-input"
-                placeholder="Ej: Reuters"
+                placeholder="Ej: IA, tendencias"
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
               />
@@ -286,9 +484,22 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                 filteredAlertas.map((alerta) => (
                   <tr key={alerta.id}>
                     <td>{alerta.nombre}</td>
-                    <td>{alerta.categoria_iptc}</td>
+                    <td>
+                      {alerta.categories && alerta.categories.length > 0
+                        ? alerta.categories
+                            .map((categoryCode) => {
+                              try {
+                                return IPTC_MAP[String(categoryCode)] ?? String(categoryCode);
+                              } catch {
+                                return "";
+                              }
+                            })
+                            .filter(Boolean)
+                            .join(", ")
+                        : "Todas"}
+                    </td>
                     <td>{alerta.descriptores}</td>
-                    {canManageAlerts && (
+                      {canManageAlerts && (
                       <td>
                         <div className="action-buttons">
                           <button
@@ -303,9 +514,9 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                             className="btn-icon delete"
                             title="Eliminar"
                             aria-label={`Eliminar alerta ${alerta.nombre}`}
-                            onClick={() => handleDeleteAlert(alerta.id)}
+                            onClick={() => void handleDeleteAlert(alerta.id)}
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -322,6 +533,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         isOpen={isAlertFormOpen}
         onClose={handleCloseAlertForm}
         initialData={alertToEdit}
+        categories={categories}
         onSubmit={handleSaveAlert}
       />
     </>

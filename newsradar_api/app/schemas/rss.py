@@ -46,3 +46,8 @@ class RSSChannelResponse(RSSChannelCreate):
 class RSSChannel(RSSChannelBase):
     id: int
     information_source_id: int
+    media_name: str
+    iptc_category: CategoriaIPTC
+
+    class Config:
+        from_attributes = True

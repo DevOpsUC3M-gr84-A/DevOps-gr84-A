@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import "./SourcesRss.css";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+).replace(/\/$/, "");
 
 interface InformationSourceApiItem {
   id: number;
@@ -28,6 +29,20 @@ interface CategoryApiItem {
   iptc_code?: string | null;
   iptc_label?: string | null;
 }
+
+const IPTC_MAP: Record<string, string> = {
+  "00000000": "General",
+  "01000000": "Arte y Cultura",
+  "04000000": "Economía",
+  "04010000": "Economía",
+  "06000000": "Medio Ambiente",
+  "07000000": "Salud",
+  "08000000": "Tecnología",
+  "11000000": "Política",
+  "13000000": "Ciencia y tecnología",
+  "14000000": "Deportes",
+  "15000000": "Deportes",
+};
 
 interface SourcesRssFeedback {
   type: "success" | "error";
@@ -104,6 +119,45 @@ const requestJson = async <T,>(
     throw new Error("No hay sesión activa.");
   }
 
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(options.headers ?? {}),
+      },
+    });
+
+    if (response.status === 401) {
+      onUnauthorized();
+      throw new Error("Sesión expirada. Vuelve a iniciar sesión.");
+    }
+
+    if (!response.ok) {
+      const detail = await extractApiDetail(
+        response,
+        "Error al procesar la solicitud",
+      );
+      throw new Error(detail);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    console.error("Fetch failed:", { url, error, token: token ? "present" : "missing" });
+    throw error;
+  }
+};
+
+const requestVoid = async (
+  url: string,
+  token: string | null,
+  options: RequestInit,
+  onUnauthorized: () => void,
+): Promise<void> => {
+  if (!token) {
+    throw new Error("No hay sesión activa.");
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -124,8 +178,6 @@ const requestJson = async <T,>(
     );
     throw new Error(detail);
   }
-
-  return (await response.json()) as T;
 };
 
 
@@ -140,12 +192,16 @@ export const SourcesRss = () => {
   const [activeModal, setActiveModal] = useState<"source" | "channel" | null>(null);
   const [sourceBeingEdited, setSourceBeingEdited] = useState<InformationSourceApiItem | null>(null);
   const [channelBeingEdited, setChannelBeingEdited] = useState<RssChannelApiItem | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<RssChannelApiItem | null>(null);
   const [sourceForm, setSourceForm] = useState<SourceFormState>({ name: "", url: "" });
   const [channelForm, setChannelForm] = useState<ChannelFormState>({
     sourceId: "",
     url: "",
     categoryId: "",
   });
+  const [tempCategoryId, setTempCategoryId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const selectedSource = useMemo(() => {
     if (selectedSourceId === null) {
@@ -155,20 +211,113 @@ export const SourcesRss = () => {
     return sources.find((source) => source.id === selectedSourceId);
   }, [selectedSourceId, sources]);
 
+  const filteredSources = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return sources;
+    }
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return sources.filter(
+      (source) =>
+        source.name.toLowerCase().includes(lowerSearchTerm) ||
+        source.url.toLowerCase().includes(lowerSearchTerm),
+    );
+  }, [sources, searchTerm]);
+
   const selectedSourceChannels = useMemo(() => {
     if (!selectedSource) {
       return [];
     }
 
     return channels.filter(
-      (channel) => channel.information_source_id === selectedSource.id,
+      (channel) =>
+        parseInt(String(channel.information_source_id), 10) ===
+        parseInt(String(selectedSource.id), 10),
     );
   }, [channels, selectedSource]);
+
+  const getChannelCategoryKey = useCallback(
+    (ch: RssChannelApiItem) => {
+      const matched = categories.find(
+        (c) => c.id === ch.category_id || (c.iptc_code && c.iptc_code === ch.iptc_category),
+      );
+
+      if (matched) {
+        return matched.id ? `id:${matched.id}` : `iptc:${matched.iptc_code ?? ""}`;
+      }
+
+      if (ch.category_id) {
+        return `id:${ch.category_id}`;
+      }
+
+      if (ch.iptc_category) {
+        return `iptc:${ch.iptc_category}`;
+      }
+
+      return "none";
+    },
+    [categories],
+  );
+
+  const filteredChannels = useMemo(() => {
+    if (!selectedSource) {
+      return [];
+    }
+
+    if (!selectedCategories || selectedCategories.length === 0) {
+      return selectedSourceChannels;
+    }
+
+    return selectedSourceChannels.filter((channel) => {
+      console.log("DEBUG Filtro:", channel, selectedSource);
+
+      return (
+        String(channel.information_source_id) === String(selectedSource.id) &&
+        selectedCategories.includes(getChannelCategoryKey(channel))
+      );
+    });
+  }, [getChannelCategoryKey, selectedCategories, selectedSource, selectedSourceChannels]);
+
+  const uniqueCategories = useMemo(() => {
+    const map = new Map<string, string>();
+
+    selectedSourceChannels.forEach((ch) => {
+      const matched = categories.find(
+        (c) => c.id === ch.category_id || (c.iptc_code && c.iptc_code === ch.iptc_category),
+      );
+      const categoryObj = categories.find(
+        (cat) => cat.iptc_code === ch.iptc_category || cat.id === ch.category_id,
+      );
+      const label = categoryObj
+        ? categoryObj.name
+        : IPTC_MAP[String(ch.iptc_category)] || `Categoría ${ch.iptc_category}`;
+
+      let key: string;
+
+      if (matched) {
+        key = matched.id ? `id:${matched.id}` : `iptc:${matched.iptc_code ?? ""}`;
+      } else if (ch.category_id) {
+        key = `id:${ch.category_id}`;
+      } else if (ch.iptc_category) {
+        key = `iptc:${ch.iptc_category}`;
+      } else {
+        key = "none";
+      }
+
+      if (!map.has(key)) {
+        map.set(key, label);
+      }
+    });
+
+    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+  }, [selectedSourceChannels, categories]);
 
   const closeModal = () => {
     setActiveModal(null);
     setSourceBeingEdited(null);
     setChannelBeingEdited(null);
+    setSelectedChannel(null);
+    setTempCategoryId("");
     setSourceForm({ name: "", url: "" });
     setChannelForm({ sourceId: "", url: "", categoryId: "" });
   };
@@ -188,6 +337,14 @@ export const SourcesRss = () => {
 
   const loadSourcesAndChannels = useCallback(async () => {
     setIsLoading(true);
+    console.log("Loading sources and channels from:", {
+      apiBaseUrl: API_BASE_URL,
+      urls: [
+        `${API_BASE_URL}/api/v1/information-sources`,
+        `${API_BASE_URL}/api/v1/rss-channels`,
+        `${API_BASE_URL}/api/v1/categories`,
+      ],
+    });
 
     try {
       const [sourcesData, channelsData, categoriesData] = await Promise.all([
@@ -198,7 +355,7 @@ export const SourcesRss = () => {
           logout,
         ),
         requestJson<RssChannelApiItem[]>(
-          `${API_BASE_URL}/api/v1/rss-channels`,
+          `${API_BASE_URL}/api/v1/rss-channels?limit=1000`,
           token,
           {},
           logout,
@@ -214,7 +371,9 @@ export const SourcesRss = () => {
       setSources(sourcesData);
       setChannels(channelsData);
       setCategories(categoriesData);
+      console.log("Successfully loaded data:", { sourcesData, channelsData, categoriesData });
     } catch (error) {
+      console.error("Failed to load sources and channels:", error);
       setFeedback({
         type: "error",
         message: `No se pudieron cargar las fuentes y canales RSS: ${getErrorMessage(error)}`,
@@ -267,6 +426,8 @@ export const SourcesRss = () => {
 
     setFeedback(null);
     setChannelBeingEdited(null);
+    setSelectedChannel(null);
+    setTempCategoryId("");
     setChannelForm({
       sourceId: sourceId.toString(),
       url: "",
@@ -278,12 +439,86 @@ export const SourcesRss = () => {
   const openEditChannelModal = (channel: RssChannelApiItem) => {
     setFeedback(null);
     setChannelBeingEdited(channel);
+    setSelectedChannel(channel);
+    setTempCategoryId(channel.category_id?.toString() ?? "");
     setChannelForm({
       sourceId: channel.information_source_id.toString(),
       url: channel.url,
       categoryId: channel.category_id?.toString() ?? "",
     });
     setActiveModal("channel");
+  };
+
+  const handleSourceDelete = useCallback(
+    async (sourceId: number) => {
+      if (!token) {
+        setFeedback({
+          type: "error",
+          message: "No hay sesión activa para borrar la fuente.",
+        });
+        return;
+      }
+
+      try {
+        await requestVoid(
+          `${API_BASE_URL}/api/v1/information-sources/${sourceId}`,
+          token,
+          { method: "DELETE" },
+          logout,
+        );
+
+        setSources((currentSources) => {
+          const remainingSources = currentSources.filter((source) => source.id !== sourceId);
+
+          if (selectedSourceId === sourceId) {
+            setSelectedSourceId(remainingSources[0]?.id ?? null);
+            setSelectedCategories([]);
+          }
+
+          return remainingSources;
+        });
+        setChannels((currentChannels) =>
+          currentChannels.filter(
+            (channel) => String(channel.information_source_id) !== String(sourceId),
+          ),
+        );
+        setFeedback({ type: "success", message: "Fuente de información borrada correctamente." });
+      } catch (error) {
+        setFeedback({ type: "error", message: getErrorMessage(error) });
+      }
+    },
+    [logout, selectedSourceId, token],
+  );
+
+  const handleChannelDelete = useCallback(
+    async (channel: RssChannelApiItem) => {
+      if (!token) {
+        setFeedback({
+          type: "error",
+          message: "No hay sesión activa para borrar el canal RSS.",
+        });
+        return;
+      }
+
+      try {
+        await requestVoid(
+          `${API_BASE_URL}/api/v1/information-sources/${channel.information_source_id}/rss-channels/${channel.id}`,
+          token,
+          { method: "DELETE" },
+          logout,
+        );
+
+        await loadSourcesAndChannels();
+      } catch (error) {
+        setFeedback({ type: "error", message: getErrorMessage(error) });
+      }
+    },
+    [loadSourcesAndChannels, logout, token],
+  );
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategories([]);
   };
 
   const handleSourceSave = useCallback(async () => {
@@ -358,7 +593,8 @@ export const SourcesRss = () => {
   const handleChannelSave = useCallback(async () => {
     const sourceId = Number(channelForm.sourceId);
     const trimmedUrl = channelForm.url.trim();
-    const selectedCategoryId = Number(channelForm.categoryId);
+    const categoryIdValue = channelBeingEdited ? tempCategoryId : channelForm.categoryId;
+    const selectedCategoryId = Number(categoryIdValue);
     const source = sources.find((item) => item.id === sourceId);
     const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
 
@@ -387,42 +623,58 @@ export const SourcesRss = () => {
       return;
     }
 
+    const mappedIptcCategory = String(
+      selectedCategory.iptc_code ?? selectedCategoryId,
+    );
+
     const payload = channelBeingEdited
       ? {
           url: trimmedUrl,
-          category_id: selectedCategoryId,
+          category_id: Number(selectedCategoryId),
         }
       : {
           media_name: source.name,
           url: trimmedUrl,
-          category_id: selectedCategoryId,
-          iptc_category: selectedCategory.iptc_code!,
+          category_id: Number(selectedCategoryId),
+          iptc_category: mappedIptcCategory,
         };
 
     await runSaveOperation(async () => {
-      await requestJson<RssChannelApiItem>(
-        channelBeingEdited
-          ? `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels/${channelBeingEdited.id}`
-          : `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels`,
-        token,
-        {
-          method: channelBeingEdited ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
+      console.log("DEBUG PAYLOAD:", payload);
+      try {
+        await requestJson<RssChannelApiItem>(
+          channelBeingEdited
+            ? `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels/${channelBeingEdited.id}`
+            : `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels`,
+          token,
+          {
+            method: channelBeingEdited ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
           },
-          body: JSON.stringify(payload),
-        },
-        logout,
-      );
+          logout,
+        );
 
-      await loadSourcesAndChannels();
-      setSelectedSourceId(sourceId);
-    }, channelBeingEdited
-      ? "Canal RSS actualizado correctamente."
-      : "Canal RSS creado correctamente.");
+        // Always refresh authoritative data from the server to avoid local type mismatch issues
+        await loadSourcesAndChannels();
+        setSelectedChannel(null);
+        setSelectedSourceId(sourceId);
+      } catch (err: any) {
+        if (err instanceof Error && /Sesión expirada|401/.test(err.message)) {
+          globalThis.localStorage.clear();
+          window.location.assign("/login");
+          return;
+        }
+        throw err;
+      }
+    },
+      channelBeingEdited ? "Canal RSS actualizado correctamente." : "Canal RSS creado correctamente.");
   }, [
     categories,
     channelBeingEdited,
+    tempCategoryId,
     channelForm.categoryId,
     channelForm.sourceId,
     channelForm.url,
@@ -434,105 +686,26 @@ export const SourcesRss = () => {
   ]);
 
   const renderSourceModal = () => (
-    <dialog
-      open
-      className="sources-rss-dialog"
-      aria-labelledby="sources-rss-source-title"
-    >
-      <div className="sources-rss-dialog-header">
-        <div>
-          <h2 id="sources-rss-source-title">
-            {sourceBeingEdited
-              ? "Editar fuente de información"
-              : "Crear fuente de información"}
-          </h2>
-          <p>Define el medio principal y su web pública.</p>
-        </div>
-        <button
-          type="button"
-          className="sources-rss-icon-button"
-          onClick={closeModal}
-          aria-label="Cerrar modal de fuente"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      <form
-        className="sources-rss-modal-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void handleSourceSave();
-        }}
-      >
-        <div className="form-group">
-          <label htmlFor="source-name">NOMBRE DE LA FUENTE</label>
-          <input
-            id="source-name"
-            type="text"
-            className="form-input"
-            required
-            maxLength={120}
-            value={sourceForm.name}
-            onChange={(event) =>
-              setSourceForm((current) => ({ ...current, name: event.target.value }))
-            }
-            placeholder="Ej: Agencia Central"
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="source-url">URL WEB</label>
-          <input
-            id="source-url"
-            type="url"
-            className="form-input"
-            required
-            value={sourceForm.url}
-            onChange={(event) =>
-              setSourceForm((current) => ({ ...current, url: event.target.value }))
-            }
-            placeholder="https://www.ejemplo.com"
-          />
-        </div>
-
-        <div className="sources-rss-modal-actions">
-          <button
-            type="button"
-            className="btn-secondary sources-rss-secondary-button"
-            onClick={closeModal}
-          >
-            Cancelar
-          </button>
-          <button type="submit" className="btn-primary">
-            {sourceBeingEdited ? "Guardar cambios" : "Crear fuente"}
-          </button>
-        </div>
-      </form>
-    </dialog>
-  );
-
-  const renderChannelModal = () => {
-    const currentSourceId = Number(channelForm.sourceId);
-
-    return (
+    <div className="sources-rss-modal-overlay">
       <dialog
         open
         className="sources-rss-dialog"
-        aria-labelledby="sources-rss-channel-title"
+        aria-labelledby="sources-rss-source-title"
       >
         <div className="sources-rss-dialog-header">
           <div>
-            <h2 id="sources-rss-channel-title">
-              {channelBeingEdited ? "Editar canal RSS" : "Crear canal RSS"}
+            <h2 id="sources-rss-source-title">
+              {sourceBeingEdited
+                ? "Editar fuente de información"
+                : "Crear fuente de información"}
             </h2>
-            <p>Vincula el feed al medio y clasifícalo con una categoría IPTC.</p>
+            <p>Define el medio principal y su web pública.</p>
           </div>
           <button
             type="button"
             className="sources-rss-icon-button"
             onClick={closeModal}
-            aria-label="Cerrar modal de canal"
+            aria-label="Cerrar modal de fuente"
           >
             <X size={18} />
           </button>
@@ -542,68 +715,38 @@ export const SourcesRss = () => {
           className="sources-rss-modal-form"
           onSubmit={(event) => {
             event.preventDefault();
-            void handleChannelSave();
+            void handleSourceSave();
           }}
         >
           <div className="form-group">
-            <label htmlFor="channel-source">FUENTE DE INFORMACIÓN</label>
-            <select
-              id="channel-source"
-              className="form-input"
-              required
-              value={channelForm.sourceId}
-              disabled={Boolean(channelBeingEdited)}
-              onChange={(event) =>
-                setChannelForm((current) => ({ ...current, sourceId: event.target.value }))
-              }
-            >
-              <option value="">Selecciona una fuente</option>
-              {sources.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.name}
-                </option>
-              ))}
-            </select>
-            {channelBeingEdited && (
-              <p className="sources-rss-hint">
-                El canal se mantiene asociado a la fuente original.
-              </p>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="channel-url">URL DEL FEED RSS</label>
+            <label htmlFor="source-name">NOMBRE DE LA FUENTE</label>
             <input
-              id="channel-url"
-              type="url"
+              id="source-name"
+              type="text"
               className="form-input"
               required
-              value={channelForm.url}
+              maxLength={120}
+              value={sourceForm.name}
               onChange={(event) =>
-                setChannelForm((current) => ({ ...current, url: event.target.value }))
+                setSourceForm((current) => ({ ...current, name: event.target.value }))
               }
-              placeholder="https://www.ejemplo.com/rss.xml"
+              placeholder="Ej: Agencia Central"
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="channel-category">CATEGORÍA IPTC</label>
-            <select
-              id="channel-category"
+            <label htmlFor="source-url">URL WEB</label>
+            <input
+              id="source-url"
+              type="url"
               className="form-input"
               required
-              value={channelForm.categoryId}
+              value={sourceForm.url}
               onChange={(event) =>
-                setChannelForm((current) => ({ ...current, categoryId: event.target.value }))
+                setSourceForm((current) => ({ ...current, url: event.target.value }))
               }
-            >
-              <option value="">Selecciona una categoría</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {getCategoryLabel(category)}
-                </option>
-              ))}
-            </select>
+              placeholder="https://www.ejemplo.com"
+            />
           </div>
 
           <div className="sources-rss-modal-actions">
@@ -614,16 +757,138 @@ export const SourcesRss = () => {
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={!currentSourceId && !channelBeingEdited}
-            >
-              {channelBeingEdited ? "Guardar cambios" : "Crear canal"}
+            <button type="submit" className="btn-primary">
+              {sourceBeingEdited ? "Guardar cambios" : "Crear fuente"}
             </button>
           </div>
         </form>
       </dialog>
+    </div>
+  );
+
+  const renderChannelModal = () => {
+    const currentSourceId = Number(channelForm.sourceId);
+    const currentCategoryId = channelBeingEdited ? tempCategoryId : channelForm.categoryId;
+
+    return (
+      <div className="sources-rss-modal-overlay">
+        <dialog
+          key={selectedChannel?.id ?? "new-channel"}
+          open
+          className="sources-rss-dialog"
+          aria-labelledby="sources-rss-channel-title"
+        >
+          <div className="sources-rss-dialog-header">
+            <div>
+              <h2 id="sources-rss-channel-title">
+                {channelBeingEdited ? "Editar canal RSS" : "Crear canal RSS"}
+              </h2>
+              <p>Vincula el feed al medio y clasifícalo con una categoría IPTC.</p>
+            </div>
+            <button
+              type="button"
+              className="sources-rss-icon-button"
+              onClick={closeModal}
+              aria-label="Cerrar modal de canal"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form
+            className="sources-rss-modal-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleChannelSave();
+            }}
+          >
+            <div className="form-group">
+              <label htmlFor="channel-source">FUENTE DE INFORMACIÓN</label>
+              <select
+                id="channel-source"
+                className="form-input"
+                required
+                value={channelForm.sourceId}
+                disabled={Boolean(channelBeingEdited)}
+                onChange={(event) =>
+                  setChannelForm((current) => ({ ...current, sourceId: event.target.value }))
+                }
+              >
+                <option value="">Selecciona una fuente</option>
+                {sources.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.name}
+                  </option>
+                ))}
+              </select>
+              {channelBeingEdited && (
+                <p className="sources-rss-hint">
+                  El canal se mantiene asociado a la fuente original.
+                </p>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="channel-url">URL DEL FEED RSS</label>
+              <input
+                id="channel-url"
+                type="url"
+                className="form-input"
+                required
+                value={channelForm.url}
+                onChange={(event) =>
+                  setChannelForm((current) => ({ ...current, url: event.target.value }))
+                }
+                placeholder="https://www.ejemplo.com/rss.xml"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="channel-category">CATEGORÍA IPTC</label>
+              <select
+                id="channel-category"
+                className="form-input"
+                required
+                value={currentCategoryId}
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  if (channelBeingEdited) {
+                    setTempCategoryId(value);
+                    return;
+                  }
+
+                  setChannelForm((current) => ({ ...current, categoryId: value }));
+                }}
+              >
+                <option value="">Selecciona una categoría</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getCategoryLabel(category)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sources-rss-modal-actions">
+              <button
+                type="button"
+                className="btn-secondary sources-rss-secondary-button"
+                onClick={closeModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={!currentSourceId && !channelBeingEdited}
+              >
+                {channelBeingEdited ? "Guardar cambios" : "Crear canal"}
+              </button>
+            </div>
+          </form>
+        </dialog>
+      </div>
     );
   };
 
@@ -648,6 +913,7 @@ export const SourcesRss = () => {
             <RefreshCw size={16} />
             Recargar
           </button>
+          
           <button type="button" className="btn-primary" onClick={openCreateSourceModal}>
             <Plus size={18} />
             Nueva fuente
@@ -681,12 +947,36 @@ export const SourcesRss = () => {
                 <h2>Fuentes de información</h2>
                 <p>Selecciona una fuente para ver sus canales asociados.</p>
               </div>
-              <span className="sources-rss-badge">{sources.length} fuentes</span>
+              <span className="sources-rss-badge">{filteredSources.length} fuentes</span>
+            </div>
+
+            <div className="sources-rss-search-row">
+              <input
+                type="search"
+                className="sources-rss-search-input"
+                placeholder="Buscar por nombre o URL..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                aria-label="Buscar fuentes de información"
+              />
+              {(searchTerm.trim() !== "" || selectedCategories.length > 0) && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={clearFilters}
+                >
+                  Limpiar Filtros
+                </button>
+              )}
             </div>
 
             {sources.length === 0 ? (
               <div className="sources-rss-empty-state">
                 <p>No hay fuentes registradas todavía.</p>
+              </div>
+            ) : filteredSources.length === 0 ? (
+              <div className="sources-rss-empty-state">
+                <p>No se encontraron fuentes que coincidan con tu búsqueda.</p>
               </div>
             ) : (
               <table className="sources-rss-table" aria-label="Listado de fuentes de información">
@@ -698,7 +988,7 @@ export const SourcesRss = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sources.map((source) => {
+                  {filteredSources.map((source) => {
                     const isSelected = source.id === selectedSource?.id;
 
                     return (
@@ -719,15 +1009,26 @@ export const SourcesRss = () => {
                           </a>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="sources-rss-inline-button"
-                            onClick={() => openEditSourceModal(source)}
-                            aria-label={`Editar fuente ${source.name}`}
-                          >
-                            <Pencil size={14} />
-                            Editar
-                          </button>
+                          <div className="sources-rss-row-actions">
+                            <button
+                              type="button"
+                              className="sources-rss-inline-button"
+                              onClick={() => openEditSourceModal(source)}
+                              aria-label={`Editar fuente ${source.name}`}
+                              title="Editar"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="sources-rss-inline-button sources-rss-danger-button"
+                              onClick={() => void handleSourceDelete(source.id)}
+                              aria-label={`Borrar fuente ${source.name}`}
+                              title="Borrar"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -748,7 +1049,7 @@ export const SourcesRss = () => {
                 </p>
               </div>
               <div className="sources-rss-panel-header-actions">
-                <span className="sources-rss-badge">{selectedSourceChannels.length} canales</span>
+                <span className="sources-rss-badge">{filteredChannels.length} canales</span>
                 <button
                   type="button"
                   className="btn-primary"
@@ -760,6 +1061,25 @@ export const SourcesRss = () => {
                 </button>
               </div>
             </div>
+
+            {uniqueCategories.length > 0 && (
+              <div className="sources-rss-categories-filter">
+                {uniqueCategories.map((opt) => (
+                  <label key={opt.key} className="sources-rss-category-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(opt.key)}
+                      onChange={() =>
+                        setSelectedCategories((prev) =>
+                          prev.includes(opt.key) ? prev.filter((k) => k !== opt.key) : [...prev, opt.key],
+                        )
+                      }
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
 
             {!selectedSource ? (
               <div className="sources-rss-empty-state">
@@ -779,31 +1099,43 @@ export const SourcesRss = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedSourceChannels.map((channel) => {
-                    const category = categories.find((item) => item.id === channel.category_id);
-
-                    return (
-                      <tr key={channel.id}>
-                        <td>
-                          <a href={channel.url} target="_blank" rel="noreferrer">
-                            {channel.url}
-                          </a>
-                        </td>
-                        <td>{getCategoryLabel(category, channel.iptc_category)}</td>
-                        <td>
+                  {filteredChannels.map((channel) => (
+                    <tr key={channel.id}>
+                      <td>
+                        <a href={channel.url} target="_blank" rel="noreferrer">
+                          {channel.url}
+                        </a>
+                      </td>
+                      <td>
+                        {getCategoryLabel(
+                          categories.find((item) => item.id === channel.category_id),
+                          IPTC_MAP[String(channel.iptc_category)] || channel.iptc_category,
+                        )}
+                      </td>
+                      <td>
+                        <div className="sources-rss-row-actions">
                           <button
                             type="button"
                             className="sources-rss-inline-button"
                             onClick={() => openEditChannelModal(channel)}
                             aria-label={`Editar canal ${channel.url}`}
+                            title="Editar"
                           >
                             <Pencil size={14} />
-                            Editar
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          <button
+                            type="button"
+                            className="sources-rss-inline-button sources-rss-danger-button"
+                            onClick={() => void handleChannelDelete(channel)}
+                            aria-label={`Borrar canal ${channel.url}`}
+                            title="Borrar"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}

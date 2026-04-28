@@ -24,7 +24,23 @@ def list_iptc_categories():
 
 @categories_router.get("/categories", tags=["categories"])
 def list_categories(_: CurrentUser) -> List[Category]:
-    return list(categories_store.values())
+    """Obtiene todas las categorías disponibles (IPTC)."""
+    # Primero devuelve cualquier categoría custom creada por el usuario
+    custom_categories = list(categories_store.values())
+    
+    # Luego devuelve las categorías IPTC predefinidas como fallback
+    iptc_categories = [
+        Category(
+            id=idx + 1000,  # IDs altos para las categorías IPTC
+            name=label,
+            source="IPTC",
+            iptc_code=code,
+            iptc_label=label,
+        )
+        for idx, (code, label) in enumerate(IPTC_FIRST_LEVEL.items())
+    ]
+    
+    return custom_categories + iptc_categories
 
 
 @categories_router.post(

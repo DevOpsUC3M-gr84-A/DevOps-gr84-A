@@ -3,6 +3,15 @@
   gap: 1.25rem;
 }
 
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .sources-rss-header {
   display: flex;
   justify-content: space-between;
@@ -11,11 +20,27 @@
 }
 
 .sources-rss-header-actions,
-.sources-rss-panel-header-actions {
+.sources-rss-panel-header-actions,
+.sources-rss-search-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+/* Row action buttons in tables: horizontal, tight spacing */
+.sources-rss-row-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.sources-rss-header-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .sources-rss-loading {
@@ -121,6 +146,49 @@
   background: #eff6ff;
 }
 
+.sources-rss-search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.sources-rss-search-row {
+  margin-bottom: 1rem;
+}
+
+.sources-rss-search-input:focus {
+  outline: none;
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+.sources-rss-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.sources-rss-categories-filter {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.sources-rss-category-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #f1f5f9;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
 .sources-rss-table td a {
   color: #1d4ed8;
   text-decoration: none;
@@ -151,16 +219,34 @@
   padding: 0.15rem 0;
 }
 
+/* Icon-only inline buttons for table actions: small square buttons */
 .sources-rss-inline-button {
-  padding: 0.45rem 0.7rem;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
+  justify-content: center;
+}
+
+.sources-rss-inline-button svg {
+  display: block;
 }
 
 .sources-rss-inline-button:hover,
 .sources-rss-row-button:hover {
   color: #1d4ed8;
+}
+
+.sources-rss-danger-button {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.sources-rss-danger-button:hover {
+  color: #991b1b;
 }
 
 .sources-rss-empty-state {
@@ -175,19 +261,28 @@
   margin: 0;
 }
 
+.sources-rss-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
 .sources-rss-dialog {
-  width: min(100%, 640px);
+  width: min(100%, 500px);
   border: 1px solid #bfdbfe;
   border-radius: 20px;
   padding: 1.25rem;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
   color: #0f172a;
-}
-
-.sources-rss-dialog::backdrop {
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(4px);
+  animation: dialog-enter 0.3s ease-out;
+  margin: 0;
+  position: relative;
 }
 
 .sources-rss-dialog-header {

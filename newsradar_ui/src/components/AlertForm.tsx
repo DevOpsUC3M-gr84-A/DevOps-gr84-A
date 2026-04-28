@@ -7,16 +7,29 @@ const API_BASE_URL =
 export interface AlertFormPayload {
   name: string;
   descriptors: string[];
-  categoria_iptc: string;
+  categories: AlertCategoryPayload[];
   fuentes_rss: string[];
   cron_expression: string;
+}
+
+export interface AlertCategoryOption {
+  id: number | string;
+  name?: string;
+  iptc_code?: string | null;
+  iptc_label?: string | null;
+}
+
+export interface AlertCategoryPayload {
+  id: number;
+  name: string;
+  iptc_code: string;
 }
 
 export interface AlertTableItem {
   id: number;
   nombre: string;
   descriptores: string;
-  categoria_iptc: string;
+  categories: string[];
   fuentes_rss: string[];
 }
 
@@ -24,6 +37,7 @@ interface AlertFormProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: AlertTableItem | null;
+  categories?: AlertCategoryOption[];
   onSubmit: (datos: AlertFormPayload) => Promise<void> | void;
 }
 
@@ -31,30 +45,26 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   isOpen,
   onClose,
   initialData,
+  categories = [],
   onSubmit,
 }) => {
-  const IPTC_LEVEL_1_CATEGORIES: string[] = [
-    "Arte, cultura y entretenimiento",
-    "Crimen, derecho y justicia",
-    "Desastre y accidente",
-    "Economia, negocio y finanzas",
-    "Educacion",
-    "Medioambiente",
-    "Salud",
-    "Interes humano",
-    "Trabajo",
-    "Politica",
-    "Religion y creencias",
-    "Ciencia y tecnologia",
-    "Sociedad",
-    "Deportes",
-    "Conflicto, guerra y paz",
-    "Clima",
-  ];
+  const IPTC_MAP: Record<string, string> = {
+    "00000000": "General",
+    "01000000": "Arte y Cultura",
+    "04000000": "Economía",
+    "04010000": "Economía",
+    "06000000": "Medio Ambiente",
+    "07000000": "Salud",
+    "08000000": "Tecnología",
+    "11000000": "Política",
+    "13000000": "Ciencia",
+    "14000000": "Deportes",
+    "15000000": "Deportes",
+  };
 
   const [name, setName] = useState("");
   const [descriptors, setDescriptors] = useState("");
-  const [categoriaIptc, setCategoriaIptc] = useState("");
+  const [selectedCategoriesIds, setSelectedCategoriesIds] = useState<string[]>([]);
   const [fuentesRss, setFuentesRss] = useState("");
   const [cronExpression, setCronExpression] = useState("0 * * * *");
   const [recommendations, setRecommendations] = useState<string[]>([]);
@@ -84,7 +94,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     if (initialData) {
       setName(initialData.nombre);
       setDescriptors(initialData.descriptores ?? "");
-      setCategoriaIptc(initialData.categoria_iptc ?? "");
+      // initialData may store categories as comma separated or as an array
+      const initCatsRaw = (initialData as any)?.categories ?? (initialData as any)?.categoria_iptc;
+      const initCats = Array.isArray(initCatsRaw)
+        ? initCatsRaw
+        : typeof initCatsRaw === "string" && initCatsRaw.trim()
+        ? initCatsRaw.split(",").map((s: string) => s.trim())
+        : [];
+      setSelectedCategoriesIds(initCats);
       setFuentesRss((initialData.fuentes_rss ?? []).join(", "));
       setCronExpression("0 * * * *");
       setFormError(null);
@@ -95,7 +112,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     setName("");
     setDescriptors("");
-    setCategoriaIptc("");
+    setSelectedCategoriesIds([]);
     setFuentesRss("");
     setCronExpression("0 * * * *");
     setFormError(null);
@@ -182,8 +199,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     setFormError(null);
 
-    if (!categoriaIptc.trim()) {
-      setFormError("Debes seleccionar una categoria IPTC.");
+    if (!selectedCategoriesIds || selectedCategoriesIds.length === 0) {
+      setFormError("Debes seleccionar al menos una categoria IPTC.");
       return;
     }
 
@@ -203,46 +220,49 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     const fuentesRssArray = parseDescriptors(fuentesRss);
 
-    const payload: AlertFormPayload = {
+    const formData = {
       name: name,
       descriptors: descriptoresArray,
-      categoria_iptc: categoriaIptc,
       fuentes_rss: fuentesRssArray,
       cron_expression: cronExpression,
     };
 
+    const categoriesToSave = selectedCategoriesIds
+      .map((id) => categories.find((c) => c.iptc_code === id))
+      .filter(Boolean)
+      .map((category) => ({
+        id: Number((category as AlertCategoryOption).id),
+        name:
+          String((category as AlertCategoryOption).name ?? "").trim() ||
+          String((category as AlertCategoryOption).iptc_label ?? "").trim() ||
+          String((category as AlertCategoryOption).iptc_code ?? "").trim(),
+        iptc_code: String((category as AlertCategoryOption).iptc_code ?? "").trim(),
+      }))
+      .filter(
+        (category): category is AlertCategoryPayload =>
+          Number.isFinite(category.id) &&
+          category.name !== "" &&
+          category.iptc_code !== "",
+      );
+
+    if (categoriesToSave.length === 0) {
+      setFormError("No se pudieron resolver las categorías seleccionadas.");
+      return;
+    }
+
+    const payload: AlertFormPayload = {
+      ...formData,
+      categories: categoriesToSave,
+    };
+
     try {
       setIsSubmitting(true);
-      const token = globalThis.localStorage.getItem("token");
-      const userId = globalThis.localStorage.getItem("userId");
-
-      if (!token || !userId) {
-        throw new Error("Sesión no disponible para guardar la alerta");
-      }
-
-      const endpoint = initialData
-        ? `${API_BASE_URL}/api/v1/users/${userId}/alerts/${initialData.id}`
-        : `${API_BASE_URL}/api/v1/users/${userId}/alerts`;
-
-      const response = await fetch(endpoint, {
-        method: initialData ? "PUT" : "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al guardar la alerta");
-      }
-
       await onSubmit(payload);
 
       // Limpiar campos para la próxima vez
       setName("");
       setDescriptors("");
-      setCategoriaIptc("");
+      setSelectedCategoriesIds([]);
       setFuentesRss("");
       setCronExpression("0 * * * *");
       setFormError(null);
@@ -352,18 +372,20 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               id="alertIptcCategory"
               className="form-input"
               required
-              value={categoriaIptc}
-              onChange={(e) => setCategoriaIptc(e.target.value)}
+              multiple
+              value={selectedCategoriesIds}
+              onChange={(e) => {
+                const opts = Array.from(e.target.selectedOptions).map((o) => o.value);
+                setSelectedCategoriesIds(opts);
+              }}
             >
-              <option value="" disabled>
-                Selecciona una categoria
-              </option>
-              {IPTC_LEVEL_1_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              {Object.entries(IPTC_MAP).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
                 </option>
               ))}
             </select>
+            <p className="form-hint-text">Mantén pulsada Ctrl / Cmd para seleccionar varias.</p>
           </div>
 
           <div className="form-group">
