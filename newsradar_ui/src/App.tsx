@@ -411,23 +411,44 @@ const ProtectedLayout = ({
 function App() {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  // ✅ 1. Lo convertimos en un estado reactivo
-  const [canManageSections, setCanManageSections] = useState(false);
-  
-  // ✅ 2. Obligamos a React a recalcular los roles CADA VEZ que te logueas o deslogueas
+  const hasStoredToken = Boolean(globalThis.localStorage.getItem("token"));
+  const isSessionAuthenticated = isAuthenticated || hasStoredToken;
+  // Inicialización síncrona desde localStorage para evitar que en el primer render
+  // canManageSections sea false y dispare un <Navigate> a /dashboard cuando el
+  // usuario recarga (F5) estando en /alertas o /fuentes-rss.
+  const [canManageSections, setCanManageSections] = useState<boolean>(() =>
+    canAccessManagementSections(getStoredUserRoles()),
+  );
+  // Pantalla de carga breve mientras se verifica la sesión: solo si hay token en
+  // localStorage al montar. Sin token saltamos directo al login para no bloquear
+  // las rutas públicas.
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(() =>
+    hasStoredToken,
+  );
+
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isSessionAuthenticated) {
       const userRoles = getStoredUserRoles();
       setCanManageSections(canAccessManagementSections(userRoles));
     } else {
       setCanManageSections(false);
     }
-  }, [isAuthenticated]);
+    setIsCheckingAuth(false);
+  }, [isSessionAuthenticated]);
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="auth-checking" role="status" aria-live="polite">
+        <span className="auth-checking-spinner" aria-hidden="true" />
+        <span>Cargando…</span>
+      </div>
+    );
+  }
 
   return (
     <Routes>
@@ -437,7 +458,7 @@ function App() {
       <Route
         path="/"
         element={
-          isAuthenticated ? (
+          isSessionAuthenticated ? (
             <ProtectedLayout
               handleLogout={handleLogout}
               canManageSections={canManageSections}
@@ -478,7 +499,7 @@ function App() {
       <Route
         path="*"
         element={
-          isAuthenticated ? (
+          isSessionAuthenticated ? (
             <Navigate to="/dashboard" replace />
           ) : (
             <Navigate to="/login" replace />

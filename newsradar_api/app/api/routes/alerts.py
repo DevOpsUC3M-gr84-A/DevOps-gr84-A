@@ -92,12 +92,17 @@ def create_user_alert(
     if active_alerts_count >= MAX_ALERTS_PER_USER:
         raise HTTPException(status_code=400, detail=ERROR_ALERT_LIMIT_EXCEEDED)
 
+    sources_ids = (
+        payload.rss_channels_ids
+        or payload.information_sources_ids
+        or []
+    )
     db_alert = AlertRule(
         user_id=user_id,
         name=payload.name,
         descriptors=payload.descriptors,
         categories=[category.model_dump() for category in payload.categories],
-        rss_channel_ids=payload.rss_channels_ids or [],
+        rss_channel_ids=sources_ids,
         cron_expression=payload.cron_expression,
         is_active=True,
     )
@@ -153,6 +158,8 @@ def get_user_alert(
         name=db_alert.name,
         descriptors=db_alert.descriptors or [],
         categories=db_alert.categories or [],
+        rss_channels_ids=db_alert.rss_channel_ids or [],
+        information_sources_ids=db_alert.rss_channel_ids or [],
         cron_expression=db_alert.cron_expression,
     )
 
@@ -194,6 +201,10 @@ def update_user_alert(
             item.model_dump() if hasattr(item, "model_dump") else item
             for item in update_data["categories"]
         ]
+    if "rss_channels_ids" in update_data:
+        db_alert.rss_channel_ids = update_data["rss_channels_ids"] or []
+    elif "information_sources_ids" in update_data:
+        db_alert.rss_channel_ids = update_data["information_sources_ids"] or []
     if "cron_expression" in update_data:
         db_alert.cron_expression = update_data["cron_expression"]
 

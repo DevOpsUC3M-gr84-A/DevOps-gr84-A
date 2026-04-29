@@ -14,7 +14,7 @@ beforeAll(() => {
 
 describe("AlertsManagement Page", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     localStorage.clear();
     localStorage.setItem("token", "fake-token");
     localStorage.setItem("userId", "1");
@@ -230,29 +230,36 @@ describe("AlertsManagement Page", () => {
       rss_channels_ids: ["Reuters", "BBC"],
     };
 
-    (globalThis.fetch as jest.Mock)
-      // initial fetchAlertas → vacío
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      })
-      // initial fetchCategories → vacío (cae en fallback IPTC_MAP)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      })
-      // POST nueva alerta
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockNuevaAlerta,
-      })
-      // refetch alertas tras crear
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [mockNuevaAlerta],
-      });
+    let postDone = false;
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "POST" && /\/alerts$/.test(url)) {
+          postDone = true;
+          return { ok: true, json: async () => mockNuevaAlerta };
+        }
+
+        if (method === "GET" && /\/alerts$/.test(url)) {
+          return {
+            ok: true,
+            json: async () => (postDone ? [mockNuevaAlerta] : []),
+          };
+        }
+
+        if (url.includes("/categories")) {
+          return { ok: true, json: async () => [] };
+        }
+
+        return { ok: true, json: async () => [] };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
+
+    // Esperamos a que la carga inicial secuencial termine
+    await screen.findByText("No hay alertas todavía.");
 
     // Abrir modal
     fireEvent.click(screen.getByText(/Nueva Alerta/i));
@@ -264,9 +271,9 @@ describe("AlertsManagement Page", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "Uranio, Energía" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "13000000" },
-    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
 
     // Enviar el formulario
     const botonGuardar = screen.getByRole("button", {
@@ -340,15 +347,18 @@ describe("AlertsManagement Page", () => {
       },
     ];
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockAlertas,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      });
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE" && url.includes("/api/v1/users/1/alerts/11")) {
+          return { ok: true, json: async () => ({}) };
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -386,10 +396,17 @@ describe("AlertsManagement Page", () => {
       },
     ];
 
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockAlertas,
-    });
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE") {
+          return { ok: true, json: async () => ({}) };
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -433,20 +450,18 @@ describe("AlertsManagement Page", () => {
       },
     ];
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockAlertas,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => ({}),
-      });
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE" && url.includes("/api/v1/users/1/alerts/33")) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -486,16 +501,18 @@ describe("AlertsManagement Page", () => {
       },
     ];
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockAlertas,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      })
-      .mockRejectedValueOnce("boom");
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE" && url.includes("/api/v1/users/1/alerts/77")) {
+          throw "boom";
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
     expect(

@@ -58,23 +58,29 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   onSubmit,
 }) => {
   const IPTC_MAP: Record<string, string> = {
-    "00000000": "General",
-    "01000000": "Arte y Cultura",
-    "04000000": "Economía",
-    "04010000": "Economía",
-    "06000000": "Medio Ambiente",
-    "07000000": "Salud",
-    "08000000": "Tecnología",
+    "01000000": "Artes, cultura, entretenimiento y medios",
+    "03000000": "Catástrofes y accidentes",
+    "13000000": "Ciencia y tecnología",
+    "16000000": "Conflicto, guerra y paz",
+    "15000000": "Deporte",
+    "04000000": "Economía, negocios y finanzas",
+    "05000000": "Educación",
+    "10000000": "Estilo de vida y tiempo libre",
+    "08000000": "Interés humano, animales, insólito",
+    "09000000": "Mano de obra",
+    "06000000": "Medio ambiente",
+    "17000000": "Meteorología",
+    "02000000": "Policía y justicia",
     "11000000": "Política",
-    "13000000": "Ciencia",
-    "14000000": "Deportes",
-    "15000000": "Deportes",
+    "12000000": "Religión y culto",
+    "07000000": "Salud",
+    "14000000": "Sociedad",
   };
 
   const [name, setName] = useState("");
   const [descriptors, setDescriptors] = useState("");
   const [selectedCategoriesIds, setSelectedCategoriesIds] = useState<string[]>([]);
-  const [informationSourcesIds, setInformationSourcesIds] = useState("");
+  const [informationSourcesIds, setInformationSourcesIds] = useState<string[]>([]);
   const [cronExpression, setCronExpression] = useState("0 * * * *");
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [hasFetchedRecommendations, setHasFetchedRecommendations] =
@@ -108,7 +114,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     const normalizeCategoryText = (value: string): string =>
       value
         .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
+        .replaceAll(/\p{Diacritic}/gu, "")
         .trim()
         .toLowerCase();
 
@@ -175,9 +181,13 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       }
       setSelectedCategoriesIds(initCats);
       const initSources = (initialData as any)?.information_sources_ids ?? (initialData as any)?.rss_channels_ids ?? [];
-      setInformationSourcesIds(
-        Array.isArray(initSources) ? initSources.join(", ") : String(initSources ?? ""),
-      );
+      const initSourcesArray = Array.isArray(initSources)
+        ? initSources.map((s: unknown) => String(s).trim()).filter(Boolean)
+        : String(initSources ?? "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+      setInformationSourcesIds(initSourcesArray);
       setCronExpression("0 * * * *");
       setFormError(null);
       setRecommendations([]);
@@ -188,7 +198,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     setName("");
     setDescriptors("");
     setSelectedCategoriesIds([]);
-    setInformationSourcesIds("");
+    setInformationSourcesIds([]);
     setCronExpression("0 * * * *");
     setFormError(null);
     setRecommendations([]);
@@ -293,7 +303,9 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     const descriptoresArray = parseDescriptors(descriptors);
 
-    const informationSourcesArray = parseDescriptors(informationSourcesIds);
+    const informationSourcesArray = informationSourcesIds
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const formData = {
       name: name,
@@ -305,14 +317,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     const categoriesToSave = selectedCategoriesIds
       .map((id) => categoryOptions.find((c) => c.iptc_code === id))
-      .filter(Boolean)
+      .filter((category) => category !== undefined)
       .map((category) => ({
-        id: Number((category as AlertCategoryOption).id),
+        id: Number(category.id),
         name:
-          String((category as AlertCategoryOption).name ?? "").trim() ||
-          String((category as AlertCategoryOption).iptc_label ?? "").trim() ||
-          String((category as AlertCategoryOption).iptc_code ?? "").trim(),
-        iptc_code: String((category as AlertCategoryOption).iptc_code ?? "").trim(),
+          String(category.name ?? "").trim() ||
+          String(category.iptc_label ?? "").trim() ||
+          String(category.iptc_code ?? "").trim(),
+        iptc_code: String(category.iptc_code ?? "").trim(),
       }))
       .filter(
         (category): category is AlertCategoryPayload =>
@@ -334,7 +346,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       setName("");
       setDescriptors("");
       setSelectedCategoriesIds([]);
-      setInformationSourcesIds("");
+      setInformationSourcesIds([]);
       setCronExpression("0 * * * *");
       setFormError(null);
       setRecommendations([]);
@@ -350,7 +362,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      <div className="modal-content modal-content-wide">
         <div className="modal-header">
           <h2>{initialData ? "EDITAR ALERTA" : "CREAR NUEVA ALERTA"}</h2>
           <button onClick={onClose} className="modal-close-btn" title="Cerrar">
@@ -438,31 +450,44 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="alertIptcCategory">CATEGORIA IPTC (NIVEL 1)</label>
-            <select
-              id="alertIptcCategory"
-              className="form-input"
-              required
-              multiple
-              value={selectedCategoriesIds}
-              onChange={(e) => {
-                const opts = Array.from(e.target.selectedOptions).map((o) => o.value);
-                setSelectedCategoriesIds(opts);
-              }}
+            <span className="form-group-label">CATEGORIA IPTC (NIVEL 1)</span>
+            <div
+              className="categories-checkbox-list"
+              role="group"
+              aria-label="CATEGORIA IPTC (NIVEL 1)"
             >
               {categoryOptions.map((category) => {
                 const code = String(category.iptc_code ?? category.id ?? "");
                 const label = String(
                   category.name ?? category.iptc_label ?? code,
                 );
+                const checkboxId = `alertIptcCategory-${code}`;
+                const isChecked = selectedCategoriesIds.includes(code);
+
                 return (
-                  <option key={code || label} value={code}>
-                    {label}
-                  </option>
+                  <div key={code || label} className="category-checkbox-row">
+                    <input
+                      id={checkboxId}
+                      type="checkbox"
+                      className="category-checkbox-input"
+                      checked={isChecked}
+                      onChange={(event) => {
+                        setSelectedCategoriesIds((prev) => {
+                          if (event.target.checked) {
+                            return prev.includes(code) ? prev : [...prev, code];
+                          }
+                          return prev.filter((selectedCode) => selectedCode !== code);
+                        });
+                      }}
+                    />
+                    <label htmlFor={checkboxId} className="category-checkbox-label">
+                      {label}
+                    </label>
+                  </div>
                 );
               })}
-            </select>
-            <p className="form-hint-text">Mantén pulsada Ctrl / Cmd para seleccionar varias.</p>
+            </div>
+            <p className="form-hint-text">Selecciona una o varias categorias.</p>
           </div>
 
           <div className="form-group">
@@ -474,8 +499,15 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               type="text"
               className="form-input"
               placeholder="Ej: ElPais, BBC, Reuters"
-              value={informationSourcesIds}
-              onChange={(e) => setInformationSourcesIds(e.target.value)}
+              value={informationSourcesIds?.join(", ") || ""}
+              onChange={(e) =>
+                setInformationSourcesIds(
+                  e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                )
+              }
             />
             <p className="form-hint-text">
               Si lo dejas vacio, se aplicaran todas las fuentes de la categoria

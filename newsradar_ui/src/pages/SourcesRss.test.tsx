@@ -745,6 +745,7 @@ describe("SourcesRss", () => {
           body: JSON.stringify({
             url: "https://agencia.example.com/rss-actualizado.xml",
             category_id: 10,
+            iptc_category: "13000000",
           }),
         }),
       );
@@ -1045,9 +1046,9 @@ describe("SourcesRss", () => {
   });
 
   test("filtra canales por categoría mediante checkboxes", async () => {
-    const sportCategory = { id: 11, name: "Deportes", source: "IPTC", iptc_code: "14000000", iptc_label: "Deportes" };
+    const sportCategory = { id: 11, name: "Deporte", source: "IPTC", iptc_code: "15000000", iptc_label: "Deporte" };
     const ch1 = { ...baseChannel };
-    const ch2 = { id: 8, information_source_id: 1, url: "https://agencia.example.com/rss-deportes.xml", category_id: 11, iptc_category: "14000000", media_name: "Agencia Central" };
+    const ch2 = { id: 8, information_source_id: 1, url: "https://agencia.example.com/rss-deportes.xml", category_id: 11, iptc_category: "15000000", media_name: "Agencia Central" };
 
     mockInitialLoad({ channels: [ch1, ch2], categories: [baseCategory, sportCategory] });
 
@@ -1058,8 +1059,8 @@ describe("SourcesRss", () => {
     expect(screen.getByText("https://agencia.example.com/rss.xml")).toBeInTheDocument();
     expect(screen.getByText("https://agencia.example.com/rss-deportes.xml")).toBeInTheDocument();
 
-    // check the 'Deportes' checkbox to filter
-    const deportesCheckbox = screen.getByLabelText("Deportes");
+    // check the 'Deporte' checkbox to filter
+    const deportesCheckbox = screen.getByLabelText("Deporte");
     fireEvent.click(deportesCheckbox);
 
     // now only the deportes channel should be visible
@@ -1073,13 +1074,13 @@ describe("SourcesRss", () => {
   });
 
   test("limpia los filtros de fuentes y categorías", async () => {
-    const sportCategory = { id: 11, name: "Deportes", source: "IPTC", iptc_code: "14000000", iptc_label: "Deportes" };
+    const sportCategory = { id: 11, name: "Deporte", source: "IPTC", iptc_code: "15000000", iptc_label: "Deporte" };
     mockInitialLoad({
       sources: [
         baseSource,
         { id: 2, name: "Agencia Periférica", url: "https://periferica.example.com" },
       ],
-      channels: [baseChannel, { id: 8, information_source_id: 1, url: "https://agencia.example.com/rss-deportes.xml", category_id: 11, iptc_category: "14000000", media_name: "Agencia Central" }],
+      channels: [baseChannel, { id: 8, information_source_id: 1, url: "https://agencia.example.com/rss-deportes.xml", category_id: 11, iptc_category: "15000000", media_name: "Agencia Central" }],
       categories: [baseCategory, sportCategory],
     });
 
@@ -1087,7 +1088,7 @@ describe("SourcesRss", () => {
 
     await screen.findByText("Agencia Central");
     fireEvent.change(screen.getByLabelText("Buscar fuentes de información"), { target: { value: "periferica" } });
-    fireEvent.click(screen.getByLabelText("Deportes"));
+    fireEvent.click(screen.getByLabelText("Deporte"));
 
     const clearFiltersButton = screen.getByRole("button", { name: /Limpiar Filtros/i });
     expect(clearFiltersButton).toBeInTheDocument();
@@ -1095,7 +1096,7 @@ describe("SourcesRss", () => {
     fireEvent.click(clearFiltersButton);
 
     expect(screen.getByLabelText("Buscar fuentes de información")).toHaveValue("");
-    expect(screen.getByLabelText("Deportes")).not.toBeChecked();
+    expect(screen.getByLabelText("Deporte")).not.toBeChecked();
   });
 
   test("borra una fuente y vuelve a la primera disponible", async () => {

@@ -126,7 +126,24 @@ def test_crear_canal_rss_success_and_error_paths(monkeypatch):
 def test_listar_canales_and_list_source_channels_success(monkeypatch):
     db = MagicMock()
 
-    fake_root_channels = [SimpleNamespace(id=1), SimpleNamespace(id=2)]
+    fake_root_channels = [
+        SimpleNamespace(
+            id=1,
+            information_source_id=1,
+            url="https://a.test",
+            category_id=1,
+            iptc_category="04010000",
+            media_name="m1",
+        ),
+        SimpleNamespace(
+            id=2,
+            information_source_id=1,
+            url="https://b.test",
+            category_id=1,
+            iptc_category="04010000",
+            media_name="m2",
+        ),
+    ]
     monkeypatch.setattr(
         "app.api.routes.rss_channels.get_all_rss_channels",
         lambda _db, skip=0, limit=100: fake_root_channels,
@@ -138,7 +155,14 @@ def test_listar_canales_and_list_source_channels_success(monkeypatch):
     assert len(listed) == 2
 
     source = SimpleNamespace(id=1)
-    channel = SimpleNamespace(id=10, information_source_id=1, url="https://x.test", category_id=1)
+    channel = SimpleNamespace(
+        id=10,
+        information_source_id=1,
+        url="https://x.test",
+        category_id=1,
+        iptc_category="04010000",
+        media_name="x",
+    )
     query = db.query.return_value
     query.filter.return_value.first.return_value = source
     query.filter.return_value.all.return_value = [channel]
@@ -152,7 +176,14 @@ def test_listar_canales_and_list_source_channels_success(monkeypatch):
 def test_get_update_delete_source_channel_additional_branches():
     from app.api.routes.rss_channels import delete_source_channel, get_source_channel, update_source_channel
 
-    channel = SimpleNamespace(id=1, information_source_id=1, url="https://old.test/rss", category_id=1)
+    channel = SimpleNamespace(
+        id=1,
+        information_source_id=1,
+        url="https://old.test/rss",
+        category_id=1,
+        iptc_category="04010000",
+        media_name="m1",
+    )
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = channel
 

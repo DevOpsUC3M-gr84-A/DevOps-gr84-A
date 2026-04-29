@@ -65,9 +65,9 @@ describe("AlertForm Component", () => {
     expect(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS")).toHaveValue(
       "IA, Chips",
     );
-    expect(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)")).toHaveValue([
-      "13000000",
-    ]);
+    expect(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    ).toBeChecked();
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "Reuters",
     );
@@ -93,7 +93,9 @@ describe("AlertForm Component", () => {
     expect(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS")).toHaveValue(
       "",
     );
-    expect(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)")).toHaveValue([]);
+    expect(
+      screen.queryAllByRole("checkbox", { checked: true }),
+    ).toHaveLength(0);
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "",
     );
@@ -138,9 +140,7 @@ describe("AlertForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "IA, Datos" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "14000000" },
-    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Sociedad/i }));
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
       target: { value: "   " },
     });
@@ -166,9 +166,7 @@ describe("AlertForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "IA, Datos" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "14000000" },
-    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Sociedad/i }));
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
       target: { value: "*/5 * *" },
     });
@@ -194,9 +192,7 @@ describe("AlertForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "IA" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "14000000" },
-    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Sociedad/i }));
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
       target: { value: "0 */6 * * *" },
     });
@@ -239,16 +235,15 @@ describe("AlertForm Component", () => {
 
     const inputNombre = screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026");
     const inputDesc = screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS");
-    const selectCategoria = screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)");
     const inputCron = screen.getByLabelText("EXPRESION CRON");
     const inputFuentes = screen.getByPlaceholderText(
       "Ej: ElPais, BBC, Reuters",
     );
 
     fireEvent.change(inputNombre, { target: { value: "Alerta Compleja" } });
-    fireEvent.change(selectCategoria, {
-      target: { value: "13000000" },
-    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
     fireEvent.change(inputCron, { target: { value: "*/15 * * * *" } });
     fireEvent.change(inputFuentes, { target: { value: "Reuters, BBC" } });
 
@@ -300,7 +295,6 @@ describe("AlertForm Component", () => {
       target: { value: "Actualizada" },
     });
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
-          rss_channels_ids: ["Reuters", "BBC"],
       target: { value: "0 */2 * * *" },
     });
 
@@ -325,10 +319,9 @@ describe("AlertForm Component", () => {
 
     const inputNombre = screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026");
     const inputDesc = screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS");
-    const selectCategoria = screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)");
     fireEvent.change(inputNombre, { target: { value: "Test" } });
     fireEvent.change(inputDesc, { target: { value: "IA" } });
-    fireEvent.change(selectCategoria, { target: { value: "14000000" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Sociedad/i }));
 
     await React.act(async () => {
       fireEvent.click(screen.getByText("GUARDAR ALERTA"));
@@ -443,9 +436,9 @@ describe("AlertForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "IA" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "13000000" },
-    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
 
     mockOnSubmit.mockRejectedValueOnce(new Error("Error al guardar la alerta"));
 
@@ -477,9 +470,9 @@ describe("AlertForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "IA" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "13000000" },
-    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
 
     await React.act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /GUARDAR ALERTA/i }));
@@ -509,9 +502,9 @@ describe("AlertForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "IA" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "13000000" },
-    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
 
     await React.act(async () => {
       fireEvent.click(screen.getByText("GUARDAR ALERTA"));

@@ -22,7 +22,7 @@ interface AlertApiItem {
   categoria_iptc?: string | null;
   categories?: Array<string | AlertCategory> | null;
   information_sources_ids?: string[] | null;
-  fuentes_rss?: string[] | null;
+  rss_channels_ids?: string[] | null;
 }
 
 interface AlertFeedback {
@@ -48,17 +48,23 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
   const IPTC_MAP: Record<string, string> = {
-    "00000000": "General",
-    "01000000": "Arte y Cultura",
-    "04000000": "Economía",
-    "04010000": "Economía",
-    "06000000": "Medio Ambiente",
-    "07000000": "Salud",
-    "08000000": "Tecnología",
+    "01000000": "Artes, cultura, entretenimiento y medios",
+    "03000000": "Catástrofes y accidentes",
+    "13000000": "Ciencia y tecnología",
+    "16000000": "Conflicto, guerra y paz",
+    "15000000": "Deporte",
+    "04000000": "Economía, negocios y finanzas",
+    "05000000": "Educación",
+    "10000000": "Estilo de vida y tiempo libre",
+    "08000000": "Interés humano, animales, insólito",
+    "09000000": "Mano de obra",
+    "06000000": "Medio ambiente",
+    "17000000": "Meteorología",
+    "02000000": "Policía y justicia",
     "11000000": "Política",
-    "13000000": "Ciencia",
-    "14000000": "Deportes",
-    "15000000": "Deportes",
+    "12000000": "Religión y culto",
+    "07000000": "Salud",
+    "14000000": "Sociedad",
   };
 
 export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
@@ -82,18 +88,23 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     Boolean(userId) &&
     Boolean(token);
 
-  const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => ({
-    id: item.id,
-    nombre: item.name,
-    descriptores: (item.descriptors ?? []).join(", "),
-    categories: Array.isArray(item.categories)
-      ? (item.categories as Array<string | AlertCategory>)
-      : item.categoria_iptc
-      ? [item.categoria_iptc]
-      : [],
+  const mapAlertToTableItem = (item: AlertApiItem): AlertTableItem => {
+    let categories: Array<string | AlertCategory> = [];
+    if (Array.isArray(item.categories)) {
+      categories = item.categories;
+    } else if (item.categoria_iptc) {
+      categories = [item.categoria_iptc];
+    }
+
+    return {
+      id: item.id,
+      nombre: item.name,
+      descriptores: (item.descriptors ?? []).join(", "),
+      categories,
       information_sources_ids:
         item.information_sources_ids ?? item.rss_channels_ids ?? [],
-  } as unknown as AlertTableItem);
+    };
+  };
 
   const availableIptcCategories = Object.entries(IPTC_MAP).map(
     ([code, label]) => ({ code, label }),
@@ -271,8 +282,12 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
   // Carga desde la API
   useEffect(() => {
     if (userId && token) {
-      void fetchAlertas();
-      void fetchCategories();
+      const loadInitialData = async () => {
+        await fetchAlertas();
+        await fetchCategories();
+      };
+
+      void loadInitialData();
     }
   }, [userId, token, fetchAlertas, fetchCategories]);
 
@@ -292,7 +307,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
     if (!token || !userId) {
       globalThis.localStorage.clear();
-      window.location.assign("/login");
+      globalThis.location.assign("/login");
       return;
     }
 
