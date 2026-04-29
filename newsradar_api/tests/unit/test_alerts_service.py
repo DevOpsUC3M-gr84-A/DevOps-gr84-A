@@ -61,6 +61,8 @@ def test_create_user_alert_owner_not_found_raises_404():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -93,6 +95,8 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -132,6 +136,8 @@ def test_create_user_alert_success_commits_and_returns_alert():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -258,6 +264,8 @@ def test_create_user_alert_sqlalchemy_error_propagates():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -303,6 +311,8 @@ def test_create_user_alert_exceeds_limit_raises_400():
         name="Alert 21",
         descriptors=["test"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -343,6 +353,8 @@ def test_create_user_alert_below_limit_succeeds():
         name="Alert 20",
         descriptors=["test"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -423,7 +435,8 @@ def test_create_alert_auto_assigns_channels_when_not_specified():
         name="Alert with auto channels",
         descriptors=["tech"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
-        rss_channel_ids=None,  # Not specified, should auto-assign
+        rss_channels_ids=None,  # Not specified, should auto-assign
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -471,7 +484,8 @@ def test_create_alert_with_explicit_channels():
         name="Alert with explicit channels",
         descriptors=["tech"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
-        rss_channel_ids=[7, 9],  # Explicitly specified
+        rss_channels_ids=[7, 9],  # Explicitly specified
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -513,7 +527,8 @@ def test_create_alert_with_invalid_channels_raises_400():
         name="Alert with invalid channels",
         descriptors=["tech"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
-        rss_channel_ids=[7, 999],  # 999 doesn't exist
+        rss_channels_ids=[7, 999],  # 999 doesn't exist
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -555,7 +570,7 @@ def test_update_alert_with_rss_channels():
         SimpleNamespace(id=30),
     ]
 
-    payload = AlertUpdate(rss_channel_ids=[10, 20, 30])
+    payload = AlertUpdate(rss_channels_ids=[10, 20, 30])
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
@@ -662,7 +677,7 @@ def test_update_user_alert_auto_assigns_channels_when_rss_channel_ids_is_none():
 
     db.query.side_effect = [alert_query, channels_query]
 
-    payload = AlertUpdate(rss_channel_ids=None)
+    payload = AlertUpdate(rss_channels_ids=None)
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 

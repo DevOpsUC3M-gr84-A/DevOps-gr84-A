@@ -285,12 +285,11 @@ export const SourcesRss = () => {
       const matched = categories.find(
         (c) => c.id === ch.category_id || (c.iptc_code && c.iptc_code === ch.iptc_category),
       );
-      const categoryObj = categories.find(
-        (cat) => cat.iptc_code === ch.iptc_category || cat.id === ch.category_id,
-      );
-      const label = categoryObj
-        ? categoryObj.name
-        : IPTC_MAP[String(ch.iptc_category)] || `Categoría ${ch.iptc_category}`;
+      // Prefiere IPTC_MAP para garantizar que el checkbox use exactamente el mismo nombre que la tabla
+      const label =
+        IPTC_MAP[String(ch.iptc_category)] ||
+        matched?.name ||
+        `Categoría ${ch.iptc_category}`;
 
       let key: string;
 
@@ -627,48 +626,61 @@ export const SourcesRss = () => {
       selectedCategory.iptc_code ?? selectedCategoryId,
     );
 
-    const payload = channelBeingEdited
+    // Construye un payload limpio con los tipos exactos esperados por el backend (sin campos extra)
+    const payload: Record<string, string | number> = channelBeingEdited
       ? {
           url: trimmedUrl,
           category_id: Number(selectedCategoryId),
         }
       : {
-          media_name: source.name,
+          media_name: String(source.name),
           url: trimmedUrl,
           category_id: Number(selectedCategoryId),
-          iptc_category: mappedIptcCategory,
+          iptc_category: String(mappedIptcCategory),
         };
 
     await runSaveOperation(async () => {
       console.log("DEBUG PAYLOAD:", payload);
-      try {
-        await requestJson<RssChannelApiItem>(
-          channelBeingEdited
-            ? `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels/${channelBeingEdited.id}`
-            : `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels`,
-          token,
-          {
-            method: channelBeingEdited ? "PUT" : "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          },
-          logout,
-        );
 
-        // Always refresh authoritative data from the server to avoid local type mismatch issues
-        await loadSourcesAndChannels();
-        setSelectedChannel(null);
-        setSelectedSourceId(sourceId);
-      } catch (err: any) {
-        if (err instanceof Error && /Sesión expirada|401/.test(err.message)) {
-          globalThis.localStorage.clear();
-          window.location.assign("/login");
-          return;
-        }
-        throw err;
+      if (!token) {
+        throw new Error("No hay sesión activa.");
       }
+
+      const endpoint = channelBeingEdited
+        ? `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels/${channelBeingEdited.id}`
+        : `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels`;
+
+      const response = await fetch(endpoint, {
+        method: channelBeingEdited ? "PUT" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status === 401) {
+        globalThis.localStorage.clear();
+        window.location.assign("/login");
+        return;
+      }
+
+      if (response.status === 409) {
+        throw new Error("Este canal RSS ya existe para esta fuente.");
+      }
+
+      if (!response.ok) {
+        const detail = await extractApiDetail(
+          response,
+          "Error al procesar la solicitud",
+        );
+        throw new Error(detail);
+      }
+
+      // Always refresh authoritative data from the server to avoid local type mismatch issues
+      await loadSourcesAndChannels();
+      setSelectedChannel(null);
+      setSelectedSourceId(sourceId);
     },
       channelBeingEdited ? "Canal RSS actualizado correctamente." : "Canal RSS creado correctamente.");
   }, [
@@ -679,7 +691,6 @@ export const SourcesRss = () => {
     channelForm.sourceId,
     channelForm.url,
     loadSourcesAndChannels,
-    logout,
     runSaveOperation,
     sources,
     token,
@@ -1107,10 +1118,12 @@ export const SourcesRss = () => {
                         </a>
                       </td>
                       <td>
-                        {getCategoryLabel(
-                          categories.find((item) => item.id === channel.category_id),
-                          IPTC_MAP[String(channel.iptc_category)] || channel.iptc_category,
-                        )}
+                        {/* Unifica el nombre con el mismo IPTC_MAP usado por los checkboxes del filtro */}
+                        {IPTC_MAP[String(channel.iptc_category)] ||
+                          getCategoryLabel(
+                            categories.find((item) => item.id === channel.category_id),
+                            channel.iptc_category,
+                          )}
                       </td>
                       <td>
                         <div className="sources-rss-row-actions">

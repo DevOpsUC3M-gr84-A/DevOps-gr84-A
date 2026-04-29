@@ -42,7 +42,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Test",
         descriptors: ["IA", "Robot"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
@@ -65,7 +66,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Legacy",
         descriptors: undefined,
         categoria_iptc: undefined,
-        fuentes_rss: null,
+        information_sources_ids: null,
+        rss_channels_ids: null,
       },
     ];
 
@@ -79,14 +81,15 @@ describe("AlertsManagement Page", () => {
     expect(await screen.findByText("Alerta Legacy")).toBeInTheDocument();
   });
 
-  test("filtra sin romper cuando fuentes_rss contiene valores inválidos", async () => {
+  test("filtra sin romper cuando information_sources_ids contiene valores inválidos", async () => {
     const mockAlertas = [
       {
         id: 15,
         name: "Alerta Fuente Invalida",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: [null, "Reuters"],
+        information_sources_ids: [null, "Reuters"],
+        rss_channels_ids: [null, "Reuters"],
       },
     ];
 
@@ -100,9 +103,6 @@ describe("AlertsManagement Page", () => {
     expect(
       await screen.findByText("Alerta Fuente Invalida"),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Filtrar por fuente RSS"), {
-      target: { value: "reu" },
-    });
 
     expect(screen.getByText("Alerta Fuente Invalida")).toBeInTheDocument();
   });
@@ -125,15 +125,17 @@ describe("AlertsManagement Page", () => {
         id: 1,
         name: "Alerta Tech",
         descriptors: ["IA"],
-        categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters", "BBC"],
+        categoria_iptc: "13000000",
+        information_sources_ids: ["Reuters", "BBC"],
+        rss_channels_ids: ["Reuters", "BBC"],
       },
       {
         id: 2,
         name: "Alerta Deportes",
         descriptors: ["Futbol"],
-        categoria_iptc: "Deportes",
-        fuentes_rss: ["ESPN"],
+        categoria_iptc: "14000000",
+        information_sources_ids: ["ESPN"],
+        rss_channels_ids: ["ESPN"],
       },
     ];
 
@@ -148,7 +150,7 @@ describe("AlertsManagement Page", () => {
     expect(screen.getByText("Alerta Deportes")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Filtrar por categoria IPTC"), {
-      target: { value: "Deportes" },
+      target: { value: "14000000" },
     });
 
     expect(screen.queryByText("Alerta Tech")).not.toBeInTheDocument();
@@ -157,8 +159,8 @@ describe("AlertsManagement Page", () => {
     fireEvent.change(screen.getByLabelText("Filtrar por categoria IPTC"), {
       target: { value: "" },
     });
-    fireEvent.change(screen.getByLabelText("Filtrar por fuente RSS"), {
-      target: { value: "reuters" },
+    fireEvent.change(screen.getByLabelText("Buscar por Nombre o Descriptor"), {
+      target: { value: "tech" },
     });
 
     expect(screen.getByText("Alerta Tech")).toBeInTheDocument();
@@ -172,7 +174,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Economia",
         descriptors: ["Mercado"],
         categoria_iptc: "Economia, negocio y finanzas",
-        fuentes_rss: ["Bloomberg"],
+        information_sources_ids: ["Bloomberg"],
+        rss_channels_ids: ["Bloomberg"],
       },
     ];
 
@@ -184,7 +187,7 @@ describe("AlertsManagement Page", () => {
     render(<AlertsManagement onLogout={mockLogout} />);
 
     expect(await screen.findByText("Alerta Economia")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Filtrar por fuente RSS"), {
+    fireEvent.change(screen.getByLabelText("Buscar por Nombre o Descriptor"), {
       target: { value: "Reuters" },
     });
 
@@ -223,18 +226,27 @@ describe("AlertsManagement Page", () => {
       name: "Alerta Nuclear",
       descriptors: ["Uranio", "Energía"],
       categoria_iptc: "Ciencia y tecnologia",
-      fuentes_rss: ["Reuters", "BBC"],
+      information_sources_ids: ["Reuters", "BBC"],
+      rss_channels_ids: ["Reuters", "BBC"],
     };
 
     (globalThis.fetch as jest.Mock)
+      // initial fetchAlertas → vacío
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [],
       })
+      // initial fetchCategories → vacío (cae en fallback IPTC_MAP)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+      // POST nueva alerta
       .mockResolvedValueOnce({
         ok: true,
         json: async () => mockNuevaAlerta,
       })
+      // refetch alertas tras crear
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [mockNuevaAlerta],
@@ -253,7 +265,7 @@ describe("AlertsManagement Page", () => {
       target: { value: "Uranio, Energía" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Ciencia y tecnologia" },
+      target: { value: "13000000" },
     });
 
     // Enviar el formulario
@@ -289,7 +301,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Editable",
         descriptors: ["IA", "NLP"],
         categoria_iptc: "Sociedad",
-        fuentes_rss: ["BBC"],
+        information_sources_ids: ["BBC"],
+        rss_channels_ids: ["BBC"],
       },
     ];
 
@@ -322,7 +335,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Borrable",
         descriptors: ["IA"],
         categoria_iptc: "Politica",
-        fuentes_rss: [],
+        information_sources_ids: [],
+        rss_channels_ids: [],
       },
     ];
 
@@ -367,7 +381,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta No Borrada",
         descriptors: ["NLP"],
         categoria_iptc: "Deportes",
-        fuentes_rss: ["ESPN"],
+        information_sources_ids: ["ESPN"],
+        rss_channels_ids: ["ESPN"],
       },
     ];
 
@@ -385,7 +400,8 @@ describe("AlertsManagement Page", () => {
     await waitFor(() => {
       expect(confirmSpy).toHaveBeenCalled();
     });
-    expect((globalThis.fetch as jest.Mock).mock.calls).toHaveLength(1);
+    // initial alertas + categories fetches; no DELETE expected when user cancels
+    expect((globalThis.fetch as jest.Mock).mock.calls).toHaveLength(2);
 
     confirmSpy.mockRestore();
   });
@@ -412,7 +428,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Error Delete",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
@@ -420,6 +437,10 @@ describe("AlertsManagement Page", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => mockAlertas,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
       })
       .mockResolvedValueOnce({
         ok: false,
@@ -460,7 +481,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Error Desconocido",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
@@ -468,6 +490,10 @@ describe("AlertsManagement Page", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => mockAlertas,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
       })
       .mockRejectedValueOnce("boom");
 
@@ -494,8 +520,9 @@ describe("AlertsManagement Page", () => {
         id: 55,
         name: "Alerta Edit",
         descriptors: ["IA"],
-        categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        categoria_iptc: "13000000",
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
@@ -504,10 +531,17 @@ describe("AlertsManagement Page", () => {
         ok: true,
         json: async () => mockAlertas,
       })
+      // categories fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+      // PUT
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       })
+      // refetch alertas
       .mockResolvedValueOnce({
         ok: true,
         json: async () => mockAlertas,
@@ -535,7 +569,7 @@ describe("AlertsManagement Page", () => {
         name: "Alerta 401 Delete",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
       },
     ];
 
@@ -544,6 +578,12 @@ describe("AlertsManagement Page", () => {
         ok: true,
         json: async () => mockAlertas,
       })
+      // categories fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+      // DELETE 401
       .mockResolvedValueOnce({
         ok: false,
         status: 401,

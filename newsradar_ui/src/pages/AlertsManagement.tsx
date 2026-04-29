@@ -21,6 +21,7 @@ interface AlertApiItem {
   descriptors: string[];
   categoria_iptc?: string | null;
   categories?: Array<string | AlertCategory> | null;
+  information_sources_ids?: string[] | null;
   fuentes_rss?: string[] | null;
 }
 
@@ -39,8 +40,8 @@ interface ApiAlertPayload {
   descriptors: string[];
   categories: ApiAlertCategoryItem[];
   cron_expression: string;
-  rss_channel_ids?: number[];
-  fuentes_rss?: string[];
+  rss_channels_ids?: string[];
+  information_sources_ids?: string[];
 }
 
 const API_BASE_URL =
@@ -86,24 +87,13 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     nombre: item.name,
     descriptores: (item.descriptors ?? []).join(", "),
     categories: Array.isArray(item.categories)
-      ? item.categories
-          .map((cat) => {
-            if (typeof cat === "string") {
-              return cat;
-            }
-
-            if (cat.iptc_code) {
-              return String(cat.iptc_code);
-            }
-
-            return String(cat.id);
-          })
-          .filter((catCode) => catCode !== "")
+      ? (item.categories as Array<string | AlertCategory>)
       : item.categoria_iptc
       ? [item.categoria_iptc]
       : [],
-    fuentes_rss: item.fuentes_rss ?? [],
-  });
+      information_sources_ids:
+        item.information_sources_ids ?? item.rss_channels_ids ?? [],
+  } as unknown as AlertTableItem);
 
   const availableIptcCategories = Object.entries(IPTC_MAP).map(
     ([code, label]) => ({ code, label }),
@@ -115,8 +105,15 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     const nameLower = alerta.nombre.toLowerCase();
     const descriptorsLower = (alerta.descriptores || "").toLowerCase();
 
+    const categoryCodes = (categorias as Array<string | { code?: string; iptc_code?: string | null }>).map(
+      (c) => {
+        if (typeof c === "string") return c;
+        return String(c.iptc_code ?? c.code ?? "");
+      },
+    );
+
     const matchesCategory =
-      selectedIptcCategory === "" || categorias.includes(selectedIptcCategory);
+      selectedIptcCategory === "" || categoryCodes.includes(selectedIptcCategory);
 
     const matchesSearch =
       normalizedSearch === "" ||
@@ -164,7 +161,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       if (response.status === 401) {
         globalThis.localStorage.clear();
-        window.location.assign("/login");
+        onLogout();
         return;
       }
 
@@ -202,7 +199,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       if (response.status === 401) {
         globalThis.localStorage.clear();
-        window.location.assign("/login");
+        onLogout();
         return;
       }
       if (!response.ok) {
@@ -239,7 +236,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       if (response.status === 401) {
         globalThis.localStorage.clear();
-        window.location.assign("/login");
+        onLogout();
         return;
       }
 
@@ -328,31 +325,22 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       }),
     );
 
+    const informationSourcesIds = Array.isArray(alertData.information_sources_ids)
+      ? alertData.information_sources_ids
+          .map((source) => String(source).trim())
+          .filter((source) => source !== "")
+      : [];
+
     const payload: ApiAlertPayload = {
       name: alertData.name,
       descriptors: descriptorsArray,
       categories: apiCategories,
       cron_expression: alertData.cron_expression,
-      fuentes_rss: Array.isArray(alertData.fuentes_rss)
-        ? alertData.fuentes_rss.filter((source) => String(source).trim() !== "")
-        : [],
     };
 
-    if (payload.fuentes_rss && payload.fuentes_rss.length === 0) {
-      delete payload.fuentes_rss;
-    }
-
-    if (payload.fuentes_rss && payload.fuentes_rss.length > 0) {
-      const rssChannelIds = payload.fuentes_rss
-        .map((value) => Number(String(value).trim()))
-        .filter((value) => Number.isInteger(value) && value > 0);
-
-      if (rssChannelIds.length > 0) {
-        payload.rss_channel_ids = rssChannelIds;
-      }
-    }
-
-    delete payload.fuentes_rss;
+    // Always include the sources/channels fields (empty array if none)
+    payload.information_sources_ids = informationSourcesIds;
+    payload.rss_channels_ids = informationSourcesIds;
 
     console.log("DATOS A ENVIAR:", payload);
 
@@ -372,7 +360,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
 
       if (response.status === 401) {
         globalThis.localStorage.clear();
-        window.location.assign("/login");
+        onLogout();
         return;
       }
 
@@ -487,12 +475,19 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                     <td>
                       {alerta.categories && alerta.categories.length > 0
                         ? alerta.categories
-                            .map((categoryCode) => {
-                              try {
-                                return IPTC_MAP[String(categoryCode)] ?? String(categoryCode);
-                              } catch {
-                                return "";
+                            .map((c: any) => {
+                              if (c === null || c === undefined) return "";
+                              if (typeof c === "string") {
+                                return IPTC_MAP[c] ?? c;
                               }
+                              return (
+                                c.name ||
+                                c.label ||
+                                IPTC_MAP[c.iptc_code ?? c.code ?? ""] ||
+                                c.iptc_code ||
+                                c.code ||
+                                ""
+                              );
                             })
                             .filter(Boolean)
                             .join(", ")

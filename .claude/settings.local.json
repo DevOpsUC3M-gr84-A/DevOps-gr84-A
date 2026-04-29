@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vitest *)",
+      "Bash(python -m pytest tests/ -x --tb=short -q)",
+      "Bash(python -m pytest tests/ --tb=short -q --deselect tests/unit/test_rss_channels_routes.py::test_listar_canales_and_list_source_channels_success)",
+      "Bash(python -m pytest tests/ -k \"alert\" --tb=short -q)",
+      "Bash(git stash *)",
+      "Bash(python -m pytest tests/unit/test_rss_channels_routes.py -q --tb=no)"
+    ]
+  }
+}

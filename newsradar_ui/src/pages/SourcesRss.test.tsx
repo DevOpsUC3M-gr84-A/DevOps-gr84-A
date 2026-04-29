@@ -754,7 +754,7 @@ describe("SourcesRss", () => {
       await screen.findByText("https://agencia.example.com/rss-actualizado.xml"),
     ).toBeInTheDocument();
   });
-+
+
   test("abre la edición de un canal sin categoría asociada", async () => {
     const chNoCategory = { ...baseChannel, category_id: null } as unknown as typeof baseChannel;
     mockInitialLoad({

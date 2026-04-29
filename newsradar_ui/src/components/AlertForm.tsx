@@ -8,7 +8,8 @@ export interface AlertFormPayload {
   name: string;
   descriptors: string[];
   categories: AlertCategoryPayload[];
-  fuentes_rss: string[];
+  information_sources_ids: string[];
+  rss_channels_ids: string[];
   cron_expression: string;
 }
 
@@ -25,12 +26,20 @@ export interface AlertCategoryPayload {
   iptc_code: string;
 }
 
+export interface AlertCategoryLike {
+  id?: number | string;
+  name?: string;
+  code?: string;
+  iptc_code?: string | null;
+  iptc_label?: string | null;
+}
+
 export interface AlertTableItem {
   id: number;
   nombre: string;
   descriptores: string;
-  categories: string[];
-  fuentes_rss: string[];
+  categories: Array<string | AlertCategoryLike>;
+  information_sources_ids: string[];
 }
 
 interface AlertFormProps {
@@ -65,13 +74,64 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   const [name, setName] = useState("");
   const [descriptors, setDescriptors] = useState("");
   const [selectedCategoriesIds, setSelectedCategoriesIds] = useState<string[]>([]);
-  const [fuentesRss, setFuentesRss] = useState("");
+  const [informationSourcesIds, setInformationSourcesIds] = useState("");
   const [cronExpression, setCronExpression] = useState("0 * * * *");
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [hasFetchedRecommendations, setHasFetchedRecommendations] =
     useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const rawCategoryOptions =
+    categories.length > 0
+      ? categories
+      : Object.entries(IPTC_MAP).map(([code, label], index) => ({
+          id: index + 1,
+          name: label,
+          iptc_code: code,
+          iptc_label: label,
+        }));
+
+  // Filtra opciones para que no haya nombres repetidos (mantiene la primera ocurrencia por name)
+  const categoryOptions = (() => {
+    const seen = new Set<string>();
+    return rawCategoryOptions.filter((category) => {
+      const label = String(category.name ?? category.iptc_label ?? "").trim().toLowerCase();
+      if (!label || seen.has(label)) {
+        return false;
+      }
+      seen.add(label);
+      return true;
+    });
+  })();
+
+    const normalizeCategoryText = (value: string): string =>
+      value
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .trim()
+        .toLowerCase();
+
+    const resolveCategoryCode = (value: string): string => {
+      const normalizedValue = value.trim();
+      if (!normalizedValue) {
+        return "";
+      }
+
+      const directMatch = categoryOptions.find(
+        (category) => String(category.iptc_code ?? "").trim() === normalizedValue,
+      );
+      if (directMatch?.iptc_code) {
+        return directMatch.iptc_code;
+      }
+
+      const labelMatch = categoryOptions.find(
+        (category) =>
+          normalizeCategoryText(String(category.name ?? category.iptc_label ?? "")) ===
+          normalizeCategoryText(normalizedValue),
+      );
+      return labelMatch?.iptc_code ?? normalizedValue;
+    };
 
   const parseDescriptors = (value: string): string[] => {
     return value
@@ -94,15 +154,30 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     if (initialData) {
       setName(initialData.nombre);
       setDescriptors(initialData.descriptores ?? "");
-      // initialData may store categories as comma separated or as an array
+      // initialData may store categories as comma separated, array of strings, or array of objects
       const initCatsRaw = (initialData as any)?.categories ?? (initialData as any)?.categoria_iptc;
-      const initCats = Array.isArray(initCatsRaw)
-        ? initCatsRaw
-        : typeof initCatsRaw === "string" && initCatsRaw.trim()
-        ? initCatsRaw.split(",").map((s: string) => s.trim())
-        : [];
+      let initCats: string[] = [];
+      if (Array.isArray(initCatsRaw)) {
+        initCats = initCatsRaw
+          .map((entry: any) => {
+            if (entry === null || entry === undefined) return "";
+            if (typeof entry === "string") return resolveCategoryCode(entry);
+            const codeCandidate =
+              entry.code ?? entry.iptc_code ?? entry.name ?? entry.label ?? "";
+            return resolveCategoryCode(String(codeCandidate));
+          })
+          .filter((code) => code !== "");
+      } else if (typeof initCatsRaw === "string" && initCatsRaw.trim()) {
+        initCats = initCatsRaw
+          .split(",")
+          .map((s: string) => resolveCategoryCode(s))
+          .filter((code) => code !== "");
+      }
       setSelectedCategoriesIds(initCats);
-      setFuentesRss((initialData.fuentes_rss ?? []).join(", "));
+      const initSources = (initialData as any)?.information_sources_ids ?? (initialData as any)?.rss_channels_ids ?? [];
+      setInformationSourcesIds(
+        Array.isArray(initSources) ? initSources.join(", ") : String(initSources ?? ""),
+      );
       setCronExpression("0 * * * *");
       setFormError(null);
       setRecommendations([]);
@@ -113,7 +188,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     setName("");
     setDescriptors("");
     setSelectedCategoriesIds([]);
-    setFuentesRss("");
+    setInformationSourcesIds("");
     setCronExpression("0 * * * *");
     setFormError(null);
     setRecommendations([]);
@@ -218,17 +293,18 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     const descriptoresArray = parseDescriptors(descriptors);
 
-    const fuentesRssArray = parseDescriptors(fuentesRss);
+    const informationSourcesArray = parseDescriptors(informationSourcesIds);
 
     const formData = {
       name: name,
       descriptors: descriptoresArray,
-      fuentes_rss: fuentesRssArray,
+      information_sources_ids: informationSourcesArray,
+      rss_channels_ids: informationSourcesArray,
       cron_expression: cronExpression,
     };
 
     const categoriesToSave = selectedCategoriesIds
-      .map((id) => categories.find((c) => c.iptc_code === id))
+      .map((id) => categoryOptions.find((c) => c.iptc_code === id))
       .filter(Boolean)
       .map((category) => ({
         id: Number((category as AlertCategoryOption).id),
@@ -245,11 +321,6 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           category.iptc_code !== "",
       );
 
-    if (categoriesToSave.length === 0) {
-      setFormError("No se pudieron resolver las categorías seleccionadas.");
-      return;
-    }
-
     const payload: AlertFormPayload = {
       ...formData,
       categories: categoriesToSave,
@@ -263,7 +334,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       setName("");
       setDescriptors("");
       setSelectedCategoriesIds([]);
-      setFuentesRss("");
+      setInformationSourcesIds("");
       setCronExpression("0 * * * *");
       setFormError(null);
       setRecommendations([]);
@@ -379,11 +450,17 @@ export const AlertForm: React.FC<AlertFormProps> = ({
                 setSelectedCategoriesIds(opts);
               }}
             >
-              {Object.entries(IPTC_MAP).map(([code, label]) => (
-                <option key={code} value={code}>
-                  {label}
-                </option>
-              ))}
+              {categoryOptions.map((category) => {
+                const code = String(category.iptc_code ?? category.id ?? "");
+                const label = String(
+                  category.name ?? category.iptc_label ?? code,
+                );
+                return (
+                  <option key={code || label} value={code}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
             <p className="form-hint-text">Mantén pulsada Ctrl / Cmd para seleccionar varias.</p>
           </div>
@@ -397,8 +474,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               type="text"
               className="form-input"
               placeholder="Ej: ElPais, BBC, Reuters"
-              value={fuentesRss}
-              onChange={(e) => setFuentesRss(e.target.value)}
+              value={informationSourcesIds}
+              onChange={(e) => setInformationSourcesIds(e.target.value)}
             />
             <p className="form-hint-text">
               Si lo dejas vacio, se aplicaran todas las fuentes de la categoria

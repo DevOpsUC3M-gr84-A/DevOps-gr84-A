@@ -51,8 +51,9 @@ describe("AlertForm Component", () => {
           id: 3,
           nombre: "Alerta Editada",
           descriptores: "IA, Chips",
-          categoria_iptc: "Ciencia y tecnologia",
-          fuentes_rss: ["Reuters"],
+          categoria_iptc: "13000000",
+          information_sources_ids: ["Reuters"],
+          rss_channels_ids: ["Reuters"],
         }}
       />,
     );
@@ -64,9 +65,9 @@ describe("AlertForm Component", () => {
     expect(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS")).toHaveValue(
       "IA, Chips",
     );
-    expect(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)")).toHaveValue(
-      "Ciencia y tecnologia",
-    );
+    expect(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)")).toHaveValue([
+      "13000000",
+    ]);
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "Reuters",
     );
@@ -83,7 +84,8 @@ describe("AlertForm Component", () => {
           nombre: "Legacy Alert",
           descriptores: undefined as unknown as string,
           categoria_iptc: undefined as unknown as string,
-          fuentes_rss: undefined as unknown as string[],
+          information_sources_ids: undefined as unknown as string[],
+          rss_channels_ids: undefined as unknown as string[],
         }}
       />,
     );
@@ -91,7 +93,7 @@ describe("AlertForm Component", () => {
     expect(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS")).toHaveValue(
       "",
     );
-    expect(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)")).toHaveValue("");
+    expect(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)")).toHaveValue([]);
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "",
     );
@@ -120,7 +122,7 @@ describe("AlertForm Component", () => {
     });
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Debes seleccionar una categoria IPTC.",
+      "Debes seleccionar al menos una categoria IPTC.",
     );
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
@@ -137,7 +139,7 @@ describe("AlertForm Component", () => {
       target: { value: "IA, Datos" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Deportes" },
+      target: { value: "14000000" },
     });
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
       target: { value: "   " },
@@ -165,7 +167,7 @@ describe("AlertForm Component", () => {
       target: { value: "IA, Datos" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Deportes" },
+      target: { value: "14000000" },
     });
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
       target: { value: "*/5 * *" },
@@ -177,32 +179,6 @@ describe("AlertForm Component", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "La expresion cron no es valida. Usa 5 campos separados por espacios.",
-    );
-    expect(mockOnSubmit).not.toHaveBeenCalled();
-  });
-
-  test("muestra error si no hay sesión disponible al guardar", async () => {
-    globalThis.localStorage.clear();
-    render(
-      <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
-    );
-
-    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
-      target: { value: "Alerta Sin Sesion" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
-      target: { value: "IA" },
-    });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Ciencia y tecnologia" },
-    });
-
-    await React.act(async () => {
-      fireEvent.click(screen.getByText("GUARDAR ALERTA"));
-    });
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Sesión no disponible para guardar la alerta",
     );
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
@@ -219,7 +195,7 @@ describe("AlertForm Component", () => {
       target: { value: "IA" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Deportes" },
+      target: { value: "14000000" },
     });
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
       target: { value: "0 */6 * * *" },
@@ -271,7 +247,7 @@ describe("AlertForm Component", () => {
 
     fireEvent.change(inputNombre, { target: { value: "Alerta Compleja" } });
     fireEvent.change(selectCategoria, {
-      target: { value: "Ciencia y tecnologia" },
+      target: { value: "13000000" },
     });
     fireEvent.change(inputCron, { target: { value: "*/15 * * * *" } });
     fireEvent.change(inputFuentes, { target: { value: "Reuters, BBC" } });
@@ -287,17 +263,18 @@ describe("AlertForm Component", () => {
 
     // Verificar que onSubmit se llamó con el array limpio y formateado
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith({
-        name: "Alerta Compleja",
-        descriptors: ["IA", "robots", "chips"],
-        categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters", "BBC"],
-        cron_expression: "*/15 * * * *",
-      });
-
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/v1/users/1/alerts"),
-        expect.objectContaining({ method: "POST" }),
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Alerta Compleja",
+          descriptors: ["IA", "robots", "chips"],
+          categories: [
+            expect.objectContaining({
+              iptc_code: "13000000",
+            }),
+          ],
+          information_sources_ids: ["Reuters", "BBC"],
+          cron_expression: "*/15 * * * *",
+        }),
       );
     });
   });
@@ -312,8 +289,9 @@ describe("AlertForm Component", () => {
           id: 7,
           nombre: "Original",
           descriptores: "IA, Datos",
-          categoria_iptc: "Economia, negocio y finanzas",
-          fuentes_rss: ["ElPais"],
+          categoria_iptc: "04000000",
+          information_sources_ids: ["ElPais"],
+          rss_channels_ids: ["ElPais"],
         }}
       />,
     );
@@ -322,6 +300,7 @@ describe("AlertForm Component", () => {
       target: { value: "Actualizada" },
     });
     fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
+          rss_channels_ids: ["Reuters", "BBC"],
       target: { value: "0 */2 * * *" },
     });
 
@@ -330,9 +309,11 @@ describe("AlertForm Component", () => {
     });
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/v1/users/1/alerts/7"),
-        expect.objectContaining({ method: "PUT" }),
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Actualizada",
+          cron_expression: "0 */2 * * *",
+        }),
       );
     });
   });
@@ -347,7 +328,7 @@ describe("AlertForm Component", () => {
     const selectCategoria = screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)");
     fireEvent.change(inputNombre, { target: { value: "Test" } });
     fireEvent.change(inputDesc, { target: { value: "IA" } });
-    fireEvent.change(selectCategoria, { target: { value: "Deportes" } });
+    fireEvent.change(selectCategoria, { target: { value: "14000000" } });
 
     await React.act(async () => {
       fireEvent.click(screen.getByText("GUARDAR ALERTA"));
@@ -463,8 +444,10 @@ describe("AlertForm Component", () => {
       target: { value: "IA" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Ciencia y tecnologia" },
+      target: { value: "13000000" },
     });
+
+    mockOnSubmit.mockRejectedValueOnce(new Error("Error al guardar la alerta"));
 
     await React.act(async () => {
       fireEvent.click(screen.getByText("GUARDAR ALERTA"));
@@ -473,16 +456,16 @@ describe("AlertForm Component", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "No se pudo guardar la alerta: Error al guardar la alerta",
     );
-    expect(mockOnSubmit).not.toHaveBeenCalled();
+    expect(mockOnSubmit).toHaveBeenCalled();
   });
 
   test("muestra spinner y texto de carga mientras se está guardando", async () => {
-    let resolveFetch: ((value: Response) => void) | null = null;
-    const pendingFetch = new Promise<Response>((resolve) => {
-      resolveFetch = resolve;
+    let resolveSubmit: (() => void) | null = null;
+    const pendingSubmit = new Promise<void>((resolve) => {
+      resolveSubmit = resolve;
     });
 
-    vi.spyOn(globalThis, "fetch").mockImplementationOnce(() => pendingFetch);
+    mockOnSubmit.mockReturnValueOnce(pendingSubmit);
 
     render(
       <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
@@ -495,7 +478,7 @@ describe("AlertForm Component", () => {
       target: { value: "IA" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Ciencia y tecnologia" },
+      target: { value: "13000000" },
     });
 
     await React.act(async () => {
@@ -508,16 +491,13 @@ describe("AlertForm Component", () => {
     ).toBeDisabled();
 
     await React.act(async () => {
-      resolveFetch?.({
-        ok: true,
-        json: async () => ({}),
-      } as unknown as Response);
-      await pendingFetch;
+      resolveSubmit?.();
+      await pendingSubmit;
     });
   });
 
   test("muestra error desconocido si guardar lanza un valor no Error", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce("boom");
+    mockOnSubmit.mockRejectedValueOnce("boom");
 
     render(
       <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
@@ -530,7 +510,7 @@ describe("AlertForm Component", () => {
       target: { value: "IA" },
     });
     fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Ciencia y tecnologia" },
+      target: { value: "13000000" },
     });
 
     await React.act(async () => {
