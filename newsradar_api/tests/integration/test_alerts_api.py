@@ -362,3 +362,127 @@ def test_alert_with_multiple_categories_gets_all_channels_rf07(api_client, seede
 
     finally:
         session.close()
+
+
+@pytest.mark.integration
+def test_rf10_create_alert_with_notification_preferences(api_client, seeded_user):
+    """RF10: Test creating alert with notification preferences (inbox and email)."""
+    create_payload = {
+        "name": "Alerta RF10",
+        "descriptors": ["technology", "ai"],
+        "categories": [{"code": "04010000", "label": "Tecnologia"}],
+        "cron_expression": "*/1 * * * *",
+        "notify_inbox": True,
+        "notify_email": True,
+    }
+
+    response = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json=create_payload,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["notify_inbox"] is True
+    assert data["notify_email"] is True
+
+
+@pytest.mark.integration
+def test_rf10_create_alert_with_default_notification_preferences(api_client, seeded_user):
+    """RF10: Test that default notification preferences are inbox=True, email=False."""
+    create_payload = {
+        "name": "Alerta RF10 Default",
+        "descriptors": ["economy"],
+        "categories": [{"code": "04000000", "label": "Economia"}],
+        "cron_expression": "*/5 * * * *",
+        # No especificamos notify_inbox ni notify_email
+    }
+
+    response = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json=create_payload,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    # Verificar valores por defecto según RF10
+    assert data["notify_inbox"] is True
+    assert data["notify_email"] is False
+
+
+@pytest.mark.integration
+def test_rf10_update_alert_notification_preferences(api_client, seeded_user):
+    """RF10: Test updating alert notification preferences."""
+    # Crear alerta
+    create_payload = {
+        "name": "Alerta RF10 Update",
+        "descriptors": ["sports"],
+        "categories": [{"code": "15000000", "label": "Deportes"}],
+        "cron_expression": "*/2 * * * *",
+        "notify_inbox": True,
+        "notify_email": False,
+    }
+
+    create_response = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json=create_payload,
+    )
+    assert create_response.status_code == 201
+    alert_id = create_response.json()["id"]
+
+    # Actualizar preferencias de notificación
+    update_payload = {
+        "notify_inbox": False,
+        "notify_email": True,
+    }
+
+    update_response = api_client.put(
+        f"/api/v1/users/{seeded_user.id}/alerts/{alert_id}",
+        json=update_payload,
+    )
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["notify_inbox"] is False
+    assert data["notify_email"] is True
+
+
+@pytest.mark.integration
+def test_rf10_create_alert_with_only_inbox_notification(api_client, seeded_user):
+    """RF10: Test creating alert with only inbox notification enabled."""
+    create_payload = {
+        "name": "Alerta Solo Inbox",
+        "descriptors": ["cultura"],
+        "categories": [{"code": "01000000", "label": "Cultura"}],
+        "cron_expression": "*/3 * * * *",
+        "notify_inbox": True,
+        "notify_email": False,
+    }
+
+    response = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json=create_payload,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["notify_inbox"] is True
+    assert data["notify_email"] is False
+
+
+@pytest.mark.integration
+def test_rf10_create_alert_with_only_email_notification(api_client, seeded_user):
+    """RF10: Test creating alert with only email notification enabled."""
+    create_payload = {
+        "name": "Alerta Solo Email",
+        "descriptors": ["salud"],
+        "categories": [{"code": "07000000", "label": "Salud"}],
+        "cron_expression": "*/4 * * * *",
+        "notify_inbox": False,
+        "notify_email": True,
+    }
+
+    response = api_client.post(
+        f"/api/v1/users/{seeded_user.id}/alerts",
+        json=create_payload,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["notify_inbox"] is False
+    assert data["notify_email"] is True

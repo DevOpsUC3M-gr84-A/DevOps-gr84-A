@@ -111,6 +111,8 @@ def list_user_alerts(
             categories=item.categories or [],
             rss_channel_ids=item.rss_channel_ids or [],
             cron_expression=item.cron_expression,
+            notify_inbox=item.notify_inbox,
+            notify_email=item.notify_email,
         )
         for item in db_alerts
     ]
@@ -169,6 +171,8 @@ def create_user_alert(
         rss_channel_ids=rss_channel_ids,
         cron_expression=payload.cron_expression,
         is_active=True,
+        notify_inbox=payload.notify_inbox,
+        notify_email=payload.notify_email,
     )
     db.add(db_alert)
     try:
@@ -189,6 +193,8 @@ def create_user_alert(
         categories=payload.categories,
         rss_channel_ids=rss_channel_ids,
         cron_expression=payload.cron_expression,
+        notify_inbox=db_alert.notify_inbox,
+        notify_email=db_alert.notify_email,
     )
 
 
@@ -223,6 +229,8 @@ def get_user_alert(
         categories=db_alert.categories or [],
         rss_channel_ids=db_alert.rss_channel_ids or [],
         cron_expression=db_alert.cron_expression,
+        notify_inbox=db_alert.notify_inbox,
+        notify_email=db_alert.notify_email,
     )
 
 
@@ -274,6 +282,10 @@ def update_user_alert(
         db_alert.rss_channel_ids = rss_channel_ids
     if "cron_expression" in update_data:
         db_alert.cron_expression = update_data["cron_expression"]
+    if "notify_inbox" in update_data:
+        db_alert.notify_inbox = update_data["notify_inbox"]
+    if "notify_email" in update_data:
+        db_alert.notify_email = update_data["notify_email"]
 
     db.commit()
     db.refresh(db_alert)
@@ -286,6 +298,8 @@ def update_user_alert(
         categories=db_alert.categories or [],
         rss_channel_ids=db_alert.rss_channel_ids or [],
         cron_expression=db_alert.cron_expression,
+        notify_inbox=db_alert.notify_inbox,
+        notify_email=db_alert.notify_email,
     )
 
 
