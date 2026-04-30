@@ -15,20 +15,23 @@
 
 .app-container {
   display: flex;
+  align-items: flex-start;
   min-height: 100vh;
-  height: 100vh;
   background: #f8fafc;
 }
 
 /* --- Barra lateral (Sidebar) --- */
 .sidebar {
   width: 260px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
   background-color: #0c1931;
   padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
   border-right: 1px solid #1e293b;
-  overflow: hidden;
+  overflow-y: auto;
   transition: transform 0.3s ease, width 0.3s ease, padding 0.3s ease,
     opacity 0.2s ease;
 }
@@ -317,9 +320,20 @@
   margin-bottom: 0;
 }
 
-.alerts-header .btn-primary {
-  white-space: nowrap;
-  margin-top: 0.25rem;
+.modal-alert-error {
+  grid-column: 1 / -1;
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-column-left {
+}
+
+.form-column-right {
 }
 
 .page-title {
@@ -506,7 +520,7 @@
 }
 
 .modal-content-wide {
-  max-width: 800px;
+  max-width: 900px;
 }
 
 .modal-header {
@@ -534,6 +548,14 @@
 
 .modal-body {
   padding: 1.5rem;
+}
+
+.modal-body-two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  align-items: start;
 }
 
 .form-group {
@@ -622,19 +644,28 @@ select {
 }
 
 .categories-checkbox-list {
-  max-height: 200px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  max-height: 400px;
   overflow-y: auto;
   border: 1px solid var(--border-light);
   border-radius: var(--border-radius-md);
   background: #f8fafc;
-  padding: 0.5rem;
+  padding: 0.75rem;
 }
 
 .category-checkbox-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.25rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.1s ease;
+}
+
+.category-checkbox-row:hover {
+  background-color: rgba(59, 130, 246, 0.05);
 }
 
 .category-checkbox-input {
@@ -674,21 +705,26 @@ select {
 
 .modal-footer {
   display: flex;
-  gap: 1rem;
+  gap: 16px;
   padding-top: 1rem;
   margin-top: 1rem;
   border-top: 1px solid var(--border-light);
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .btn-secondary {
-  flex: 1;
-  padding: 0.75rem;
+  padding: 0.75rem 1.5rem;
   background-color: white;
   border: 1px solid var(--border-light);
   border-radius: var(--border-radius-md);
   font-weight: 600;
   cursor: pointer;
   color: var(--text-dark);
+  white-space: nowrap;
+  margin: 0;
+  width: auto;
 }
 
 .btn-secondary:disabled {
@@ -697,14 +733,16 @@ select {
 }
 
 .btn-submit {
-  flex: 1;
-  padding: 0.75rem;
+  padding: 0.75rem 1.5rem;
   background-color: #1e40af;
   border: none;
   border-radius: var(--border-radius-md);
   font-weight: 600;
   cursor: pointer;
   color: white;
+  white-space: nowrap;
+  margin: 0;
+  width: auto;
 }
 
 .btn-submit:disabled {
@@ -781,6 +819,13 @@ select {
 
 .logout-button:hover {
   background-color: rgba(239, 68, 68, 0.1);
+}
+
+@media (max-width: 1024px) {
+  .modal-body-two-column {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 }
 
 @media (max-width: 900px) {

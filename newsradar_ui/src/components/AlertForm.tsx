@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Check, X } from "lucide-react";
+import { CategoryCheckboxList } from "./CategoryCheckboxList";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -57,7 +58,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   categories = [],
   onSubmit,
 }) => {
-  const IPTC_MAP: Record<string, string> = {
+  const IPTC_MAP = useMemo(() => ({
     "01000000": "Artes, cultura, entretenimiento y medios",
     "03000000": "Catástrofes y accidentes",
     "13000000": "Ciencia y tecnología",
@@ -75,7 +76,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     "12000000": "Religión y culto",
     "07000000": "Salud",
     "14000000": "Sociedad",
-  };
+  }), []);
 
   const [name, setName] = useState("");
   const [descriptors, setDescriptors] = useState("");
@@ -88,7 +89,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const rawCategoryOptions =
+  const rawCategoryOptions = useMemo(() => 
     categories.length > 0
       ? categories
       : Object.entries(IPTC_MAP).map(([code, label], index) => ({
@@ -96,10 +97,11 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           name: label,
           iptc_code: code,
           iptc_label: label,
-        }));
+        })),
+    [categories, IPTC_MAP]
+  );
 
-  // Filtra opciones para que no haya nombres repetidos (mantiene la primera ocurrencia por name)
-  const categoryOptions = (() => {
+  const categoryOptions = useMemo(() => {
     const seen = new Set<string>();
     return rawCategoryOptions.filter((category) => {
       const label = String(category.name ?? category.iptc_label ?? "").trim().toLowerCase();
@@ -109,16 +111,17 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       seen.add(label);
       return true;
     });
-  })();
+  }, [rawCategoryOptions]);
 
-    const normalizeCategoryText = (value: string): string =>
+    const normalizeCategoryText = useCallback((value: string): string =>
       value
         .normalize("NFD")
         .replaceAll(/\p{Diacritic}/gu, "")
         .trim()
-        .toLowerCase();
+        .toLowerCase(),
+    []);
 
-    const resolveCategoryCode = (value: string): string => {
+    const resolveCategoryCode = useCallback((value: string): string => {
       const normalizedValue = value.trim();
       if (!normalizedValue) {
         return "";
@@ -137,14 +140,23 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           normalizeCategoryText(normalizedValue),
       );
       return labelMatch?.iptc_code ?? normalizedValue;
-    };
+    }, [categoryOptions, normalizeCategoryText]);
 
-  const parseDescriptors = (value: string): string[] => {
+  const parseDescriptors = useCallback((value: string): string[] => {
     return value
       .split(",")
       .map((palabra) => palabra.trim())
       .filter((palabra) => palabra !== "");
-  };
+  }, []);
+
+  const handleCategoryToggle = useCallback((code: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedCategoriesIds((prev) => {
+      if (event.target.checked) {
+        return prev.includes(code) ? prev : [...prev, code];
+      }
+      return prev.filter((selectedCode) => selectedCode !== code);
+    });
+  }, []);
 
   const isValidCronExpression = (value: string): boolean => {
     // Cron de 5 campos: minuto hora dia-mes mes dia-semana
@@ -205,7 +217,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     setHasFetchedRecommendations(false);
   }, [isOpen, initialData]);
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     if (!name.trim()) {
       setRecommendations([]);
       setHasFetchedRecommendations(false);
@@ -255,9 +267,9 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       setRecommendations([]);
       setHasFetchedRecommendations(false);
     }
-  };
+  }, [name, descriptors, parseDescriptors]);
 
-  const acceptRecommendation = (word: string) => {
+  const acceptRecommendation = useCallback((word: string) => {
     setDescriptors((prev) => {
       const descriptorArray = parseDescriptors(prev);
       descriptorArray.push(word);
@@ -269,13 +281,13 @@ export const AlertForm: React.FC<AlertFormProps> = ({
         (recommendation) => recommendation.toLowerCase() !== word.toLowerCase(),
       ),
     );
-  };
+  }, [parseDescriptors]);
 
-  const rejectRecommendation = (word: string) => {
+  const rejectRecommendation = useCallback((word: string) => {
     setRecommendations((prev) =>
       prev.filter((recommendation) => recommendation !== word),
     );
-  };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -370,10 +382,10 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body">
+        <form onSubmit={handleSubmit} className="modal-body modal-body-two-column">
           {formError && (
             <div
-              className="alert-feedback alert-feedback-error"
+              className="alert-feedback alert-feedback-error modal-alert-error"
               role="alert"
               aria-live="assertive"
             >
@@ -381,151 +393,126 @@ export const AlertForm: React.FC<AlertFormProps> = ({
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="alertName">NOMBRE DE LA ALERTA</label>
-            <input
-              id="alertName"
-              type="text"
-              className="form-input"
-              required
-              placeholder="Ej: TENDENCIAS TECH 2026"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={fetchRecommendations}
-              disabled={isSubmitting}
-            >
-              Sugerir Descriptores
-            </button>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="alertDescriptors">
-              DESCRIPTORES (SEPARADOS POR COMA)
-            </label>
-            <input
-              id="alertDescriptors"
-              type="text"
-              className="form-input"
-              required
-              placeholder="Ej: IA, ROBÓTICA, CHIPS"
-              value={descriptors}
-              onChange={(e) => setDescriptors(e.target.value)}
-            />
-            {(recommendations.length > 0 || hasFetchedRecommendations) && (
-              <div className="recommendations-block">
-                <p>Sugerencias:</p>
-                {recommendations.length > 0 ? (
-                  <div className="recommendations-list">
-                    {recommendations.map((word) => (
-                      <div key={word} className="recommendation-chip">
-                        <span>{word}</span>
-                        <button
-                          type="button"
-                          aria-label={`Aceptar recomendación ${word}`}
-                          onClick={() => acceptRecommendation(word)}
-                          className="recommendation-icon-btn"
-                        >
-                          <Check size={14} color="green" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Rechazar recomendación ${word}`}
-                          onClick={() => rejectRecommendation(word)}
-                          className="recommendation-icon-btn"
-                        >
-                          <X size={14} color="red" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="form-hint-text">No hay sugerencias nuevas.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="form-group">
-            <span className="form-group-label">CATEGORIA IPTC (NIVEL 1)</span>
-            <div
-              className="categories-checkbox-list"
-              role="group"
-              aria-label="CATEGORIA IPTC (NIVEL 1)"
-            >
-              {categoryOptions.map((category) => {
-                const code = String(category.iptc_code ?? category.id ?? "");
-                const label = String(
-                  category.name ?? category.iptc_label ?? code,
-                );
-                const checkboxId = `alertIptcCategory-${code}`;
-                const isChecked = selectedCategoriesIds.includes(code);
-
-                return (
-                  <div key={code || label} className="category-checkbox-row">
-                    <input
-                      id={checkboxId}
-                      type="checkbox"
-                      className="category-checkbox-input"
-                      checked={isChecked}
-                      onChange={(event) => {
-                        setSelectedCategoriesIds((prev) => {
-                          if (event.target.checked) {
-                            return prev.includes(code) ? prev : [...prev, code];
-                          }
-                          return prev.filter((selectedCode) => selectedCode !== code);
-                        });
-                      }}
-                    />
-                    <label htmlFor={checkboxId} className="category-checkbox-label">
-                      {label}
-                    </label>
-                  </div>
-                );
-              })}
+          {/* Columna Izquierda: Nombre, Descriptores, Cron */}
+          <div className="form-column form-column-left">
+            <div className="form-group">
+              <label htmlFor="alertName">NOMBRE DE LA ALERTA</label>
+              <input
+                id="alertName"
+                type="text"
+                className="form-input"
+                required
+                placeholder="Ej: TENDENCIAS TECH 2026"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={fetchRecommendations}
+                disabled={isSubmitting}
+              >
+                Sugerir Descriptores
+              </button>
             </div>
-            <p className="form-hint-text">Selecciona una o varias categorias.</p>
+
+            <div className="form-group">
+              <label htmlFor="alertDescriptors">
+                DESCRIPTORES (SEPARADOS POR COMA)
+              </label>
+              <input
+                id="alertDescriptors"
+                type="text"
+                className="form-input"
+                required
+                placeholder="Ej: IA, ROBÓTICA, CHIPS"
+                value={descriptors}
+                onChange={(e) => setDescriptors(e.target.value)}
+              />
+              {(recommendations.length > 0 || hasFetchedRecommendations) && (
+                <div className="recommendations-block">
+                  <p>Sugerencias:</p>
+                  {recommendations.length > 0 ? (
+                    <div className="recommendations-list">
+                      {recommendations.map((word) => (
+                        <div key={word} className="recommendation-chip">
+                          <span>{word}</span>
+                          <button
+                            type="button"
+                            aria-label={`Aceptar recomendación ${word}`}
+                            onClick={() => acceptRecommendation(word)}
+                            className="recommendation-icon-btn"
+                          >
+                            <Check size={14} color="green" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Rechazar recomendación ${word}`}
+                            onClick={() => rejectRecommendation(word)}
+                            className="recommendation-icon-btn"
+                          >
+                            <X size={14} color="red" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="form-hint-text">No hay sugerencias nuevas.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="alertCronExpression">EXPRESION CRON</label>
+              <input
+                id="alertCronExpression"
+                type="text"
+                className="form-input"
+                required
+                placeholder="0 * * * *"
+                value={cronExpression}
+                onChange={(e) => setCronExpression(e.target.value)}
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="alertRssSources">
-              FUENTES / CANALES RSS (OPCIONAL)
-            </label>
-            <input
-              id="alertRssSources"
-              type="text"
-              className="form-input"
-              placeholder="Ej: ElPais, BBC, Reuters"
-              value={informationSourcesIds?.join(", ") || ""}
-              onChange={(e) =>
-                setInformationSourcesIds(
-                  e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                )
-              }
-            />
-            <p className="form-hint-text">
-              Si lo dejas vacio, se aplicaran todas las fuentes de la categoria
-              seleccionada.
-            </p>
-          </div>
+          {/* Columna Derecha: Categorías e Información de Fuentes/RSS */}
+          <div className="form-column form-column-right">
+            <div className="form-group">
+              <span className="form-group-label">CATEGORIA IPTC (NIVEL 1)</span>
+              <CategoryCheckboxList
+                categories={categoryOptions}
+                selectedCategoriesIds={selectedCategoriesIds}
+                onToggle={handleCategoryToggle}
+              />
+              <p className="form-hint-text">Selecciona una o varias categorias.</p>
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="alertCronExpression">EXPRESION CRON</label>
-            <input
-              id="alertCronExpression"
-              type="text"
-              className="form-input"
-              required
-              placeholder="0 * * * *"
-              value={cronExpression}
-              onChange={(e) => setCronExpression(e.target.value)}
-            />
+            <div className="form-group">
+              <label htmlFor="alertRssSources">
+                FUENTES / CANALES RSS (OPCIONAL)
+              </label>
+              <input
+                id="alertRssSources"
+                type="text"
+                className="form-input"
+                placeholder="Ej: ElPais, BBC, Reuters"
+                value={informationSourcesIds?.join(", ") || ""}
+                onChange={(e) =>
+                  setInformationSourcesIds(
+                    e.target.value
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  )
+                }
+              />
+              <p className="form-hint-text">
+                Si lo dejas vacio, se aplicaran todas las fuentes de la categoria
+                seleccionada.
+              </p>
+            </div>
           </div>
 
           <div className="modal-footer">

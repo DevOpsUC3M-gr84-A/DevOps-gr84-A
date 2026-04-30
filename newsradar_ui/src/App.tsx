@@ -413,28 +413,63 @@ function App() {
   const navigate = useNavigate();
   const hasStoredToken = Boolean(globalThis.localStorage.getItem("token"));
   const isSessionAuthenticated = isAuthenticated || hasStoredToken;
-  // Inicialización síncrona desde localStorage para evitar que en el primer render
-  // canManageSections sea false y dispare un <Navigate> a /dashboard cuando el
-  // usuario recarga (F5) estando en /alertas o /fuentes-rss.
   const [canManageSections, setCanManageSections] = useState<boolean>(() =>
     canAccessManagementSections(getStoredUserRoles()),
   );
-  // Pantalla de carga breve mientras se verifica la sesión: solo si hay token en
-  // localStorage al montar. Sin token saltamos directo al login para no bloquear
-  // las rutas públicas.
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(() =>
     hasStoredToken,
   );
 
   useEffect(() => {
+    const validateSession = async () => {
+      const token = globalThis.localStorage.getItem("token");
+      const userId = globalThis.localStorage.getItem("userId");
+
+      if (!token || !userId) {
+        setIsCheckingAuth(false);
+        setCanManageSections(false);
+        return;
+      }
+
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+        const response = await fetch(`${apiBaseUrl}/api/v1/users/${userId}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Session validation failed");
+        }
+
+        const userRoles = getStoredUserRoles();
+        setCanManageSections(canAccessManagementSections(userRoles));
+      } catch (error) {
+        console.error("Session validation error:", error);
+        logout();
+        navigate("/login", { replace: true });
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
     if (isSessionAuthenticated) {
-      const userRoles = getStoredUserRoles();
-      setCanManageSections(canAccessManagementSections(userRoles));
+      validateSession();
     } else {
+      setIsCheckingAuth(false);
       setCanManageSections(false);
     }
-    setIsCheckingAuth(false);
-  }, [isSessionAuthenticated]);
+  }, [isSessionAuthenticated, logout, navigate]);
 
   const handleLogout = () => {
     logout();
