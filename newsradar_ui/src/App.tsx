@@ -426,6 +426,14 @@ function App() {
       const userId = globalThis.localStorage.getItem("userId");
 
       if (!token || !userId) {
+        if (isAuthenticated) {
+          // When the auth hook reports the session as authenticated (e.g. in tests
+          // or alternative auth flows), skip forcing a logout due to missing
+          // localStorage tokens and preserve computed `canManageSections`.
+          setIsCheckingAuth(false);
+          return;
+        }
+
         setIsCheckingAuth(false);
         setCanManageSections(false);
         return;

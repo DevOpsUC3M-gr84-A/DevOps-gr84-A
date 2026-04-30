@@ -49,6 +49,80 @@ describe("Componente Raíz App", () => {
       token: null,
       isAuthenticated: false,
     });
+    // Prevent App's session validation fetch from logging out the test user.
+    vi.stubGlobal("fetch", vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: async () => {
+          // Mirror a minimal response based on localStorage fallbacks used in the app.
+          const roleIdsRaw = localStorage.getItem("role_ids");
+          if (roleIdsRaw) {
+            try {
+              return { role_ids: JSON.parse(roleIdsRaw) };
+            } catch {
+              return { role_ids: [] };
+            }
+          }
+
+          const raw = localStorage.getItem("userRoles");
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                const ids = parsed
+                  .map((p: any) => {
+                    if (typeof p === "number") return p;
+                    if (typeof p === "string") {
+                      const s = p.toLowerCase();
+                      if (s.includes("admin")) return 3;
+                      if (s.includes("gestor")) return 1;
+                      if (s.includes("lector")) return 2;
+                    }
+                    if (p && typeof p === "object") {
+                      return p.role_id ?? p.id ?? p.role ?? null;
+                    }
+                    return null;
+                  })
+                  .filter(Boolean);
+                return { role_ids: ids };
+              }
+            } catch {
+              // legacy comma-separated string fallback
+              const parts = raw.split(",").map((s) => s.trim().toLowerCase());
+              const ids = parts.map((s) => (s.includes("admin") ? 3 : s.includes("gestor") ? 1 : s.includes("lector") ? 2 : null)).filter(Boolean);
+              return { role_ids: ids };
+            }
+          }
+
+          const single = localStorage.getItem("userRole");
+          if (single) {
+            const s = single.toLowerCase();
+            if (s.includes("admin")) return { role_ids: [3] };
+            if (s.includes("gestor")) return { role_ids: [1] };
+            if (s.includes("lector")) return { role_ids: [2] };
+          }
+
+          return { role_ids: [] };
+        },
+      } as unknown),
+    ));
+  });
+
+  afterEach(() => {
+    // Restore any global stubs to avoid cross-test pollution
+    // vi.unstubAllGlobals is available in vitest to remove stubbed globals
+    // Fallback to deleting global.fetch if the helper is not present.
+    try {
+      // @ts-ignore - vitest helper
+      vi.unstubAllGlobals();
+    } catch {
+      // manual cleanup
+      // eslint-disable-next-line no-undef
+      // @ts-ignore
+      delete global.fetch;
+    }
+    vi.clearAllMocks();
+    localStorage.clear();
   });
 
   test("renderiza ForgotPassword cuando pathname es /forgot-password", () => {
@@ -1003,7 +1077,7 @@ describe("Componente Raíz App", () => {
     });
 
     test('mapea role_ids a etiqueta Admin en el badge de usuario', async () => {
-      global.fetch = vi.fn().mockResolvedValueOnce({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           first_name: 'Ada',
@@ -1024,7 +1098,7 @@ describe("Componente Raíz App", () => {
     });
 
     test('mapea role_ids a etiqueta Lector en el badge de usuario', async () => {
-      global.fetch = vi.fn().mockResolvedValueOnce({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           first_name: 'Alan',
