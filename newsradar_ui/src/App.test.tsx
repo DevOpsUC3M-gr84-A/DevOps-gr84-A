@@ -824,36 +824,41 @@ describe("Componente Raíz App", () => {
       isAuthenticated: true,
     });
 
+    // Busca el h1 del top-bar específicamente para evitar colisión con el
+    // enlace homónimo del menú lateral.
+    const getTopBarTitle = () =>
+      screen.getByRole("heading", { level: 1, name: /ALERTAS|FUENTES Y RSS|PERFIL/i });
+
+    // MemoryRouter solo lee initialEntries al montarse, así que usamos `key`
+    // para forzar un remount limpio en cada cambio de ruta del rerender.
     const { rerender } = render(
-      <MemoryRouter initialEntries={["/alertas"]}>
+      <MemoryRouter key="/alertas" initialEntries={["/alertas"]}>
         <App />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/ALERTAS/i)).toBeInTheDocument();
+      expect(getTopBarTitle()).toHaveTextContent(/ALERTAS/i);
     });
 
-    // Cambiar a ruta /fuentes-rss
     rerender(
-      <MemoryRouter initialEntries={["/fuentes-rss"]}>
+      <MemoryRouter key="/fuentes-rss" initialEntries={["/fuentes-rss"]}>
         <App />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/FUENTES Y RSS/i)).toBeInTheDocument();
+      expect(getTopBarTitle()).toHaveTextContent(/FUENTES Y RSS/i);
     });
 
-    // Cambiar a ruta /perfil
     rerender(
-      <MemoryRouter initialEntries={["/perfil"]}>
+      <MemoryRouter key="/perfil" initialEntries={["/perfil"]}>
         <App />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/PERFIL/i)).toBeInTheDocument();
+      expect(getTopBarTitle()).toHaveTextContent(/PERFIL/i);
     });
   });
 
