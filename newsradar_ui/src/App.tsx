@@ -411,23 +411,87 @@ const ProtectedLayout = ({
 function App() {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  // ✅ 1. Lo convertimos en un estado reactivo
-  const [canManageSections, setCanManageSections] = useState(false);
-  
-  // ✅ 2. Obligamos a React a recalcular los roles CADA VEZ que te logueas o deslogueas
+  const hasStoredToken = Boolean(globalThis.localStorage.getItem("token"));
+  const isSessionAuthenticated = isAuthenticated || hasStoredToken;
+  const [canManageSections, setCanManageSections] = useState<boolean>(() =>
+    canAccessManagementSections(getStoredUserRoles()),
+  );
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(() =>
+    hasStoredToken,
+  );
+
   useEffect(() => {
-    if (isAuthenticated) {
-      const userRoles = getStoredUserRoles();
-      setCanManageSections(canAccessManagementSections(userRoles));
+    const validateSession = async () => {
+      const token = globalThis.localStorage.getItem("token");
+      const userId = globalThis.localStorage.getItem("userId");
+
+      if (!token || !userId) {
+        if (isAuthenticated) {
+          // When the auth hook reports the session as authenticated (e.g. in tests
+          // or alternative auth flows), skip forcing a logout due to missing
+          // localStorage tokens and preserve computed `canManageSections`.
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        setIsCheckingAuth(false);
+        setCanManageSections(false);
+        return;
+      }
+
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+        const response = await fetch(`${apiBaseUrl}/api/v1/users/${userId}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.status === 401) {
+          logout();
+          navigate("/login", { replace: true });
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Session validation failed");
+        }
+
+        const userRoles = getStoredUserRoles();
+        setCanManageSections(canAccessManagementSections(userRoles));
+      } catch (error) {
+        console.error("Session validation error:", error);
+        logout();
+        navigate("/login", { replace: true });
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    if (isSessionAuthenticated) {
+      validateSession();
     } else {
+      setIsCheckingAuth(false);
       setCanManageSections(false);
     }
-  }, [isAuthenticated]);
+  }, [isSessionAuthenticated, logout, navigate]);
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="auth-checking" role="status" aria-live="polite">
+        <span className="auth-checking-spinner" aria-hidden="true" />
+        <span>Cargando…</span>
+      </div>
+    );
+  }
 
   return (
     <Routes>
@@ -437,7 +501,7 @@ function App() {
       <Route
         path="/"
         element={
-          isAuthenticated ? (
+          isSessionAuthenticated ? (
             <ProtectedLayout
               handleLogout={handleLogout}
               canManageSections={canManageSections}
@@ -478,7 +542,7 @@ function App() {
       <Route
         path="*"
         element={
-          isAuthenticated ? (
+          isSessionAuthenticated ? (
             <Navigate to="/dashboard" replace />
           ) : (
             <Navigate to="/login" replace />

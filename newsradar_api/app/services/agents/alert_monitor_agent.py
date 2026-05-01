@@ -23,7 +23,21 @@ from app.services.alert_monitoring_service import build_notification_payload
 from app.services.workflows.classification_workflow import classify_article
 
 logger = logging.getLogger("uvicorn.error")
-RSS_USER_AGENT = "NewsRadar/1.0 (+https://localhost)"
+# Cabecera de navegador real para evitar bloqueos 403 de medios como
+# La Vanguardia o ABC, que rechazan User-Agents identificados como bots.
+RSS_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+RSS_REQUEST_HEADERS = {
+    "User-Agent": RSS_USER_AGENT,
+    "Accept": (
+        "application/rss+xml, application/atom+xml, application/xml;q=0.9, "
+        "text/xml;q=0.8, */*;q=0.5"
+    ),
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+}
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
 RSS_FETCH_TIMEOUT_SECONDS = float(os.getenv("RSS_FETCH_TIMEOUT_SECONDS", "10"))
 
@@ -83,7 +97,7 @@ def _parse_feed(channel_url: str):
         try:
             response = requests.get(
                 url,
-                headers={"User-Agent": RSS_USER_AGENT},
+                headers=RSS_REQUEST_HEADERS,
                 timeout=RSS_FETCH_TIMEOUT_SECONDS,
             )
             response.raise_for_status()

@@ -7,17 +7,27 @@ from app.database.database import Base
 
 
 class CategoriaIPTC(str, enum.Enum):
-    """Categorías IPTC principales según el estándar estándar para noticias."""
+    """Categorías IPTC principales (Nivel 1) según el estándar MediaTopic."""
 
-    POLITICA = "11000000"
-    ECONOMIA = "04000000"
-    DEPORTES = "15000000"
-    TECNOLOGIA = "04010000"
-    CULTURA = "01000000"
-    SALUD = "07000000"
-    MEDIO_AMBIENTE = "06000000"
-    CIENCIA = "13000000"
     OTROS = "00000000"
+    CULTURA = "01000000"
+    POLICIA_JUSTICIA = "02000000"
+    CATASTROFES_ACCIDENTES = "03000000"
+    ECONOMIA = "04000000"
+    TECNOLOGIA = "04010000"
+    EDUCACION = "05000000"
+    MEDIO_AMBIENTE = "06000000"
+    SALUD = "07000000"
+    INTERES_HUMANO = "08000000"
+    MANO_DE_OBRA = "09000000"
+    ESTILO_DE_VIDA = "10000000"
+    POLITICA = "11000000"
+    RELIGION = "12000000"
+    CIENCIA = "13000000"
+    SOCIEDAD = "14000000"
+    DEPORTES = "15000000"
+    CONFLICTO_GUERRA_PAZ = "16000000"
+    METEOROLOGIA = "17000000"
 
 
 class RSSChannel(Base):

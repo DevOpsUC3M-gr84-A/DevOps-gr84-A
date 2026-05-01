@@ -29,8 +29,9 @@ ERROR_CHANNEL_UPDATE_CONFLICT = "No se pudo actualizar el canal RSS por conflict
 
 
 @router.post(
-    "/",
+    "/rss-channels",
     status_code=status.HTTP_201_CREATED,
+    tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
     responses={
         400: {"description": "Bad Request"},
@@ -57,50 +58,27 @@ def crear_canal_rss(
 
 
 @router.get(
-    "/",
+    "/rss-channels",
     dependencies=[Depends(get_current_user)],
+    tags=["rss-channels"],
 )
 def listar_canales_rss(
     db: Annotated[Session, Depends(get_db)],
     skip: int = 0,
     limit: int = 100,
-) -> List[RSSChannelResponse]:
+) -> List[RSSChannel]:
     """Obtiene todos los canales RSS registrados."""
     canales = get_all_rss_channels(db, skip=skip, limit=limit)
-    return canales
-
-
-@router.get(
-    "/information-sources/{source_id}/rss-channels",
-    tags=["rss-channels"],
-    responses={404: {"description": "Fuente de información no encontrada"}},
-)
-def list_source_channels(
-    source_id: int,
-    db: Annotated[Session, Depends(get_db)],
-    _: Annotated[UserInDB, Depends(get_current_user)] = None,
-) -> List[RSSChannel]:
-    source = (
-        db.query(DBInformationSource)
-        .filter(DBInformationSource.id == source_id)
-        .first()
-    )
-    if source is None:
-        raise HTTPException(status_code=404, detail=ERROR_SOURCE_NOT_FOUND)
-
-    channels = (
-        db.query(DBRSSChannel)
-        .filter(DBRSSChannel.information_source_id == source_id)
-        .all()
-    )
     return [
         RSSChannel(
-            id=channel.id,
-            information_source_id=channel.information_source_id,
-            url=channel.url,
-            category_id=channel.category_id or 0,
+            id=canal.id,
+            information_source_id=canal.information_source_id,
+            url=canal.url,
+            category_id=canal.category_id or 0,
+            iptc_category=canal.iptc_category,
+            media_name=canal.media_name,
         )
-        for channel in channels
+        for canal in canales
     ]
 
 
@@ -152,7 +130,45 @@ def create_source_channel(
         information_source_id=channel.information_source_id,
         url=channel.url,
         category_id=channel.category_id or 0,
+        iptc_category=channel.iptc_category,
+        media_name=channel.media_name,
     )
+
+
+@router.get(
+    "/information-sources/{source_id}/rss-channels",
+    tags=["rss-channels"],
+    responses={404: {"description": "Fuente de información no encontrada"}},
+)
+def list_source_channels(
+    source_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
+) -> List[RSSChannel]:
+    source = (
+        db.query(DBInformationSource)
+        .filter(DBInformationSource.id == source_id)
+        .first()
+    )
+    if source is None:
+        raise HTTPException(status_code=404, detail=ERROR_SOURCE_NOT_FOUND)
+
+    channels = (
+        db.query(DBRSSChannel)
+        .filter(DBRSSChannel.information_source_id == source_id)
+        .all()
+    )
+    return [
+        RSSChannel(
+            id=channel.id,
+            information_source_id=channel.information_source_id,
+            url=channel.url,
+            category_id=channel.category_id or 0,
+            iptc_category=channel.iptc_category,
+            media_name=channel.media_name,
+        )
+        for channel in channels
+    ]
 
 
 @router.get(
@@ -182,6 +198,8 @@ def get_source_channel(
         information_source_id=channel.information_source_id,
         url=channel.url,
         category_id=channel.category_id or 0,
+        iptc_category=channel.iptc_category,
+        media_name=channel.media_name,
     )
 
 
@@ -215,6 +233,8 @@ def update_source_channel(
     update_data = payload.model_dump(exclude_unset=True)
     if "category_id" in update_data:
         channel.category_id = update_data["category_id"]
+    if "iptc_category" in update_data:
+        channel.iptc_category = update_data["iptc_category"]
     if "url" in update_data:
         channel.url = str(update_data["url"])
 
@@ -233,6 +253,8 @@ def update_source_channel(
         information_source_id=channel.information_source_id,
         url=channel.url,
         category_id=channel.category_id or 0,
+        iptc_category=channel.iptc_category,
+        media_name=channel.media_name,
     )
 
 

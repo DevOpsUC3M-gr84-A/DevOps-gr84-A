@@ -29,6 +29,7 @@ class RSSChannelCreate(RSSChannelBase):
 class RSSChannelUpdate(BaseModel):
     url: Optional[HttpUrl] = None
     category_id: Optional[int] = None
+    iptc_category: Optional[CategoriaIPTC] = None
 
 
 class RSSChannelResponse(RSSChannelCreate):
@@ -46,3 +47,8 @@ class RSSChannelResponse(RSSChannelCreate):
 class RSSChannel(RSSChannelBase):
     id: int
     information_source_id: int
+    media_name: str
+    iptc_category: CategoriaIPTC
+
+    class Config:
+        from_attributes = True
