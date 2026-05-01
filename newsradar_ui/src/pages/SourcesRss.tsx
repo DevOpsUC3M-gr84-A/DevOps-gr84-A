@@ -30,121 +30,135 @@ interface CategoryApiItem {
   iptc_label?: string | null;
 }
 
-const IPTC_NAME_TO_CODE: Record<string, string> = {
-  OTROS: "00000000",
-  CULTURA: "01000000",
-  POLICIA_JUSTICIA: "02000000",
-  CATASTROFES_ACCIDENTES: "03000000",
-  ECONOMIA: "04000000",
-  TECNOLOGIA: "04010000",
-  EDUCACION: "05000000",
-  MEDIO_AMBIENTE: "06000000",
-  SALUD: "07000000",
-  INTERES_HUMANO: "08000000",
-  MANO_DE_OBRA: "09000000",
-  ESTILO_DE_VIDA: "10000000",
-  POLITICA: "11000000",
-  RELIGION: "12000000",
-  CIENCIA: "13000000",
-  SOCIEDAD: "14000000",
-  DEPORTES: "15000000",
-  CONFLICTO_GUERRA_PAZ: "16000000",
-  METEOROLOGIA: "17000000",
+interface ChannelCategorySource {
+  category_id?: number | null;
+  categoria_id?: number | null;
+  categoria_iptc?: string | null;
+  iptc_category?: string | null;
+  category?: string | null;
+  url?: string;
+  feed_url?: string;
+  rss_url?: string;
+  link?: string;
+}
+
+const SLUG_TO_IPTC: Record<string, string> = {
+  artes_cultura_entretenimiento_y_medios: "01000000",
+  arts_culture_entertainment_and_media: "01000000",
+  catastrofes_y_accidentes: "03000000",
+  crime_law_and_justice: "02000000",
+  cultura: "01000000",
+  disaster_and_accident: "03000000",
+  economia: "04000000",
+  economy_business_and_finance: "04000000",
+  education: "05000000",
+  environment: "06000000",
+  ciencia_y_tecnologia: "13000000",
+  health: "07000000",
+  human_interest: "08000000",
+  interes_humano: "08000000",
+  labor: "09000000",
+  lifestyle_and_leisure: "10000000",
+  mano_de_obra: "09000000",
+  medio_ambiente: "06000000",
+  meteorologia: "17000000",
+  policia_y_justicia: "02000000",
+  politics: "11000000",
+  politica: "11000000",
+  religion_and_belief: "12000000",
+  religion_y_culto: "12000000",
+  science_and_technology: "13000000",
+  society: "14000000",
+  sociedad: "14000000",
+  sport: "15000000",
+  sports: "15000000",
+  deporte: "15000000",
+  tecnologia: "04010000",
+  unrest_conflicts_and_war: "16000000",
+  conflicto_guerra_y_paz: "16000000",
+  weather: "17000000",
 };
 
-const removeDiacritics = (s: string) =>
-  s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
-
-const ENGLISH_TO_IPTC_KEY: Record<string, string> = {
-  arts_culture_entertainment_and_media: "CULTURA",
-  arts_and_entertainment: "CULTURA",
-  culture: "CULTURA",
-  crime_law_and_justice: "POLICIA_JUSTICIA",
-  police_and_justice: "POLICIA_JUSTICIA",
-  disaster_and_accident: "CATASTROFES_ACCIDENTES",
-  economy_business_and_finance: "ECONOMIA",
-  education: "EDUCACION",
-  environment: "MEDIO_AMBIENTE",
-  environmental_issue: "MEDIO_AMBIENTE",
-  health: "SALUD",
-  human_interest: "INTERES_HUMANO",
-  labor: "MANO_DE_OBRA",
-  lifestyle_and_leisure: "ESTILO_DE_VIDA",
-  politics: "POLITICA",
-  religion_and_belief: "RELIGION",
-  science_and_technology: "CIENCIA",
-  science: "CIENCIA",
-  technology: "TECNOLOGIA",
-  society: "SOCIEDAD",
-  sport: "DEPORTES",
-  sports: "DEPORTES",
-  unrest_conflicts_and_war: "CONFLICTO_GUERRA_PAZ",
-  weather: "METEOROLOGIA",
-};
-
-const normalizeIptcKey = (raw: unknown): string => {
+const normalizeIptcSlug = (raw: unknown): string => {
   const value = String(raw ?? "").trim();
-  if (!value) return "";
 
-  // Remove medtop: prefix if present
-  const stripped = value.startsWith("medtop:") ? value.slice("medtop:".length) : value;
+  if (!value) {
+    return "";
+  }
 
-  // If the backend already returned an 8-digit IPTC code, accept it directly
-  const codeMatch = String(stripped).trim().match(/^\d{8}$/);
-  if (codeMatch) return codeMatch[0];
+  if (/^\d{8}$/.test(value)) {
+    return value;
+  }
 
-  // Normalize (remove accents, lowercase, replace non-alnum with underscore)
-  const cleaned = removeDiacritics(String(stripped))
+  const withoutPrefix = value.replace(/^medtop:/i, "");
+  const normalized = withoutPrefix
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
-    .replace(/__+/g, "_");
+    .replace(/_+/g, "_");
 
-  const keyUpper = cleaned.toUpperCase();
-
-  // Direct lookup by normalized Spanish key (e.g. POLICIA_JUSTICIA)
-  if (IPTC_NAME_TO_CODE[keyUpper]) return IPTC_NAME_TO_CODE[keyUpper];
-
-  // Try simple contractions: remove Spanish/English conjunctions that may differ ("_y_", "_and_")
-  const altKeys = [keyUpper.replace(/_Y_/g, "_"), keyUpper.replace(/_AND_/g, "_")];
-  for (const k of altKeys) {
-    if (IPTC_NAME_TO_CODE[k]) return IPTC_NAME_TO_CODE[k];
-  }
-
-  // Map some common English slug variants to known IPTC keys
-  if (ENGLISH_TO_IPTC_KEY[cleaned]) {
-    const mapped = ENGLISH_TO_IPTC_KEY[cleaned];
-    if (IPTC_NAME_TO_CODE[mapped]) return IPTC_NAME_TO_CODE[mapped];
-  }
-
-  // As a last attempt, try original uppercased (preserves accents removal) to match keys like "POLICIA_JUSTICIA"
-  const folded = removeDiacritics(String(stripped)).toUpperCase().replace(/[^A-Z0-9]+/g, "_");
-  if (IPTC_NAME_TO_CODE[folded]) return IPTC_NAME_TO_CODE[folded];
-
-  // Fallback: return the original stripped value so caller can decide presentation
-  return String(stripped).trim();
+  return SLUG_TO_IPTC[normalized] ?? normalized;
 };
 
-const IPTC_MAP: Record<string, string> = {
-  "00000000": "Sin categoría",
-  "01000000": "Artes, cultura, entretenimiento y medios",
-  "02000000": "Policía y justicia",
-  "03000000": "Catástrofes y accidentes",
-  "04000000": "Economía, negocios y finanzas",
-  "04010000": "Economía, negocios y finanzas",
-  "05000000": "Educación",
-  "06000000": "Medio ambiente",
-  "07000000": "Salud",
-  "08000000": "Interés humano, animales, insólito",
-  "09000000": "Mano de obra",
-  "10000000": "Estilo de vida y tiempo libre",
-  "11000000": "Política",
-  "12000000": "Religión y culto",
-  "13000000": "Ciencia y tecnología",
-  "14000000": "Sociedad",
-  "15000000": "Deporte",
-  "16000000": "Conflicto, guerra y paz",
-  "17000000": "Meteorología",
+const getChannelRawCategoryValue = (channel: ChannelCategorySource): string => {
+  const rawCategory =
+    channel.categoria_iptc ?? channel.iptc_category ?? channel.category ?? "";
+
+  if (typeof rawCategory === "string" && rawCategory.trim()) {
+    return rawCategory.trim();
+  }
+
+  const urlCandidates = [channel.url, channel.feed_url, channel.rss_url, channel.link];
+  const explicitUrl = urlCandidates.find(
+    (value) => typeof value === "string" && value.trim(),
+  );
+
+  if (explicitUrl) {
+    return explicitUrl.trim();
+  }
+
+  const possibleUrl = Object.values(channel).find(
+    (val): val is string => typeof val === "string" && val.includes("http"),
+  );
+
+  return possibleUrl ?? "";
+};
+
+const findChannelCategory = (
+  channel: ChannelCategorySource,
+  categories: CategoryApiItem[],
+): CategoryApiItem | null => {
+  const directMatch = categories.find(
+    (item) => item.id === channel.category_id || item.id === channel.categoria_id,
+  );
+
+  if (directMatch) {
+    return directMatch;
+  }
+
+  let categoryValue = getChannelRawCategoryValue(channel);
+
+  if (!categoryValue || /^(null|none|undefined)$/i.test(categoryValue)) {
+    return null;
+  }
+
+  const urlMatch = categoryValue.match(/iptc=([^&]+)/i);
+  if (urlMatch) {
+    categoryValue = urlMatch[1];
+  }
+
+  const normalizedCode = normalizeIptcSlug(categoryValue);
+
+  return (
+    categories.find(
+      (item) =>
+        item.iptc_code === normalizedCode ||
+        item.iptc_code === categoryValue.trim() ||
+        String(item.id) === normalizedCode,
+    ) ?? null
+  );
 };
 
 interface SourcesRssFeedback {
@@ -169,6 +183,42 @@ const getErrorMessage = (error: unknown): string => {
   }
 
   return "Error desconocido";
+};
+
+const IPTC_MAP: Record<string, string> = {
+  "00000000": "Sin categoría",
+  "01000000": "Artes, cultura, entretenimiento y medios",
+  "02000000": "Policía y justicia",
+  "03000000": "Catástrofes y accidentes",
+  "04000000": "Economía, negocios y finanzas",
+  "04010000": "Economía, negocios y finanzas",
+  "05000000": "Educación",
+  "06000000": "Medio ambiente",
+  "07000000": "Salud",
+  "08000000": "Interés humano, animales, insólito",
+  "09000000": "Mano de obra",
+  "10000000": "Estilo de vida y tiempo libre",
+  "11000000": "Política",
+  "12000000": "Religión y culto",
+  "13000000": "Ciencia y tecnología",
+  "14000000": "Sociedad",
+  "15000000": "Deporte",
+  "16000000": "Conflicto, guerra y paz",
+  "17000000": "Meteorología",
+};
+
+const getChannelCategoryLabel = (
+  channel: ChannelCategorySource,
+  categories: CategoryApiItem[],
+): string => {
+  const matched = findChannelCategory(channel, categories);
+
+  if (matched) {
+    return matched.iptc_label ?? matched.name;
+  }
+
+  const fallbackCode = normalizeIptcSlug(getChannelRawCategoryValue(channel));
+  return IPTC_MAP[fallbackCode] ?? "Sin categoría";
 };
 
 const isHttpUrl = (value: string): boolean => {
@@ -217,14 +267,18 @@ const formatDetailValue = (detail: unknown): string => {
   return messages.length > 0 ? messages.join("; ") : "";
 };
 
+const isDetailResponse = (value: unknown): value is { detail?: unknown } => {
+  return typeof value === "object" && value !== null && "detail" in value;
+};
+
 const extractApiDetail = async (
   response: Response,
   fallbackMessage: string,
 ): Promise<string> => {
   try {
-    const data = (await response.json()) as { detail?: unknown };
+    const data: unknown = await response.json();
 
-    if (data && typeof data === "object" && "detail" in data) {
+    if (isDetailResponse(data)) {
       const formatted = formatDetailValue(data.detail);
       if (formatted) {
         return formatted;
@@ -297,6 +351,60 @@ const requestVoid = async (
   if (response.status === 401) {
     onUnauthorized();
     throw new Error("Sesión expirada. Vuelve a iniciar sesión.");
+  }
+
+  if (!response.ok) {
+    const detail = await extractApiDetail(
+      response,
+      "Error al procesar la solicitud",
+    );
+    throw new Error(detail);
+  }
+};
+
+interface SubmitChannelSaveRequestArgs {
+  endpoint: string;
+  method: "POST" | "PUT";
+  token: string | null;
+  payload: Record<string, string | number>;
+  onUnauthorized: () => void;
+}
+
+const submitChannelSaveRequest = async ({
+  endpoint,
+  method,
+  token,
+  payload,
+  onUnauthorized,
+}: SubmitChannelSaveRequestArgs): Promise<void> => {
+  if (!token) {
+    throw new Error("No hay sesión activa.");
+  }
+
+  const response = await fetch(endpoint, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 401) {
+    onUnauthorized();
+    throw new Error("Sesión expirada. Vuelve a iniciar sesión.");
+  }
+
+  if (response.status === 409) {
+    throw new Error("Este canal RSS ya existe.");
+  }
+
+  if (response.status === 422) {
+    const detail = await extractApiDetail(
+      response,
+      "Datos no válidos para el canal RSS.",
+    );
+    throw new Error(`Datos no válidos: ${detail}`);
   }
 
   if (!response.ok) {
@@ -389,12 +497,7 @@ export const SourcesRss = () => {
 
   const getChannelCategoryKey = useCallback(
     (ch: RssChannelApiItem) => {
-      const normalizedCode = normalizeIptcKey(ch.iptc_category);
-      const matched = categories.find(
-        (c) =>
-          c.id === ch.category_id ||
-          (c.iptc_code && c.iptc_code === normalizedCode),
-      );
+      const matched = findChannelCategory(ch, categories);
 
       if (matched) {
         return matched.id ? `id:${matched.id}` : `iptc:${matched.iptc_code ?? ""}`;
@@ -436,17 +539,8 @@ export const SourcesRss = () => {
     const map = new Map<string, string>();
 
     selectedSourceChannels.forEach((ch) => {
-      const normalizedCode = normalizeIptcKey(ch.iptc_category);
-      const matched = categories.find(
-        (c) =>
-          c.id === ch.category_id ||
-          (c.iptc_code && c.iptc_code === normalizedCode),
-      );
-      // Prefiere IPTC_MAP para garantizar que el checkbox use exactamente el mismo nombre que la tabla
-      const label =
-        IPTC_MAP[normalizedCode] ||
-        matched?.name ||
-        "Sin categoría";
+      const matched = findChannelCategory(ch, categories);
+      const label = getChannelCategoryLabel(ch, categories);
 
       let key: string;
 
@@ -754,6 +848,36 @@ export const SourcesRss = () => {
     token,
   ]);
 
+  const persistChannelChanges = useCallback(
+    async ({
+      sourceId,
+      endpoint,
+      method,
+      payload,
+    }: {
+      sourceId: number;
+      endpoint: string;
+      method: "POST" | "PUT";
+      payload: Record<string, string | number>;
+    }) => {
+      await submitChannelSaveRequest({
+        endpoint,
+        method,
+        token,
+        payload,
+        onUnauthorized: () => {
+          globalThis.localStorage.clear();
+          globalThis.location.assign("/login");
+        },
+      });
+
+      await loadSourcesAndChannels();
+      setSelectedChannel(null);
+      setSelectedSourceId(sourceId);
+    },
+    [loadSourcesAndChannels, token],
+  );
+
   const handleChannelSave = useCallback(async () => {
     const sourceId = Number(channelForm.sourceId);
     const trimmedUrl = channelForm.url.trim();
@@ -791,7 +915,6 @@ export const SourcesRss = () => {
       selectedCategory.iptc_code ?? selectedCategoryId,
     );
 
-    // Payload con los campos exactos esperados por los esquemas Pydantic (sin extras).
     const payload: Record<string, string | number> = channelBeingEdited
       ? {
           url: trimmedUrl,
@@ -805,58 +928,21 @@ export const SourcesRss = () => {
           iptc_category: mappedIptcCategory,
         };
 
-    await runSaveOperation(async () => {
-      console.log("DEBUG PAYLOAD:", payload);
+    const endpoint = channelBeingEdited
+      ? `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels/${channelBeingEdited.id}`
+      : `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels`;
 
-      if (!token) {
-        throw new Error("No hay sesión activa.");
-      }
-
-      const endpoint = channelBeingEdited
-        ? `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels/${channelBeingEdited.id}`
-        : `${API_BASE_URL}/api/v1/information-sources/${sourceId}/rss-channels`;
-
-      const response = await fetch(endpoint, {
+    await runSaveOperation(
+      () => persistChannelChanges({
+        sourceId,
+        endpoint,
         method: channelBeingEdited ? "PUT" : "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.status === 401) {
-        globalThis.localStorage.clear();
-        globalThis.location.assign("/login");
-        return;
-      }
-
-      if (response.status === 409) {
-        throw new Error("Este canal RSS ya existe.");
-      }
-
-      if (response.status === 422) {
-        const detail = await extractApiDetail(
-          response,
-          "Datos no válidos para el canal RSS.",
-        );
-        throw new Error(`Datos no válidos: ${detail}`);
-      }
-
-      if (!response.ok) {
-        const detail = await extractApiDetail(
-          response,
-          "Error al procesar la solicitud",
-        );
-        throw new Error(detail);
-      }
-
-      // Always refresh authoritative data from the server to avoid local type mismatch issues
-      await loadSourcesAndChannels();
-      setSelectedChannel(null);
-      setSelectedSourceId(sourceId);
-    },
-      channelBeingEdited ? "Canal RSS actualizado correctamente." : "Canal RSS creado correctamente.");
+        payload,
+      }),
+      channelBeingEdited
+        ? "Canal RSS actualizado correctamente."
+        : "Canal RSS creado correctamente.",
+    );
   }, [
     categories,
     channelBeingEdited,
@@ -864,7 +950,7 @@ export const SourcesRss = () => {
     channelForm.categoryId,
     channelForm.sourceId,
     channelForm.url,
-    loadSourcesAndChannels,
+    persistChannelChanges,
     runSaveOperation,
     sources,
     token,
@@ -924,7 +1010,7 @@ export const SourcesRss = () => {
         </a>
       </td>
       <td>
-        {IPTC_MAP[normalizeIptcKey(channel.iptc_category)] || "Sin categoría"}
+        {getChannelCategoryLabel(channel, categories)}
       </td>
       <td>
         <div className="sources-rss-row-actions">
@@ -1229,6 +1315,16 @@ export const SourcesRss = () => {
         </div>
 
         <div className="sources-rss-header-actions">
+          {(searchTerm.trim() !== "" || selectedCategories.length > 0) && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={clearFilters}
+            >
+              Limpiar Filtros
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-secondary"
@@ -1288,15 +1384,6 @@ export const SourcesRss = () => {
                 onChange={(event) => setSearchTerm(event.target.value)}
                 aria-label="Buscar fuentes de información"
               />
-              {(searchTerm.trim() !== "" || selectedCategories.length > 0) && (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={clearFilters}
-                >
-                  Limpiar Filtros
-                </button>
-              )}
             </div>
 
             {renderSourcesPanelContent()}

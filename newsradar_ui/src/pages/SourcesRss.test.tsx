@@ -26,6 +26,14 @@ const baseCategory = {
   iptc_label: "Ciencia y tecnología",
 };
 
+const societyCategory = {
+  id: 11,
+  name: "Sociedad",
+  source: "IPTC",
+  iptc_code: "14000000",
+  iptc_label: "Sociedad",
+};
+
 const baseChannel = {
   id: 7,
   information_source_id: 1,
@@ -168,6 +176,62 @@ describe("SourcesRss", () => {
     expect(screen.getByLabelText("CATEGORÍA IPTC")).toHaveValue("10");
   });
 
+  test("actualiza la categoría al editar un canal RSS", async () => {
+    mockInitialLoad({
+      channels: [baseChannel],
+      categories: [baseCategory, societyCategory],
+    });
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [baseSource],
+        statusText: "OK",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            ...baseChannel,
+            category_id: societyCategory.id,
+            iptc_category: societyCategory.iptc_code,
+          },
+        ],
+        statusText: "OK",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [baseCategory, societyCategory],
+        statusText: "OK",
+      });
+
+    render(<SourcesRss />);
+
+    await screen.findByText("Agencia Central");
+    fireEvent.click(
+      screen.getByRole("button", { name: /Editar canal https:\/\/agencia\.example\.com\/rss\.xml/i }),
+    );
+
+    fireEvent.change(screen.getByLabelText("CATEGORÍA IPTC"), {
+      target: { value: String(societyCategory.id) },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Guardar cambios/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(7);
+    });
+
+    const putCall = mockFetch.mock.calls[3];
+    expect(JSON.parse(String(putCall[1]?.body))).toMatchObject({
+      category_id: societyCategory.id,
+      iptc_category: societyCategory.iptc_code,
+    });
+  });
+
   test("permite cambiar la fuente seleccionada desde la tabla", async () => {
     mockInitialLoad({
       sources: [
@@ -198,7 +262,7 @@ describe("SourcesRss", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Segunda Agencia$/i }));
 
     expect(
-      screen.getByText("https://segunda.example.com/rss.xml"),
+      await screen.findByText("https://segunda.example.com/rss.xml"),
     ).toBeInTheDocument();
   });
 

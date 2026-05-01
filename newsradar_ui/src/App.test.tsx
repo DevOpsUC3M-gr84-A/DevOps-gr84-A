@@ -193,6 +193,59 @@ describe("Componente Raíz App", () => {
     });
   });
 
+  test("no valida la sesión si el hook ya marca autenticación sin token", async () => {
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: vi.fn(),
+      token: null,
+      isAuthenticated: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  test("redirige al login si la validación de sesión falla", async () => {
+    const logoutSpy = vi.fn();
+    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("userRoles", JSON.stringify([1]));
+    localStorage.setItem("userId", "1");
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: logoutSpy,
+      token: "fake-token",
+      isAuthenticated: true,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({}),
+        } as Response),
+      ),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(logoutSpy).toHaveBeenCalledTimes(1);
+      expect(mockedNavigate).toHaveBeenCalledWith("/login", { replace: true });
+    });
+  });
+
   test("renderiza fuentes rss para usuarios con permisos de gestión", async () => {
     localStorage.setItem("userRoles", JSON.stringify([3]));
     mockedUseAuth.mockReturnValue({

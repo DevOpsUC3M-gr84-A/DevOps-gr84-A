@@ -72,3 +72,4 @@ newsradar_api/htmlcov/
 # ==============================
 .env
 .claude/
+.claude/settings.local.json

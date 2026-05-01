@@ -216,6 +216,31 @@ def test_update_user_alert_updates_categories_branch():
 
 
 @pytest.mark.unit
+def test_update_user_alert_updates_information_sources_branch():
+    db_alert = SimpleNamespace(
+        id=5,
+        user_id=1,
+        name="viejo",
+        descriptors=["x"],
+        categories=[],
+        rss_channel_ids=["1", "2"],
+        cron_expression="*/5 * * * *",
+        is_active=True,
+    )
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = db_alert
+
+    payload = MagicMock()
+    payload.model_dump.return_value = {
+        "information_sources_ids": ["9", "10"],
+    }
+
+    result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
+
+    assert result.rss_channels_ids == ["9", "10"]
+
+
+@pytest.mark.unit
 def test_delete_user_alert_not_found_raises_404():
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = None

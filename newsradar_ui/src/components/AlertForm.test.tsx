@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
-import { AlertForm } from "./AlertForm";
+import { AlertForm, type AlertTableItem } from "./AlertForm";
 
 describe("AlertForm Component", () => {
   const mockOnClose = vi.fn();
@@ -98,6 +98,55 @@ describe("AlertForm Component", () => {
     ).toHaveLength(0);
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "",
+    );
+  });
+
+  test("precarga fuentes legacy cuando initialData trae objetos en information_sources_ids", () => {
+    render(
+      <AlertForm
+        isOpen={true}
+        onClose={mockOnClose}
+        onSubmit={mockOnSubmit}
+        initialData={
+          {
+            id: 101,
+            nombre: "Alerta Legacy Fuentes",
+            descriptores: "IA",
+            categoria_iptc: "13000000",
+            information_sources_ids: [
+              { id: 77, name: "Reuters" },
+              { name: "BBC" },
+            ],
+            rss_channels_ids: [],
+          } as unknown as AlertTableItem
+        }
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
+      "77, BBC",
+    );
+  });
+
+  test("muestra error si fallan las sugerencias de descriptores", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new Error("keyword lookup failed"),
+    );
+
+    render(
+      <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Alerta IA" },
+    });
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Sugerir Descriptores/i }));
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se pudieron obtener recomendaciones: keyword lookup failed",
     );
   });
 
