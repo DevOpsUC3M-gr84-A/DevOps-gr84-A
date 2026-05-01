@@ -633,6 +633,129 @@ describe("AlertsManagement Page", () => {
     });
   });
 
+  test("usa fallback de IPTC cuando fetchCategories falla", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/categories")) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    await screen.findByText(/No hay alertas todavía/i);
+    fireEvent.click(screen.getByText(/Nueva Alerta/i));
+    expect(
+      await screen.findByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    ).toBeInTheDocument();
+  });
+
+  test("cierra sesión cuando fetchCategories responde 401", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/categories")) {
+          return { ok: false, status: 401, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+  });
+
+  test("muestra error cuando POST de alerta no es ok", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (method === "POST" && /\/alerts$/.test(url)) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    await screen.findByText(/No hay alertas todavía/i);
+
+    fireEvent.click(screen.getByText(/Nueva Alerta/i));
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Falla POST" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /GUARDAR ALERTA/i }));
+    });
+
+    expect(
+      await screen.findByText(/No se pudo guardar la alerta/i),
+    ).toBeInTheDocument();
+  });
+
+  test("cierra sesión cuando POST de alerta responde 401", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (method === "POST" && /\/alerts$/.test(url)) {
+          return { ok: false, status: 401, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    await screen.findByText(/No hay alertas todavía/i);
+
+    fireEvent.click(screen.getByText(/Nueva Alerta/i));
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Alerta 401" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /GUARDAR ALERTA/i }));
+    });
+
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+  });
+
+  test("renderiza alertas cuyas categorías son objetos", async () => {
+    const mockAlertas = [
+      {
+        id: 88,
+        name: "Alerta Objetos",
+        descriptors: ["IA"],
+        categories: [{ id: 1, name: "Ciencia y tecnologia", iptc_code: "13000000" }],
+        information_sources_ids: ["BBC"],
+      },
+    ];
+
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas,
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    expect(await screen.findByText("Alerta Objetos")).toBeInTheDocument();
+  });
+
   test("oculta automáticamente el feedback tras 5 segundos", async () => {
     jest.useFakeTimers();
     (globalThis.fetch as jest.Mock).mockResolvedValueOnce({

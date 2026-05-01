@@ -193,8 +193,20 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       }
       setSelectedCategoriesIds(initCats);
       const initSources = (initialData as any)?.information_sources_ids ?? (initialData as any)?.rss_channels_ids ?? [];
+      const extractSourceId = (entry: unknown): string => {
+        if (entry === null || entry === undefined) return "";
+        if (typeof entry === "string" || typeof entry === "number") {
+          return String(entry).trim();
+        }
+        if (typeof entry === "object") {
+          const obj = entry as { id?: unknown; name?: unknown };
+          if (obj.id !== undefined && obj.id !== null) return String(obj.id).trim();
+          if (typeof obj.name === "string") return obj.name.trim();
+        }
+        return "";
+      };
       const initSourcesArray = Array.isArray(initSources)
-        ? initSources.map((s: unknown) => String(s).trim()).filter(Boolean)
+        ? initSources.map(extractSourceId).filter(Boolean)
         : String(initSources ?? "")
             .split(",")
             .map((s) => s.trim())

@@ -71,3 +71,4 @@ newsradar_api/htmlcov/
 # Local environment variables
 # ==============================
 .env
+.claude/

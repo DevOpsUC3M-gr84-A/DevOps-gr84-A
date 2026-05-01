@@ -1182,4 +1182,267 @@ describe("SourcesRss", () => {
       expect(screen.queryByText("https://agencia.example.com/rss.xml")).not.toBeInTheDocument();
     });
   });
+
+  test("muestra feedback de error al fallar el borrado de fuente", async () => {
+    mockInitialLoad();
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: "Internal",
+      json: async () => ({ detail: "boom" }),
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Borrar fuente Agencia Central/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  test("muestra feedback de error al fallar el borrado de canal", async () => {
+    mockInitialLoad();
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: "Internal",
+      json: async () => ({ detail: "boom" }),
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Borrar canal https:\/\/agencia\.example\.com\/rss\.xml/i,
+      }),
+    );
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  test("muestra error de conflicto al guardar canal duplicado", async () => {
+    mockInitialLoad({ channels: [], categories: [baseCategory] });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      statusText: "Conflict",
+      json: async () => ({}),
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo canal/i }));
+
+    fireEvent.change(screen.getByLabelText("URL DEL FEED RSS"), {
+      target: { value: "https://nuevo.example.com/rss.xml" },
+    });
+    fireEvent.change(screen.getByLabelText("CATEGORÍA IPTC"), {
+      target: { value: "10" },
+    });
+
+    const channelForm = screen
+      .getByRole("button", { name: /Crear canal/i })
+      .closest("form");
+    if (channelForm) fireEvent.submit(channelForm);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Este canal RSS ya existe/i,
+    );
+  });
+
+  test("muestra detalle 422 al guardar canal con datos no válidos", async () => {
+    mockInitialLoad({ channels: [], categories: [baseCategory] });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: async () => ({
+        detail: [{ loc: ["body", "url"], msg: "campo invalido" }],
+      }),
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo canal/i }));
+
+    fireEvent.change(screen.getByLabelText("URL DEL FEED RSS"), {
+      target: { value: "https://nuevo.example.com/rss.xml" },
+    });
+    fireEvent.change(screen.getByLabelText("CATEGORÍA IPTC"), {
+      target: { value: "10" },
+    });
+
+    const channelForm = screen
+      .getByRole("button", { name: /Crear canal/i })
+      .closest("form");
+    if (channelForm) fireEvent.submit(channelForm);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Datos no válidos/i);
+  });
+
+  test("muestra error genérico cuando guarda canal y la API responde 500", async () => {
+    mockInitialLoad({ channels: [], categories: [baseCategory] });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: "Internal",
+      json: async () => ({}),
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo canal/i }));
+
+    fireEvent.change(screen.getByLabelText("URL DEL FEED RSS"), {
+      target: { value: "https://nuevo.example.com/rss.xml" },
+    });
+    fireEvent.change(screen.getByLabelText("CATEGORÍA IPTC"), {
+      target: { value: "10" },
+    });
+
+    const channelForm = screen
+      .getByRole("button", { name: /Crear canal/i })
+      .closest("form");
+    if (channelForm) fireEvent.submit(channelForm);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  test("muestra feedback de éxito como output al crear fuente", async () => {
+    mockInitialLoad({ channels: [], categories: [baseCategory] });
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 99, name: "Nueva Fuente", url: "https://nueva.example.com" }),
+        statusText: "Created",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [baseSource, { id: 99, name: "Nueva Fuente", url: "https://nueva.example.com" }],
+        statusText: "OK",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+        statusText: "OK",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [baseCategory],
+        statusText: "OK",
+      });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+
+    fireEvent.click(screen.getByRole("button", { name: /Nueva fuente/i }));
+    fireEvent.change(screen.getByLabelText("NOMBRE DE LA FUENTE"), {
+      target: { value: "Nueva Fuente" },
+    });
+    fireEvent.change(screen.getByLabelText("URL WEB"), {
+      target: { value: "https://nueva.example.com" },
+    });
+
+    const sourceForm = screen
+      .getByRole("button", { name: /Crear fuente/i })
+      .closest("form");
+    if (sourceForm) fireEvent.submit(sourceForm);
+
+    expect(
+      await screen.findByText(/Fuente de información creada correctamente/i),
+    ).toBeInTheDocument();
+  });
+
+  test("muestra error si la URL de la fuente no es válida", async () => {
+    mockInitialLoad();
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    fireEvent.click(screen.getByRole("button", { name: /Nueva fuente/i }));
+
+    fireEvent.change(screen.getByLabelText("NOMBRE DE LA FUENTE"), {
+      target: { value: "Mala URL" },
+    });
+    fireEvent.change(screen.getByLabelText("URL WEB"), {
+      target: { value: "not-a-valid-url" },
+    });
+
+    const sourceForm = screen
+      .getByRole("button", { name: /Crear fuente/i })
+      .closest("form");
+    if (sourceForm) fireEvent.submit(sourceForm);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/URL de la fuente/i);
+  });
+
+  test("limpia los filtros aplicados", async () => {
+    mockInitialLoad();
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+
+    fireEvent.change(screen.getByLabelText("Buscar fuentes de información"), {
+      target: { value: "agencia" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Limpiar Filtros/i }));
+    expect(screen.getByLabelText("Buscar fuentes de información")).toHaveValue("");
+  });
+
+  test("muestra feedback de error si carga inicial falla", async () => {
+    mockFetch.mockRejectedValue(new Error("network down"));
+
+    render(<SourcesRss />);
+
+    expect(
+      await screen.findByText(/No se pudieron cargar las fuentes/i),
+    ).toBeInTheDocument();
+  });
+
+  test("filtra canales por categoría seleccionada", async () => {
+    const otherCategory = {
+      id: 11,
+      name: "Sociedad",
+      source: "IPTC",
+      iptc_code: "14000000",
+      iptc_label: "Sociedad",
+    };
+    const otherChannel = {
+      id: 9,
+      information_source_id: 1,
+      url: "https://agencia.example.com/sociedad.xml",
+      category_id: 11,
+      iptc_category: "14000000",
+      media_name: "Agencia Central",
+    };
+
+    mockInitialLoad({
+      channels: [baseChannel, otherChannel],
+      categories: [baseCategory, otherCategory],
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+
+    expect(
+      screen.getByText("https://agencia.example.com/sociedad.xml"),
+    ).toBeInTheDocument();
+
+    const sociedadCheckbox = screen.getByRole("checkbox", { name: /Sociedad/i });
+    fireEvent.click(sociedadCheckbox);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("https://agencia.example.com/rss.xml"),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("https://agencia.example.com/sociedad.xml"),
+    ).toBeInTheDocument();
+  });
 });

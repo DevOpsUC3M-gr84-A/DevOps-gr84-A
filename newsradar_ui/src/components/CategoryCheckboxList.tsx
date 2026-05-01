@@ -18,11 +18,8 @@ export const CategoryCheckboxList = memo<CategoryCheckboxListProps>(
     onToggle,
   }) => {
     return (
-      <div
-        className="categories-checkbox-list"
-        role="group"
-        aria-label="CATEGORIA IPTC (NIVEL 1)"
-      >
+      <fieldset className="categories-checkbox-list">
+        <legend className="visually-hidden">CATEGORIA IPTC (NIVEL 1)</legend>
         {categories.map((category) => {
           const code = String(category.iptc_code ?? category.id ?? "");
           const label = String(
@@ -47,7 +44,7 @@ export const CategoryCheckboxList = memo<CategoryCheckboxListProps>(
             </div>
           );
         })}
-      </div>
+      </fieldset>
     );
   },
   (prevProps, nextProps) => {

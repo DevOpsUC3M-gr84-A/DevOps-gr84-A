@@ -29,19 +29,32 @@ def get_password_hash(password: str) -> str:
 def _map_seed_category_to_iptc(category_text: str | None) -> CategoriaIPTC:
     """Mapea categorías de seed (texto) a enum de categorías IPTC."""
     category_map = {
-        "politics": CategoriaIPTC.POLITICA,
-        "economy_business_and_finance": CategoriaIPTC.ECONOMIA,
-        "sports": CategoriaIPTC.DEPORTES,
-        "science_and_technology": CategoriaIPTC.TECNOLOGIA,
         "arts_and_entertainment": CategoriaIPTC.CULTURA,
-        "health": CategoriaIPTC.SALUD,
+        "crime_law_and_justice": CategoriaIPTC.POLICIA_JUSTICIA,
+        "disaster_and_accident": CategoriaIPTC.CATASTROFES_ACCIDENTES,
+        "economy_business_and_finance": CategoriaIPTC.ECONOMIA,
+        "education": CategoriaIPTC.EDUCACION,
         "environmental_issue": CategoriaIPTC.MEDIO_AMBIENTE,
+        "health": CategoriaIPTC.SALUD,
+        "human_interest": CategoriaIPTC.INTERES_HUMANO,
+        "labor": CategoriaIPTC.MANO_DE_OBRA,
+        "lifestyle_and_leisure": CategoriaIPTC.ESTILO_DE_VIDA,
+        "politics": CategoriaIPTC.POLITICA,
+        "religion_and_belief": CategoriaIPTC.RELIGION,
         "science": CategoriaIPTC.CIENCIA,
+        "science_and_technology": CategoriaIPTC.CIENCIA,
+        "society": CategoriaIPTC.SOCIEDAD,
+        "sports": CategoriaIPTC.DEPORTES,
+        "unrest_conflicts_and_war": CategoriaIPTC.CONFLICTO_GUERRA_PAZ,
+        "weather": CategoriaIPTC.METEOROLOGIA,
     }
     if not category_text:
         return CategoriaIPTC.OTROS
 
-    return category_map.get(category_text.lower(), CategoriaIPTC.OTROS)
+    normalized = category_text.lower().strip()
+    if normalized.startswith("medtop:"):
+        normalized = normalized.split(":", 1)[1]
+    return category_map.get(normalized, CategoriaIPTC.OTROS)
 
 
 def _process_and_insert_sources(

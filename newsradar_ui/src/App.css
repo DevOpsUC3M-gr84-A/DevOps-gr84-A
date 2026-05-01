@@ -13,6 +13,18 @@
   --border-radius-md: 10px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .app-container {
   display: flex;
   align-items: flex-start;
@@ -328,12 +340,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.form-column-left {
-}
-
-.form-column-right {
 }
 
 .page-title {

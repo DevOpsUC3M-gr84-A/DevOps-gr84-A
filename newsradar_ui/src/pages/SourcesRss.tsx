@@ -30,8 +30,103 @@ interface CategoryApiItem {
   iptc_label?: string | null;
 }
 
+const IPTC_NAME_TO_CODE: Record<string, string> = {
+  OTROS: "00000000",
+  CULTURA: "01000000",
+  POLICIA_JUSTICIA: "02000000",
+  CATASTROFES_ACCIDENTES: "03000000",
+  ECONOMIA: "04000000",
+  TECNOLOGIA: "04010000",
+  EDUCACION: "05000000",
+  MEDIO_AMBIENTE: "06000000",
+  SALUD: "07000000",
+  INTERES_HUMANO: "08000000",
+  MANO_DE_OBRA: "09000000",
+  ESTILO_DE_VIDA: "10000000",
+  POLITICA: "11000000",
+  RELIGION: "12000000",
+  CIENCIA: "13000000",
+  SOCIEDAD: "14000000",
+  DEPORTES: "15000000",
+  CONFLICTO_GUERRA_PAZ: "16000000",
+  METEOROLOGIA: "17000000",
+};
+
+const removeDiacritics = (s: string) =>
+  s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+
+const ENGLISH_TO_IPTC_KEY: Record<string, string> = {
+  arts_culture_entertainment_and_media: "CULTURA",
+  arts_and_entertainment: "CULTURA",
+  culture: "CULTURA",
+  crime_law_and_justice: "POLICIA_JUSTICIA",
+  police_and_justice: "POLICIA_JUSTICIA",
+  disaster_and_accident: "CATASTROFES_ACCIDENTES",
+  economy_business_and_finance: "ECONOMIA",
+  education: "EDUCACION",
+  environment: "MEDIO_AMBIENTE",
+  environmental_issue: "MEDIO_AMBIENTE",
+  health: "SALUD",
+  human_interest: "INTERES_HUMANO",
+  labor: "MANO_DE_OBRA",
+  lifestyle_and_leisure: "ESTILO_DE_VIDA",
+  politics: "POLITICA",
+  religion_and_belief: "RELIGION",
+  science_and_technology: "CIENCIA",
+  science: "CIENCIA",
+  technology: "TECNOLOGIA",
+  society: "SOCIEDAD",
+  sport: "DEPORTES",
+  sports: "DEPORTES",
+  unrest_conflicts_and_war: "CONFLICTO_GUERRA_PAZ",
+  weather: "METEOROLOGIA",
+};
+
+const normalizeIptcKey = (raw: unknown): string => {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+
+  // Remove medtop: prefix if present
+  const stripped = value.startsWith("medtop:") ? value.slice("medtop:".length) : value;
+
+  // If the backend already returned an 8-digit IPTC code, accept it directly
+  const codeMatch = String(stripped).trim().match(/^\d{8}$/);
+  if (codeMatch) return codeMatch[0];
+
+  // Normalize (remove accents, lowercase, replace non-alnum with underscore)
+  const cleaned = removeDiacritics(String(stripped))
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/__+/g, "_");
+
+  const keyUpper = cleaned.toUpperCase();
+
+  // Direct lookup by normalized Spanish key (e.g. POLICIA_JUSTICIA)
+  if (IPTC_NAME_TO_CODE[keyUpper]) return IPTC_NAME_TO_CODE[keyUpper];
+
+  // Try simple contractions: remove Spanish/English conjunctions that may differ ("_y_", "_and_")
+  const altKeys = [keyUpper.replace(/_Y_/g, "_"), keyUpper.replace(/_AND_/g, "_")];
+  for (const k of altKeys) {
+    if (IPTC_NAME_TO_CODE[k]) return IPTC_NAME_TO_CODE[k];
+  }
+
+  // Map some common English slug variants to known IPTC keys
+  if (ENGLISH_TO_IPTC_KEY[cleaned]) {
+    const mapped = ENGLISH_TO_IPTC_KEY[cleaned];
+    if (IPTC_NAME_TO_CODE[mapped]) return IPTC_NAME_TO_CODE[mapped];
+  }
+
+  // As a last attempt, try original uppercased (preserves accents removal) to match keys like "POLICIA_JUSTICIA"
+  const folded = removeDiacritics(String(stripped)).toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  if (IPTC_NAME_TO_CODE[folded]) return IPTC_NAME_TO_CODE[folded];
+
+  // Fallback: return the original stripped value so caller can decide presentation
+  return String(stripped).trim();
+};
+
 const IPTC_MAP: Record<string, string> = {
-  "00000000": "General",
+  "00000000": "Sin categoría",
   "01000000": "Artes, cultura, entretenimiento y medios",
   "02000000": "Policía y justicia",
   "03000000": "Catástrofes y accidentes",
@@ -195,7 +290,7 @@ const requestVoid = async (
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
-      ...(options.headers ?? {}),
+      ...options.headers,
     },
   });
 
@@ -213,6 +308,29 @@ const requestVoid = async (
   }
 };
 
+
+interface CategoryFilterCheckboxProps {
+  optionKey: string;
+  label: string;
+  isChecked: boolean;
+  onToggle: (key: string) => void;
+}
+
+const CategoryFilterCheckbox = ({
+  optionKey,
+  label,
+  isChecked,
+  onToggle,
+}: CategoryFilterCheckboxProps) => {
+  const handleChange = useCallback(() => onToggle(optionKey), [onToggle, optionKey]);
+
+  return (
+    <label className="sources-rss-category-checkbox">
+      <input type="checkbox" checked={isChecked} onChange={handleChange} />
+      <span>{label}</span>
+    </label>
+  );
+};
 
 export const SourcesRss = () => {
   const { token, logout } = useAuth();
@@ -271,8 +389,11 @@ export const SourcesRss = () => {
 
   const getChannelCategoryKey = useCallback(
     (ch: RssChannelApiItem) => {
+      const normalizedCode = normalizeIptcKey(ch.iptc_category);
       const matched = categories.find(
-        (c) => c.id === ch.category_id || (c.iptc_code && c.iptc_code === ch.iptc_category),
+        (c) =>
+          c.id === ch.category_id ||
+          (c.iptc_code && c.iptc_code === normalizedCode),
       );
 
       if (matched) {
@@ -315,14 +436,17 @@ export const SourcesRss = () => {
     const map = new Map<string, string>();
 
     selectedSourceChannels.forEach((ch) => {
+      const normalizedCode = normalizeIptcKey(ch.iptc_category);
       const matched = categories.find(
-        (c) => c.id === ch.category_id || (c.iptc_code && c.iptc_code === ch.iptc_category),
+        (c) =>
+          c.id === ch.category_id ||
+          (c.iptc_code && c.iptc_code === normalizedCode),
       );
       // Prefiere IPTC_MAP para garantizar que el checkbox use exactamente el mismo nombre que la tabla
       const label =
-        IPTC_MAP[String(ch.iptc_category)] ||
+        IPTC_MAP[normalizedCode] ||
         matched?.name ||
-        `Categoría ${ch.iptc_category}`;
+        "Sin categoría";
 
       let key: string;
 
@@ -552,6 +676,14 @@ export const SourcesRss = () => {
     setSearchTerm("");
     setSelectedCategories([]);
   };
+
+  const toggleCategoryFilter = useCallback((key: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : [...prev, key],
+    );
+  }, []);
 
   const handleSourceSave = useCallback(async () => {
     if (!token) {
@@ -792,7 +924,7 @@ export const SourcesRss = () => {
         </a>
       </td>
       <td>
-        {IPTC_MAP[String(channel.iptc_category)] || channel.iptc_category}
+        {IPTC_MAP[normalizeIptcKey(channel.iptc_category)] || "Sin categoría"}
       </td>
       <td>
         <div className="sources-rss-row-actions">
@@ -1113,18 +1245,23 @@ export const SourcesRss = () => {
         </div>
       </header>
 
-      {feedback && (
+      {feedback && feedback.type === "error" && (
         <div
-          className={`alert-feedback ${
-            feedback.type === "success"
-              ? "alert-feedback-success"
-              : "alert-feedback-error"
-          }`}
-          role={feedback.type === "error" ? "alert" : "status"}
+          className="alert-feedback alert-feedback-error"
+          role="alert"
           aria-live="polite"
         >
           {feedback.message}
         </div>
+      )}
+
+      {feedback && feedback.type === "success" && (
+        <output
+          className="alert-feedback alert-feedback-success"
+          aria-live="polite"
+        >
+          {feedback.message}
+        </output>
       )}
 
       {isLoading ? (
@@ -1192,18 +1329,13 @@ export const SourcesRss = () => {
             {uniqueCategories.length > 0 && (
               <div className="sources-rss-categories-filter">
                 {uniqueCategories.map((opt) => (
-                  <label key={opt.key} className="sources-rss-category-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(opt.key)}
-                      onChange={() =>
-                        setSelectedCategories((prev) =>
-                          prev.includes(opt.key) ? prev.filter((k) => k !== opt.key) : [...prev, opt.key],
-                        )
-                      }
-                    />
-                    <span>{opt.label}</span>
-                  </label>
+                  <CategoryFilterCheckbox
+                    key={opt.key}
+                    optionKey={opt.key}
+                    label={opt.label}
+                    isChecked={selectedCategories.includes(opt.key)}
+                    onToggle={toggleCategoryFilter}
+                  />
                 ))}
               </div>
             )}
