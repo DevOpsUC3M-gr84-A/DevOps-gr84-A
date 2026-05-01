@@ -80,7 +80,7 @@ const SLUG_TO_IPTC: Record<string, string> = {
 };
 
 const normalizeIptcSlug = (raw: unknown): string => {
-  const value = String(raw === null || raw === undefined ? "" : raw).trim();
+  const value = (typeof raw === "string" ? raw : "").trim();
 
   if (!value) {
     return "";
@@ -95,10 +95,10 @@ const normalizeIptcSlug = (raw: unknown): string => {
     .normalize("NFD")
     .replaceAll(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "_")
-    .replace(/^_+/, "")
-    .replace(/_+$/, "")
-    .replaceAll(/_+/g, "_");
+    .replaceAll(/[^a-z0-9]/g, "_")
+    .split("_")
+    .filter((char) => char !== "")
+    .join("_");
 
   return SLUG_TO_IPTC[normalized] ?? normalized;
 };
