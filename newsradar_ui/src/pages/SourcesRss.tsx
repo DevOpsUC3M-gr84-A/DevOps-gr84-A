@@ -80,7 +80,7 @@ const SLUG_TO_IPTC: Record<string, string> = {
 };
 
 const normalizeIptcSlug = (raw: unknown): string => {
-  const value = String(raw ?? "").trim();
+  const value = String(raw === null || raw === undefined ? "" : raw).trim();
 
   if (!value) {
     return "";
@@ -93,11 +93,12 @@ const normalizeIptcSlug = (raw: unknown): string => {
   const withoutPrefix = value.replace(/^medtop:/i, "");
   const normalized = withoutPrefix
     .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
+    .replaceAll(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
+    .replaceAll(/[^a-z0-9]+/g, "_")
+    .replace(/^_+/, "")
+    .replace(/_+$/, "")
+    .replaceAll(/_+/g, "_");
 
   return SLUG_TO_IPTC[normalized] ?? normalized;
 };
@@ -144,7 +145,7 @@ const findChannelCategory = (
     return null;
   }
 
-  const urlMatch = categoryValue.match(/iptc=([^&]+)/i);
+  const urlMatch = /iptc=([^&]+)/i.exec(categoryValue);
   if (urlMatch) {
     categoryValue = urlMatch[1];
   }
@@ -672,7 +673,10 @@ export const SourcesRss = () => {
   };
 
   const openCreateChannelModal = () => {
-    const sourceId = selectedSource!.id;
+    if (!selectedSource) {
+      return;
+    }
+    const sourceId = selectedSource.id;
 
     setFeedback(null);
     setChannelBeingEdited(null);
@@ -1341,7 +1345,7 @@ export const SourcesRss = () => {
         </div>
       </header>
 
-      {feedback && feedback.type === "error" && (
+      {feedback?.type === "error" && (
         <div
           className="alert-feedback alert-feedback-error"
           role="alert"
@@ -1351,7 +1355,7 @@ export const SourcesRss = () => {
         </div>
       )}
 
-      {feedback && feedback.type === "success" && (
+      {feedback?.type === "success" && (
         <output
           className="alert-feedback alert-feedback-success"
           aria-live="polite"

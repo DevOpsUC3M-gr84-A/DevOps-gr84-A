@@ -200,7 +200,9 @@ export const AlertForm: React.FC<AlertFormProps> = ({
         }
         if (typeof entry === "object") {
           const obj = entry as { id?: unknown; name?: unknown };
-          if (obj.id !== undefined && obj.id !== null) return String(obj.id).trim();
+          if (typeof obj.id === "string" || typeof obj.id === "number") {
+            return String(obj.id).trim();
+          }
           if (typeof obj.name === "string") return obj.name.trim();
         }
         return "";
