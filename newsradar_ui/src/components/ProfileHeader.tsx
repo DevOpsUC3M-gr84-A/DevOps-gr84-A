@@ -41,13 +41,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
 
   const handleRemoveAvatar = () => {
-    if (window.confirm("¿Estás seguro de que quieres quitar tu foto de perfil?")) {
+    if (globalThis.confirm("¿Estás seguro de que quieres quitar tu foto de perfil?")) {
       onImageUpdate("avatar", null);
     }
   };
 
   const handleRemoveBanner = () => {
-    if (window.confirm("¿Estás seguro de que quieres quitar la imagen de portada?")) {
+    if (globalThis.confirm("¿Estás seguro de que quieres quitar la imagen de portada?")) {
       onImageUpdate("banner", null);
     }
   };
@@ -102,6 +102,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               className="avatar-edit-overlay" 
               onClick={() => avatarInputRef.current?.click()}
               title="Cambiar foto de perfil"
+              role = "button"
             >
               <Camera size={24} color="white" />
             </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ChangePasswordModal } from "../components/ChangePasswordModal";
 import { ProfileHeader } from "../components/ProfileHeader";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Key,
   RefreshCw,
@@ -9,8 +9,6 @@ import {
   AlertTriangle,
   Trash2,
   Pencil,
-  CheckCircle,
-  XCircle,
   Save,
   X,
 } from "lucide-react";
@@ -375,7 +373,8 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
               </div>
 
               <div className="profile-field">
-                <label>Email:</label>
+                <span style={{ "color": "#475569", "fontSize": "0.95rem", "textTransform": "uppercase", "letterSpacing": "0.05em", "fontWeight": "700" }}>
+                  Email:</span>
                 <p className="disabled-field">{profile.email} <small>(No editable)</small></p>
               </div>
 
@@ -392,7 +391,8 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
               </div>
 
               <div className="profile-field">
-                <label>Rol:</label>
+                <span style={{ "color": "#475569", "fontSize": "0.95rem", "textTransform": "uppercase", "letterSpacing": "0.05em", "fontWeight": "700" }}>
+                  Rol:</span>
                 <p id="role-display" className="disabled-field">{roleLabel}</p>
               </div>
 

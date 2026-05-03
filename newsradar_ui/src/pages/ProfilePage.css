@@ -111,7 +111,7 @@
   margin-bottom: 0;
 }
 
-.profile-field label {
+.profile-field label{
   font-size: 0.95rem; /* Etiqueta más grande */
   font-weight: 700;
   text-transform: uppercase;
@@ -129,7 +129,7 @@
   background-color: #f8fafc;
   color: #1e293b;
   line-height: 1.5;
-  font-size: 1.15rem; /* Texto de los datos MUCHO más grande */
+  font-size: 1.15rem;
 }
 
 .profile-card-actions {

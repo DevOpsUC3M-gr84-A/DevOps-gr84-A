@@ -114,6 +114,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <label className="delete-account-label">Contraseña actual</label>
         <div style={{ position: "relative" }}>
           <input
+            id = "current-password"
             type={showCurrent ? "text" : "password"}
             className="delete-account-input"
             value={formData.current}
@@ -129,6 +130,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <label className="delete-account-label" style={{ marginTop: "10px" }}>Nueva contraseña</label>
         <div style={{ position: "relative" }}>
           <input
+            id = "new-password"
             type={showNew ? "text" : "password"}
             className="delete-account-input"
             value={formData.new}
@@ -147,6 +149,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <label className="delete-account-label" style={{ marginTop: "10px" }}>Confirmar nueva contraseña</label>
         <div style={{ position: "relative" }}>
           <input
+            id = "confirm-password"
             type={showConfirm ? "text" : "password"}
             className="delete-account-input"
             value={formData.confirm}
