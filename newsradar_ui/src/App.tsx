@@ -183,8 +183,7 @@ const NOTIFICATION_PREVIEW_MAX_LENGTH = 250;
 const stripHtmlTagsLinear = (input: string): string => {
   let result = "";
   let insideTag = false;
-  for (let i = 0; i < input.length; i++) {
-    const ch = input[i];
+  for (const ch of input) {
     if (insideTag) {
       if (ch === ">") insideTag = false;
     } else if (ch === "<") {
@@ -203,18 +202,18 @@ const stripHtmlAndTruncate = (
   if (!html) return "";
 
   let plainText = "";
-  if (typeof DOMParser !== "undefined") {
+  if (typeof DOMParser === "undefined") {
+    plainText = stripHtmlTagsLinear(html);
+  } else {
     try {
       const doc = new DOMParser().parseFromString(html, "text/html");
       plainText = doc.body?.textContent ?? "";
     } catch {
       plainText = stripHtmlTagsLinear(html);
     }
-  } else {
-    plainText = stripHtmlTagsLinear(html);
   }
 
-  plainText = plainText.replace(/\s+/g, " ").trim();
+  plainText = plainText.replaceAll(/\s+/g, " ").trim();
 
   if (plainText.length > maxLength) {
     return `${plainText.slice(0, maxLength)}...`;

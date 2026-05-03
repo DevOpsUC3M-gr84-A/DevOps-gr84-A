@@ -248,6 +248,151 @@ def _index_article_document(
         return None
 
 
+def _normalize_entries(feed) -> list[ParsedEntry]:
+    raw_entries = getattr(feed, "entries", [])
+    return [
+        normalized
+        for normalized in (_normalize_feed_entry(item) for item in raw_entries)
+        if normalized is not None
+    ]
+
+
+def _notification_already_exists(
+    db: Session, alert: AlertRule, entry: ParsedEntry
+) -> bool:
+    return (
+        db.query(NotificationModel)
+        .filter(
+            NotificationModel.alert_id == alert.id,
+            NotificationModel.article_url == entry.link,
+        )
+        .first()
+        is not None
+    )
+
+
+def _build_notification_payload_safe(
+    alert: AlertRule, channel: RSSChannel, entry: ParsedEntry
+) -> dict | None:
+    try:
+        return build_notification_payload(
+            alert,
+            {
+                "source": channel.media_name,
+                "published": entry.published_at.isoformat() if entry.published_at else None,
+                "title": entry.title,
+                "summary": entry.summary,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Error creando payload de notificación para url=%s: %s", entry.link, exc
+        )
+        return None
+
+
+def _index_and_classify(
+    es_client: Elasticsearch,
+    alert: AlertRule,
+    channel: RSSChannel,
+    entry: ParsedEntry,
+) -> None:
+    """Indexa el artículo en Elasticsearch y dispara clasificación. No crítico."""
+    try:
+        article_id = _index_article_document(
+            es_client=es_client, alert=alert, channel=channel, entry=entry
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Elasticsearch indexing error (ignored) for url=%s: %s", entry.link, exc
+        )
+        return
+
+    if not article_id:
+        return
+
+    try:
+        classify_article(article_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Classification service failed (ignored) for article_id=%s: %s",
+            article_id,
+            exc,
+        )
+
+
+def _handle_match(
+    db: Session,
+    es_client: Elasticsearch,
+    channel: RSSChannel,
+    alert: AlertRule,
+    entry: ParsedEntry,
+    pending_notifications: list[NotificationModel],
+) -> int:
+    """Procesa un match (entry, alert): encola notificación e indexa. Devuelve 1 si encoló."""
+    logger.info(
+        "Match detectado: channel_id=%s alert_id=%s url=%s",
+        channel.id,
+        alert.id,
+        entry.link,
+    )
+
+    created = 0
+    if getattr(alert, "notify_inbox", False):
+        payload = _build_notification_payload_safe(alert, channel, entry)
+        if payload is not None:
+            if _notification_already_exists(db, alert, entry):
+                logger.debug(
+                    "Notificación duplicada omitida: alert_id=%s url=%s",
+                    alert.id,
+                    entry.link,
+                )
+                # Dedupe por BD: omitimos también la indexación en ES.
+                return 0
+
+            pending_notifications.append(
+                NotificationModel(
+                    user_id=alert.user_id,
+                    alert_id=alert.id,
+                    article_url=entry.link,
+                    title=payload.get("title"),
+                    message=payload.get("message"),
+                )
+            )
+            created = 1
+            logger.debug(
+                "Notification queued for DB persist: alert_id=%s url=%s",
+                alert.id,
+                entry.link,
+            )
+
+    _index_and_classify(es_client, alert, channel, entry)
+    return created
+
+
+def _persist_pending_notifications(
+    db: Session, channel: RSSChannel, pending: list[NotificationModel]
+) -> None:
+    if not pending:
+        return
+    try:
+        for n in pending:
+            db.add(n)
+        db.commit()
+        logger.info(
+            "Persistidas %d notificaciones en BD para canal id=%s",
+            len(pending),
+            channel.id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        logger.exception(
+            "Error persisting notifications to DB for channel id=%s: %s",
+            channel.id,
+            exc,
+        )
+
+
 def _process_channel_entries(
     channel: RSSChannel,
     alerts: list[AlertRule],
@@ -255,109 +400,28 @@ def _process_channel_entries(
     db: Session,
 ) -> int:
     feed = _parse_feed(channel.url)
-    raw_entries = getattr(feed, "entries", [])
     logger.info(
         "Canal RSS id=%s media=%s entries=%s bozo=%s",
         channel.id,
         channel.media_name,
-        len(raw_entries),
+        len(getattr(feed, "entries", [])),
         getattr(feed, "bozo", False),
     )
 
-    normalized_entries = [
-        normalized
-        for normalized in (_normalize_feed_entry(item) for item in raw_entries)
-        if normalized is not None
-    ]
-
+    normalized_entries = _normalize_entries(feed)
     created_articles = 0
     pending_notifications: list[NotificationModel] = []
 
     for entry in normalized_entries:
         for alert in alerts:
-            normalized_descriptors = _normalize_descriptors(alert.descriptors)
-            if not _descriptor_matches(entry, normalized_descriptors):
+            descriptors = _normalize_descriptors(alert.descriptors)
+            if not _descriptor_matches(entry, descriptors):
                 continue
-
-            logger.info(
-                "Match detectado: channel_id=%s alert_id=%s url=%s",
-                channel.id,
-                alert.id,
-                entry.link,
+            created_articles += _handle_match(
+                db, es_client, channel, alert, entry, pending_notifications
             )
 
-            # Crear objeto de notificación (persistir en SQLite al final del canal)
-            try:
-                payload = build_notification_payload(
-                    alert,
-                    {
-                        "source": channel.media_name,
-                        "published": entry.published_at.isoformat() if entry.published_at else None,
-                        "title": entry.title,
-                        "summary": entry.summary,
-                    },
-                )
-
-                if getattr(alert, "notify_inbox", False):
-                    existing_notification = (
-                        db.query(NotificationModel)
-                        .filter(
-                            NotificationModel.alert_id == alert.id,
-                            NotificationModel.article_url == entry.link,
-                        )
-                        .first()
-                    )
-                    if existing_notification:
-                        logger.debug(
-                            "Notificación duplicada omitida: alert_id=%s url=%s",
-                            alert.id,
-                            entry.link,
-                        )
-                        continue
-
-                    notif = NotificationModel(
-                        user_id=alert.user_id,
-                        alert_id=alert.id,
-                        article_url=entry.link,
-                        title=payload.get("title"),
-                        message=payload.get("message"),
-                    )
-                    pending_notifications.append(notif)
-                    created_articles += 1
-                    logger.debug("Notification queued for DB persist: alert_id=%s url=%s", alert.id, entry.link)
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("Error creando payload de notificación para url=%s: %s", entry.link, exc)
-
-            # Indexar en Elasticsearch (no crítico)
-            try:
-                article_id = _index_article_document(
-                    es_client=es_client,
-                    alert=alert,
-                    channel=channel,
-                    entry=entry,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Elasticsearch indexing error (ignored) for url=%s: %s", entry.link, exc)
-                article_id = None
-
-            # Clasificación (no crítico)
-            if article_id:
-                try:
-                    classify_article(article_id)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Classification service failed (ignored) for article_id=%s: %s", article_id, exc)
-
-    # Persistir notificaciones en batch para evitar contención
-    if pending_notifications:
-        try:
-            for n in pending_notifications:
-                db.add(n)
-            db.commit()
-            logger.info("Persistidas %d notificaciones en BD para canal id=%s", len(pending_notifications), channel.id)
-        except Exception as exc:  # noqa: BLE001
-            db.rollback()
-            logger.exception("Error persisting notifications to DB for channel id=%s: %s", channel.id, exc)
-
+    _persist_pending_notifications(db, channel, pending_notifications)
     return created_articles
 
 
