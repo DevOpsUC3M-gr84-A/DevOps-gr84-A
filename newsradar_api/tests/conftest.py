@@ -151,6 +151,27 @@ def seeded_lector_user(test_session_factory):
 
 
 @pytest.fixture
+def seeded_admin_user(test_session_factory):
+    session = test_session_factory()
+    try:
+        db_user = User(
+            email="rf01-admin@test.com",
+            name="RF01",
+            surname="Admin",
+            organization="QA",
+            hashed_password=get_password_hash("admin123"),
+            role=UserRole.ADMIN,
+            is_verified=True,
+        )
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+        return db_user
+    finally:
+        session.close()
+
+
+@pytest.fixture
 def api_client(test_session_factory, seeded_user):
     app = FastAPI()
     app.include_router(api_router, prefix="/api/v1")
@@ -222,6 +243,31 @@ def api_client_lector(test_session_factory, seeded_lector_user):
 
 
 @pytest.fixture
+def api_client_admin(test_session_factory, seeded_admin_user):
+    app = FastAPI()
+    app.include_router(api_router, prefix="/api/v1")
+
+    def _override_get_db():
+        db = test_session_factory()
+        try:
+            yield db
+        finally:
+            db.rollback()
+            db.close()
+
+    def _override_current_user() -> UserInDB:
+        return seeded_admin_user
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[deps_module.get_current_user] = _override_current_user
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def auth_headers(api_client):
     response = api_client.post(
         "/api/v1/auth/login",
@@ -241,3 +287,22 @@ def lector_auth_headers(api_client_lector):
     assert response.status_code == 200, response.text
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def admin_auth_headers(api_client_admin):
+    response = api_client_admin.post(
+        "/api/v1/auth/login",
+        json={"email": "rf01-admin@test.com", "password": "admin123"},
+    )
+    assert response.status_code == 200, response.text
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(autouse=True)
+def disable_real_emails(monkeypatch):
+    """
+    Borra las credenciales SMTP en memoria para que el sistema no envíe mails durante los tests
+    """
+    monkeypatch.setattr("app.config.SMTP_USER", "")
+    monkeypatch.setattr("app.config.SMTP_PASSWORD", "")

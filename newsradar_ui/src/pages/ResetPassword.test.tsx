@@ -172,7 +172,7 @@ describe("ResetPassword", () => {
 
     expect(
       screen.getByRole("link", { name: /Volver al Login/i }),
-    ).toHaveAttribute("href", "/");
+    ).toHaveAttribute("href", "/login");
   });
 
   test("muestra error si el token no está presente en la URL", async () => {
@@ -195,5 +195,36 @@ describe("ResetPassword", () => {
       "El enlace de recuperación no es válido.",
     );
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("conmuta la visibilidad de las contraseñas al pulsar los botones correspondientes", () => {
+    render(<ResetPassword />);
+
+    const newPasswordInput = screen.getByLabelText(
+      /Nueva Contraseña/i,
+    ) as HTMLInputElement;
+    const confirmPasswordInput = screen.getByLabelText(
+      /Confirmar Contraseña/i,
+    ) as HTMLInputElement;
+
+    const toggleButtons = screen.getAllByLabelText(/Mostrar contraseña/i);
+
+    expect(newPasswordInput.type).toBe("password");
+    expect(confirmPasswordInput.type).toBe("password");
+
+    // Probar primera contraseña
+    fireEvent.click(toggleButtons[0]);
+    expect(newPasswordInput.type).toBe("text");
+    expect(screen.getByLabelText(/Ocultar contraseña/i)).toBeInTheDocument();
+
+    // Probar segunda contraseña (confirmar)
+    const toggleConfirmButton = screen.getByLabelText(/Mostrar contraseña/i);
+    fireEvent.click(toggleConfirmButton);
+    expect(confirmPasswordInput.type).toBe("text");
+    expect(screen.getAllByLabelText(/Ocultar contraseña/i)).toHaveLength(2);
+
+    // Ocultar de nuevo
+    fireEvent.click(screen.getAllByLabelText(/Ocultar contraseña/i)[0]);
+    expect(newPasswordInput.type).toBe("password");
   });
 });

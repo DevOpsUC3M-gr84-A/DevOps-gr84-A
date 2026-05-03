@@ -14,7 +14,7 @@ beforeAll(() => {
 
 describe("AlertsManagement Page", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     localStorage.clear();
     localStorage.setItem("token", "fake-token");
     localStorage.setItem("userId", "1");
@@ -42,7 +42,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Test",
         descriptors: ["IA", "Robot"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
@@ -65,7 +66,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Legacy",
         descriptors: undefined,
         categoria_iptc: undefined,
-        fuentes_rss: null,
+        information_sources_ids: null,
+        rss_channels_ids: null,
       },
     ];
 
@@ -79,14 +81,15 @@ describe("AlertsManagement Page", () => {
     expect(await screen.findByText("Alerta Legacy")).toBeInTheDocument();
   });
 
-  test("filtra sin romper cuando fuentes_rss contiene valores inválidos", async () => {
+  test("filtra sin romper cuando information_sources_ids contiene valores inválidos", async () => {
     const mockAlertas = [
       {
         id: 15,
         name: "Alerta Fuente Invalida",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: [null, "Reuters"],
+        information_sources_ids: [null, "Reuters"],
+        rss_channels_ids: [null, "Reuters"],
       },
     ];
 
@@ -100,9 +103,6 @@ describe("AlertsManagement Page", () => {
     expect(
       await screen.findByText("Alerta Fuente Invalida"),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Filtrar por fuente RSS"), {
-      target: { value: "reu" },
-    });
 
     expect(screen.getByText("Alerta Fuente Invalida")).toBeInTheDocument();
   });
@@ -125,15 +125,17 @@ describe("AlertsManagement Page", () => {
         id: 1,
         name: "Alerta Tech",
         descriptors: ["IA"],
-        categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters", "BBC"],
+        categoria_iptc: "13000000",
+        information_sources_ids: ["Reuters", "BBC"],
+        rss_channels_ids: ["Reuters", "BBC"],
       },
       {
         id: 2,
         name: "Alerta Deportes",
         descriptors: ["Futbol"],
-        categoria_iptc: "Deportes",
-        fuentes_rss: ["ESPN"],
+        categoria_iptc: "14000000",
+        information_sources_ids: ["ESPN"],
+        rss_channels_ids: ["ESPN"],
       },
     ];
 
@@ -148,7 +150,7 @@ describe("AlertsManagement Page", () => {
     expect(screen.getByText("Alerta Deportes")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Filtrar por categoria IPTC"), {
-      target: { value: "Deportes" },
+      target: { value: "14000000" },
     });
 
     expect(screen.queryByText("Alerta Tech")).not.toBeInTheDocument();
@@ -157,8 +159,8 @@ describe("AlertsManagement Page", () => {
     fireEvent.change(screen.getByLabelText("Filtrar por categoria IPTC"), {
       target: { value: "" },
     });
-    fireEvent.change(screen.getByLabelText("Filtrar por fuente RSS"), {
-      target: { value: "reuters" },
+    fireEvent.change(screen.getByLabelText("Buscar por Nombre o Descriptor"), {
+      target: { value: "tech" },
     });
 
     expect(screen.getByText("Alerta Tech")).toBeInTheDocument();
@@ -172,7 +174,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Economia",
         descriptors: ["Mercado"],
         categoria_iptc: "Economia, negocio y finanzas",
-        fuentes_rss: ["Bloomberg"],
+        information_sources_ids: ["Bloomberg"],
+        rss_channels_ids: ["Bloomberg"],
       },
     ];
 
@@ -184,7 +187,7 @@ describe("AlertsManagement Page", () => {
     render(<AlertsManagement onLogout={mockLogout} />);
 
     expect(await screen.findByText("Alerta Economia")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Filtrar por fuente RSS"), {
+    fireEvent.change(screen.getByLabelText("Buscar por Nombre o Descriptor"), {
       target: { value: "Reuters" },
     });
 
@@ -223,24 +226,40 @@ describe("AlertsManagement Page", () => {
       name: "Alerta Nuclear",
       descriptors: ["Uranio", "Energía"],
       categoria_iptc: "Ciencia y tecnologia",
-      fuentes_rss: ["Reuters", "BBC"],
+      information_sources_ids: ["Reuters", "BBC"],
+      rss_channels_ids: ["Reuters", "BBC"],
     };
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockNuevaAlerta,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [mockNuevaAlerta],
-      });
+    let postDone = false;
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "POST" && /\/alerts$/.test(url)) {
+          postDone = true;
+          return { ok: true, json: async () => mockNuevaAlerta };
+        }
+
+        if (method === "GET" && /\/alerts$/.test(url)) {
+          return {
+            ok: true,
+            json: async () => (postDone ? [mockNuevaAlerta] : []),
+          };
+        }
+
+        if (url.includes("/categories")) {
+          return { ok: true, json: async () => [] };
+        }
+
+        return { ok: true, json: async () => [] };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
+
+    // Esperamos a que la carga inicial secuencial termine
+    await screen.findByText("No hay alertas todavía.");
 
     // Abrir modal
     fireEvent.click(screen.getByText(/Nueva Alerta/i));
@@ -252,9 +271,9 @@ describe("AlertsManagement Page", () => {
     fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
       target: { value: "Uranio, Energía" },
     });
-    fireEvent.change(screen.getByLabelText("CATEGORIA IPTC (NIVEL 1)"), {
-      target: { value: "Ciencia y tecnologia" },
-    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
 
     // Enviar el formulario
     const botonGuardar = screen.getByRole("button", {
@@ -289,7 +308,8 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Editable",
         descriptors: ["IA", "NLP"],
         categoria_iptc: "Sociedad",
-        fuentes_rss: ["BBC"],
+        information_sources_ids: ["BBC"],
+        rss_channels_ids: ["BBC"],
       },
     ];
 
@@ -322,19 +342,23 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Borrable",
         descriptors: ["IA"],
         categoria_iptc: "Politica",
-        fuentes_rss: [],
+        information_sources_ids: [],
+        rss_channels_ids: [],
       },
     ];
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockAlertas,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      });
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE" && url.includes("/api/v1/users/1/alerts/11")) {
+          return { ok: true, json: async () => ({}) };
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -367,14 +391,22 @@ describe("AlertsManagement Page", () => {
         name: "Alerta No Borrada",
         descriptors: ["NLP"],
         categoria_iptc: "Deportes",
-        fuentes_rss: ["ESPN"],
+        information_sources_ids: ["ESPN"],
+        rss_channels_ids: ["ESPN"],
       },
     ];
 
-    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockAlertas,
-    });
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE") {
+          return { ok: true, json: async () => ({}) };
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -385,7 +417,8 @@ describe("AlertsManagement Page", () => {
     await waitFor(() => {
       expect(confirmSpy).toHaveBeenCalled();
     });
-    expect((globalThis.fetch as jest.Mock).mock.calls).toHaveLength(1);
+    // initial alertas + categories fetches; no DELETE expected when user cancels
+    expect((globalThis.fetch as jest.Mock).mock.calls).toHaveLength(2);
 
     confirmSpy.mockRestore();
   });
@@ -412,20 +445,23 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Error Delete",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockAlertas,
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => ({}),
-      });
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE" && url.includes("/api/v1/users/1/alerts/33")) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
 
@@ -460,16 +496,23 @@ describe("AlertsManagement Page", () => {
         name: "Alerta Error Desconocido",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
-    (globalThis.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockAlertas,
-      })
-      .mockRejectedValueOnce("boom");
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (method === "DELETE" && url.includes("/api/v1/users/1/alerts/77")) {
+          throw "boom";
+        }
+
+        return { ok: true, json: async () => mockAlertas };
+      },
+    );
 
     render(<AlertsManagement onLogout={mockLogout} />);
     expect(
@@ -494,8 +537,9 @@ describe("AlertsManagement Page", () => {
         id: 55,
         name: "Alerta Edit",
         descriptors: ["IA"],
-        categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        categoria_iptc: "13000000",
+        information_sources_ids: ["Reuters"],
+        rss_channels_ids: ["Reuters"],
       },
     ];
 
@@ -504,10 +548,17 @@ describe("AlertsManagement Page", () => {
         ok: true,
         json: async () => mockAlertas,
       })
+      // categories fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+      // PUT
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({}),
       })
+      // refetch alertas
       .mockResolvedValueOnce({
         ok: true,
         json: async () => mockAlertas,
@@ -535,7 +586,7 @@ describe("AlertsManagement Page", () => {
         name: "Alerta 401 Delete",
         descriptors: ["IA"],
         categoria_iptc: "Ciencia y tecnologia",
-        fuentes_rss: ["Reuters"],
+        information_sources_ids: ["Reuters"],
       },
     ];
 
@@ -544,6 +595,12 @@ describe("AlertsManagement Page", () => {
         ok: true,
         json: async () => mockAlertas,
       })
+      // categories fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+      // DELETE 401
       .mockResolvedValueOnce({
         ok: false,
         status: 401,
@@ -574,6 +631,129 @@ describe("AlertsManagement Page", () => {
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalled();
     });
+  });
+
+  test("usa fallback de IPTC cuando fetchCategories falla", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/categories")) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+
+    await screen.findByText(/No hay alertas todavía/i);
+    fireEvent.click(screen.getByText(/Nueva Alerta/i));
+    expect(
+      await screen.findByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    ).toBeInTheDocument();
+  });
+
+  test("cierra sesión cuando fetchCategories responde 401", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/categories")) {
+          return { ok: false, status: 401, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+  });
+
+  test("muestra error cuando POST de alerta no es ok", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (method === "POST" && /\/alerts$/.test(url)) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    await screen.findByText(/No hay alertas todavía/i);
+
+    fireEvent.click(screen.getByText(/Nueva Alerta/i));
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Falla POST" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /GUARDAR ALERTA/i }));
+    });
+
+    expect(
+      await screen.findByText(/No se pudo guardar la alerta/i),
+    ).toBeInTheDocument();
+  });
+
+  test("cierra sesión cuando POST de alerta responde 401", async () => {
+    (globalThis.fetch as jest.Mock).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (method === "POST" && /\/alerts$/.test(url)) {
+          return { ok: false, status: 401, json: async () => ({}) };
+        }
+        return { ok: true, json: async () => [] };
+      },
+    );
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    await screen.findByText(/No hay alertas todavía/i);
+
+    fireEvent.click(screen.getByText(/Nueva Alerta/i));
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Alerta 401" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
+    );
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /GUARDAR ALERTA/i }));
+    });
+
+    await waitFor(() => expect(mockLogout).toHaveBeenCalled());
+  });
+
+  test("renderiza alertas cuyas categorías son objetos", async () => {
+    const mockAlertas = [
+      {
+        id: 88,
+        name: "Alerta Objetos",
+        descriptors: ["IA"],
+        categories: [{ id: 1, name: "Ciencia y tecnologia", iptc_code: "13000000" }],
+        information_sources_ids: ["BBC"],
+      },
+    ];
+
+    (globalThis.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockAlertas,
+    });
+
+    render(<AlertsManagement onLogout={mockLogout} />);
+    expect(await screen.findByText("Alerta Objetos")).toBeInTheDocument();
   });
 
   test("oculta automáticamente el feedback tras 5 segundos", async () => {

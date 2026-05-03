@@ -23,6 +23,7 @@ __pycache__/
 .coverage
 htmlcov/
 coverage/
+lcov.info
 
 # ==============================
 # Dependencies and environments
@@ -39,6 +40,28 @@ build/
 dist/
 
 # ==============================
+# Frontend test/build artifacts
+# ==============================
+newsradar_ui/coverage/
+newsradar_ui/dist/
+newsradar_ui/.eslintcache
+newsradar_ui/lcov.info
+
+# ==============================
+# Backend local db/cache artifacts
+# ==============================
+*.db
+*.db-journal
+newsradar.db
+newsradar.db-journal
+newsradar_api/newsradar.db
+newsradar_api/newsradar.db-journal
+newsradar_api/.pytest_cache/
+newsradar_api/__pycache__/
+newsradar_api/.coverage
+newsradar_api/htmlcov/
+
+# ==============================
 # IDE/editor settings
 # ==============================
 .vscode/
@@ -48,9 +71,5 @@ dist/
 # Local environment variables
 # ==============================
 .env
-
-# ==============================
-# Critical exception: keep shared SQLite DB files versioned
-# ==============================
-!newsradar.db
-!*.db
+.claude/
+.claude/settings.local.json

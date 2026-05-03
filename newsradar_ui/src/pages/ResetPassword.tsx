@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
 
 const API_BASE_URL =
@@ -18,6 +19,8 @@ export const ResetPassword = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -82,28 +85,92 @@ export const ResetPassword = () => {
       submitText={isSubmitting ? "Actualizando..." : "Actualizar contraseña"}
       onSubmit={handleSubmit}
     >
-      <div className="form-group">
+      <div className="form-group" style={{ position: "relative" }}>
         <label htmlFor="new-password">Nueva Contraseña</label>
-        <input
-          id="new-password"
-          type="password"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          placeholder="••••••••"
-          required
-        />
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <input
+            id="new-password"
+            type={showNewPassword ? "text" : "password"}
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            placeholder="••••••••"
+            required
+            autoComplete="new-password"
+            style={{ paddingRight: 38, width: "100%" }}
+          />
+          <button
+            type="button"
+            aria-label={
+              showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+            }
+            onClick={() => setShowNewPassword((v) => !v)}
+            style={{
+              position: "absolute",
+              right: 8,
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+            }}
+            tabIndex={0}
+          >
+            {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
       </div>
 
-      <div className="form-group">
+      <div className="form-group" style={{ position: "relative" }}>
         <label htmlFor="confirm-password">Confirmar Contraseña</label>
-        <input
-          id="confirm-password"
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="••••••••"
-          required
-        />
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <input
+            id="confirm-password"
+            type={showConfirmPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="••••••••"
+            required
+            autoComplete="new-password"
+            style={{ paddingRight: 38, width: "100%" }}
+          />
+          <button
+            type="button"
+            aria-label={
+              showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+            }
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            style={{
+              position: "absolute",
+              right: 8,
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+            }}
+            tabIndex={0}
+          >
+            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
       </div>
     </AuthLayout>
   );

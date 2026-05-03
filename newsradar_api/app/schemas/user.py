@@ -1,5 +1,7 @@
+import re
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserBase(BaseModel):
@@ -11,11 +13,23 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if (
+            not re.search(r"[A-Z]", value)
+            or not re.search(r"\d", value)
+            or not re.search(r"[^A-Za-z0-9]", value)
+        ):
+            raise ValueError("La contraseña no cumple los requisitos de seguridad")
+        return value
 
 class UserResponse(UserBase):
     id: int
     is_verified: bool
+    is_active: bool
 
     class Config:
         from_attributes = True
@@ -31,6 +45,8 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     id: int
+    is_verified: bool = False
+    is_active: bool = False
 
 
 class UserInDB(User):
@@ -38,3 +54,20 @@ class UserInDB(User):
 
 class TokenVerification(BaseModel):
     token: str
+
+
+class UserListItem(BaseModel):
+    """Esquema para listar usuarios (solo Admin)."""
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    role_ids: List[int]
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateUserRoleRequest(BaseModel):
+    """Esquema para actualizar el rol de un usuario."""
+    role_id: int = Field(..., description="ID del nuevo rol (1=Gestor, 2=Lector, 3=Admin)")

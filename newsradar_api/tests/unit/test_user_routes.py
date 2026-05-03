@@ -14,8 +14,8 @@ class TestUsersAPIEndpoints:
 	def bypass_role_check(self, monkeypatch):
 		monkeypatch.setattr("app.api.routes.users.ensure_role_ids_exist", lambda _role_ids: None)
 
-	def test_list_users_api(self, api_client, auth_headers):
-		response = api_client.get("/api/v1/users", headers=auth_headers)
+	def test_list_users_api(self, api_client_admin, admin_auth_headers):
+		response = api_client_admin.get("/api/v1/users", headers=admin_auth_headers)
 		assert response.status_code == 200
 		assert isinstance(response.json(), list)
 
@@ -35,7 +35,7 @@ class TestUsersAPIEndpoints:
 			"first_name": "API",
 			"last_name": "User",
 			"organization": "Test",
-			"password": "password123",
+			"password": "Test@1234!",
 			"role_ids": [2]
 		}
 		response = api_client.post("/api/v1/users", json=payload, headers=auth_headers)
@@ -49,7 +49,7 @@ class TestUsersAPIEndpoints:
 			"first_name": "Dup",
 			"last_name": "User",
 			"organization": "Test",
-			"password": "password123",
+			"password": "Test@1234!",
 			"role_ids": [2]
 		}
 		response = api_client.post("/api/v1/users", json=payload, headers=auth_headers)
@@ -80,7 +80,7 @@ class TestUsersAPIEndpoints:
 		# Crear un usuario "basura" por API
 		create_resp = api_client.post("/api/v1/users", json={
 			"email": "todelete_api@test.com", "first_name": "Del", "last_name": "User", 
-			"organization": "Org", "password": "password123", "role_ids": [2]
+			"organization": "Org", "password": "Test@1234!", "role_ids": [2]
 		}, headers=auth_headers)
 		assert create_resp.status_code == 201
 		user_id = create_resp.json()["id"]

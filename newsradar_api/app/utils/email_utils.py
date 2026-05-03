@@ -45,13 +45,13 @@ def send_reset_password_email(to_email: str, reset_token: str) -> None:
     html_body = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #28251d; max-width: 520px; margin: auto;">
-        <h2 style="color: #01696f;">NewsRadar – Recuperación de contraseña</h2>
+        <h2 style="color: #3b82f6;">NewsRadar – Recuperación de contraseña</h2>
         <p>Has solicitado recuperar tu contraseña.</p>
         <p>Haz clic en el botón para establecer una nueva contraseña.
            El enlace es válido durante <strong>{config.RESET_TOKEN_EXPIRE_HOURS} hora(s)</strong>.</p>
         <p style="text-align:center; margin: 32px 0;">
           <a href="{reset_link}"
-             style="background:#01696f;color:#fff;padding:12px 28px;
+             style="background:#3b82f6;color:#fff;padding:12px 28px;
                     border-radius:6px;text-decoration:none;font-weight:bold;">
             Restablecer contraseña
           </a>
@@ -112,12 +112,12 @@ def send_verification_email(to_email: str, verification_token: str) -> None:
     html_body = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #28251d; max-width: 520px; margin: auto;">
-        <h2 style="color: #01696f;">¡Bienvenido a NewsRadar!</h2>
+        <h2 style="color: #3b82f6;">¡Bienvenido a NewsRadar!</h2>
         <p>Gracias por registrarte. Para poder acceder a tu cuenta, necesitamos verificar tu dirección de correo electrónico.</p>
         <p>Haz clic en el botón inferior para activar tu cuenta. El enlace es válido durante <strong>24 horas</strong>.</p>
         <p style="text-align:center; margin: 32px 0;">
           <a href="{verification_link}"
-             style="background:#01696f;color:#fff;padding:12px 28px;
+             style="background:#3b82f6;color:#fff;padding:12px 28px;
                     border-radius:6px;text-decoration:none;font-weight:bold;">
             Verificar mi cuenta
           </a>

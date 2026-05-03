@@ -70,3 +70,9 @@ def test_get_current_gestor_rejects_non_manager():
 def test_get_current_gestor_accepts_manager():
     current_user = MagicMock(role=UserRole.GESTOR)
     assert get_current_gestor(current_user=current_user) is current_user
+
+
+@pytest.mark.unit
+def test_get_current_gestor_accepts_admin():
+    current_user = MagicMock(role=UserRole.ADMIN)
+    assert get_current_gestor(current_user=current_user) is current_user

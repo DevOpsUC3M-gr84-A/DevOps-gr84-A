@@ -23,7 +23,7 @@ SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM: str = os.getenv("SMTP_FROM", SMTP_USER)
 
 # URL base del frontend (para construir el link del email)
-FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # Tiempo de expiración del token de reset (en horas)
 RESET_TOKEN_EXPIRE_HOURS: int = int(os.getenv("RESET_TOKEN_EXPIRE_HOURS", "1"))

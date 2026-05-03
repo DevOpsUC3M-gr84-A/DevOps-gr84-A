@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.api.routes.auth import login, register
+from app.api.routes.auth import login, register, existe_dominio
 from app.schemas.auth import LoginRequest
 from app.schemas.user import UserCreate, UserInDB
 from app.services.user_service import UserRole
@@ -97,8 +97,7 @@ def test_register_conflict_returns_409():
         first_name="Dup",
         last_name="User",
         organization="QA",
-        role_ids=[1],
-        password="secret123",
+        password="Secret123!",
     )
     db = MagicMock()
     from app.api.routes import auth as auth_module
@@ -107,6 +106,7 @@ def test_register_conflict_returns_409():
     original_create = auth_module.create_db_user
 
     auth_module.ensure_role_ids_exist = lambda _role_ids: None
+    auth_module.existe_dominio = lambda _email: True
 
     def _raise_conflict(_db, _payload):
         raise ValueError("duplicated")
@@ -130,8 +130,7 @@ def test_register_success_returns_user_schema(monkeypatch):
         first_name="Ok",
         last_name="User",
         organization="QA",
-        role_ids=[1],
-        password="secret123",
+        password="Secret123!",
         is_verified=False,
         verification_token="token_fake"
     )
@@ -150,6 +149,7 @@ def test_register_success_returns_user_schema(monkeypatch):
 
     monkeypatch.setattr("app.api.routes.auth.ensure_role_ids_exist", lambda _role_ids: None)
     monkeypatch.setattr("app.api.routes.auth.create_db_user", lambda _db, _payload: fake_db_user)
+    monkeypatch.setattr("app.api.routes.auth.existe_dominio", lambda _email: True)
 
     db = MagicMock()
     response = register(payload=payload, db=db)
@@ -245,4 +245,79 @@ def test_verify_email_endpoint_success(monkeypatch):
     assert response.json()["message"] == "Cuenta verificada con éxito"
     
     # Limpiar los overrides
+    app.dependency_overrides.clear()
+
+def test_register_rechaza_dominio_falso(api_client, monkeypatch):
+    # Devuelve dominio falso
+    monkeypatch.setattr("app.api.routes.auth.existe_dominio", lambda x: False)
+    
+    # Intentar registro
+    payload = {
+        "email": "test@falso.com", "password": "Test@1234!",
+        "first_name": "Test", "last_name": "Falso", 
+        "organization": "Org", "role_ids": [2]
+    }
+    response = api_client.post("/api/v1/auth/register", json=payload)
+    
+    # Comprobar error 400 por dominio sin MX
+    assert response.status_code == 400
+    assert "no existe o no admite correos" in response.json()["detail"]
+
+
+@pytest.mark.unit
+def test_existe_dominio_success(monkeypatch):
+    """Simula un dominio válido"""
+    monkeypatch.setattr("dns.resolver.resolve", lambda domain, record: True)
+    assert existe_dominio("usuario@dominio-real.com") is True
+
+@pytest.mark.unit
+def test_existe_dominio_fails(monkeypatch):
+    """Fuerza la ejecución del except simulando un dominio falso"""
+    def mock_resolve_fail(*args, **kwargs):
+        raise Exception("DNS no encontrado")
+        
+    monkeypatch.setattr("dns.resolver.resolve", mock_resolve_fail)
+    assert existe_dominio("usuario@dominio-falso.com") is False
+
+@pytest.mark.unit
+def test_verify_email_endpoint_fails(monkeypatch):
+    """Prueba el endpoint de verificación de email simulando un fallo en la verificación (por ejemplo, token caducado)"""
+    db_mock = MagicMock()
+    # El usuario existe pero no está verificado
+    db_mock.query.return_value.filter.return_value.first.return_value = MagicMock()
+    app.dependency_overrides[get_db] = lambda: db_mock
+    
+    # Forzar que la función de verificación devuelva un fallo
+    monkeypatch.setattr("app.api.routes.auth.verify_user_email", lambda u, db: (False, "Token caducado"))
+    
+    response = client.post("/api/v1/auth/verify-email", json={"token": "fake_token"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Token caducado"
+    app.dependency_overrides.clear()
+
+@pytest.mark.unit
+def test_forgot_password_user_not_found(monkeypatch):
+    """Cubre la línea 130: Cuando el usuario no existe al pedir recuperar contraseña"""
+    db_mock = MagicMock()
+    app.dependency_overrides[get_db] = lambda: db_mock
+    
+    # Simular que no se encuentra el usuario en la base de datos
+    monkeypatch.setattr("app.api.routes.auth.generate_reset_token", lambda db, email: None)
+    
+    response = client.post("/api/v1/auth/forgot-password", json={"email": "no@existe.com"})
+    
+    # El endpoint siempre devuelve 202 por seguridad
+    assert response.status_code == 202 
+    app.dependency_overrides.clear()
+
+@pytest.mark.unit
+def test_reset_password_fails(monkeypatch):
+    """Cubre el error 400 al intentar poner una nueva contraseña con un token falso"""
+    db_mock = MagicMock()
+    app.dependency_overrides[get_db] = lambda: db_mock
+    
+    monkeypatch.setattr("app.api.routes.auth.reset_password_with_token", lambda db, t, p: (False, "Token inválido"))
+    
+    response = client.post("/api/v1/auth/reset-password", json={"token": "fake", "new_password": "password123"})
+    assert response.status_code == 400
     app.dependency_overrides.clear()

@@ -3,6 +3,21 @@ import { vi } from "vitest";
 import { Auth } from "./Auth";
 import { useAuth } from "../hooks/useAuth";
 
+const { mockedNavigate } = vi.hoisted(() => ({
+  mockedNavigate: vi.fn(),
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+
+  return {
+    ...actual,
+    useNavigate: () => mockedNavigate,
+  };
+});
+
 vi.mock("../hooks/useAuth");
 
 const mockedUseAuth = vi.mocked(useAuth);
@@ -53,7 +68,7 @@ describe("Página de Autenticación", () => {
       target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
 
     const form = container.querySelector("form");
@@ -68,11 +83,267 @@ describe("Página de Autenticación", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: "test@test.com",
-            password: "password123",
+            password: "Password123!",
           }),
         }),
       );
-      expect(mockLogin).toHaveBeenCalledWith(mockResponse);
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-123",
+        user_id: 1,
+        role_ids: [1],
+      });
+      expect(mockedNavigate).toHaveBeenCalledWith("/dashboard", {
+        replace: true,
+      });
+    });
+  });
+
+  test("normaliza un mix de role_ids, roles y role antes de llamar login", async () => {
+    const mockResponse = {
+      access_token: "token-mixed",
+      user_id: 7,
+      role_ids: [3, "Gestor", "invalido"],
+      roles: ["ADMIN", "??"],
+      role: "2",
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "mixed@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-mixed",
+        user_id: 7,
+        role_ids: [3, 1, 3, 2],
+      });
+    });
+  });
+
+  test("usa lector por defecto cuando la API devuelve roles inválidos", async () => {
+    const mockResponse = {
+      access_token: "token-default",
+      user_id: 8,
+      role_ids: ["???"],
+      roles: [""],
+      role: null,
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "default@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-default",
+        user_id: 8,
+        role_ids: [2],
+      });
+    });
+  });
+
+  test("login exitoso cuando la API devuelve roles: [2]", async () => {
+    const mockResponse = {
+      access_token: "token-roles",
+      user_id: 21,
+      roles: [2],
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "roles@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-roles",
+        user_id: 21,
+        role_ids: [2],
+      });
+    });
+  });
+
+  test("login exitoso cuando la API devuelve role: 1", async () => {
+    const mockResponse = {
+      access_token: "token-role",
+      user_id: 22,
+      role: 1,
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "role@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-role",
+        user_id: 22,
+        role_ids: [1],
+      });
+    });
+  });
+
+  test("isValidRoleInput filtra role_ids booleanos inválidos y cae en lector", async () => {
+    const mockResponse = {
+      access_token: "token-bool",
+      user_id: 23,
+      role_ids: [true, false],
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "bool@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-bool",
+        user_id: 23,
+        role_ids: [2],
+      });
+    });
+  });
+
+  test("login exitoso cuando role_ids viene como escalar no-array", async () => {
+    const mockResponse = {
+      access_token: "token-scalar-roleids",
+      user_id: 24,
+      role_ids: 1,
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "scalar1@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-scalar-roleids",
+        user_id: 24,
+        role_ids: [1],
+      });
+    });
+  });
+
+  test("login exitoso cuando roles viene como escalar no-array", async () => {
+    const mockResponse = {
+      access_token: "token-scalar-roles",
+      user_id: 25,
+      roles: "gestor",
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "scalar2@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "token-scalar-roles",
+        user_id: 25,
+        role_ids: [1],
+      });
     });
   });
 
@@ -102,7 +373,7 @@ describe("Página de Autenticación", () => {
       target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "password123" },
+      target: { value: "Password123!" },
     });
 
     const form = container.querySelector("form");
@@ -117,11 +388,11 @@ describe("Página de Autenticación", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: "test@test.com",
-            password: "password123",
+            password: "Password123!",
             first_name: "Juan",
             last_name: "Pérez",
             organization: "UC3M",
-            role_ids: [2],
+            role_ids: [1],
           }),
         }),
       );
@@ -137,33 +408,35 @@ describe("Página de Autenticación", () => {
     expect(screen.getByText(/Iniciar Sesión/i)).toBeInTheDocument();
   });
 
-  test("muestra alerta si el email no es válido", () => {
+  test("muestra alerta si la contraseña de registro es débil", () => {
     render(<Auth />);
 
-    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
-      target: { value: "email-invalido" },
+    fireEvent.click(screen.getByText(/Regístrate ahora/i));
+    fireEvent.change(screen.getByPlaceholderText(/Ej: Juan/i), {
+      target: { value: "Juan" },
     });
-    const form = screen.getByText(/Entrar al sistema/i).closest("form");
-    expect(form).not.toBeNull();
-    fireEvent.submit(form as HTMLFormElement);
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Email no válido");
-  });
-
-  test("muestra alerta si la contraseña es muy corta", () => {
-    render(<Auth />);
-
+    fireEvent.change(screen.getByPlaceholderText(/Ej: Pérez/i), {
+      target: { value: "Pérez" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Nombre de tu empresa\/institución/i),
+      {
+        target: { value: "UC3M" },
+      },
+    );
     fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
       target: { value: "test@test.com" },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
-      target: { value: "123" },
+      target: { value: "12345" },
     });
-    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    fireEvent.click(screen.getByText(/Crear mi cuenta/i));
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "La contraseña debe tener al menos 6 caracteres",
+      "La contraseña no cumple los requisitos de seguridad",
     );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   test("muestra el error devuelto por la API si el login falla", async () => {
@@ -344,5 +617,261 @@ describe("Casos de error de API y Red", () => {
     fireEvent.click(screen.getByText(/Entrar al sistema/i));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Network Error");
+  });
+
+  test("Catch genérico: cuando fetch lanza valor no Error muestra mensaje por defecto", async () => {
+    jest.spyOn(globalThis, "fetch").mockRejectedValueOnce("unexpected failure");
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Error inesperado en autenticación",
+      );
+    });
+  });
+
+  test("formatApiError: detail array de validaciones múltiples", async () => {
+    const errorData = {
+      detail: [
+        { loc: ["body", "email"], msg: "invalid email" },
+        { loc: ["body", "password"], msg: "too short" },
+      ],
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("email: invalid email");
+      expect(screen.getByRole("alert")).toHaveTextContent("password: too short");
+    });
+  });
+
+  test("formatApiError: detail array usa fallbacks campo/valor inválido", async () => {
+    const errorData = {
+      detail: [{}],
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "fallback@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("campo: valor inválido");
+    });
+  });
+
+  test("formatApiError: detail objeto anidado genérico", async () => {
+    const errorData = {
+      detail: {
+        error: {
+          code: "E500",
+          message: "Unexpected",
+        },
+      },
+    };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        JSON.stringify(errorData.detail),
+      );
+    });
+  });
+
+  test("formatApiError: error 400 con detail como objeto genérico", async () => {
+    const errorData = { detail: { codigo: "ERROR_FATAL" } };
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => errorData,
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "error@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        JSON.stringify(errorData.detail),
+      );
+    });
+  });
+
+  test("formatApiError: fallback por defecto cuando detail no existe", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({}),
+    } as unknown as Response);
+
+    render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "nodetail@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByText(/Entrar al sistema/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Error en la operación");
+    });
+  });
+
+  test("registro inválido por campos requeridos faltantes", () => {
+    const { container } = render(<Auth />);
+
+    fireEvent.click(screen.getByText(/Regístrate ahora/i));
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "test@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Todos los campos de registro son obligatorios",
+    );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test("registro inválido por email con formato incorrecto", () => {
+    const { container } = render(<Auth />);
+
+    fireEvent.click(screen.getByText(/Regístrate ahora/i));
+    fireEvent.change(screen.getByPlaceholderText(/Ej: Juan/i), {
+      target: { value: "Juan" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Ej: Pérez/i), {
+      target: { value: "Pérez" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Nombre de tu empresa\/institución/i),
+      {
+        target: { value: "UC3M" },
+      },
+    );
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "email-invalido" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Email no válido");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test("login exitoso usa fallbacks cuando faltan access_token y user_id", async () => {
+    jest.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ role_ids: [1] }),
+    } as unknown as Response);
+
+    const { container } = render(<Auth />);
+
+    fireEvent.change(screen.getByPlaceholderText(/tu@organizacion.com/i), {
+      target: { value: "fallback-auth@test.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), {
+      target: { value: "Password123!" },
+    });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith({
+        access_token: "",
+        user_id: 0,
+        role_ids: [1],
+      });
+    });
+  });
+
+  test("conmuta la visibilidad de la contraseña al pulsar el botón", () => {
+    render(<Auth />);
+    const passwordInput = screen.getByPlaceholderText(
+      /••••••••/i,
+    ) as HTMLInputElement;
+    const toggleButton = screen.getByLabelText(/Mostrar contraseña/i);
+
+    expect(passwordInput.type).toBe("password");
+
+    fireEvent.click(toggleButton);
+    expect(passwordInput.type).toBe("text");
+    expect(screen.getByLabelText(/Ocultar contraseña/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/Ocultar contraseña/i));
+    expect(passwordInput.type).toBe("password");
+    expect(screen.getByLabelText(/Mostrar contraseña/i)).toBeInTheDocument();
   });
 });

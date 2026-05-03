@@ -10,7 +10,7 @@ from app.api.router import api_router
 from app.core.scheduler import AlertMonitorScheduler
 from app.database.database import Base, engine, SessionLocal
 import app.models  # noqa: F401
-from app.database.init_db import create_initial_admin
+from app.database.init_db import create_initial_admin, load_rss_seed_if_empty
 
 logger = logging.getLogger("uvicorn.error")
 scheduler = AlertMonitorScheduler()
@@ -24,6 +24,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     db = SessionLocal()
     try:
         create_initial_admin(db)
+        load_rss_seed_if_empty(db)
     finally:
         db.close()
 
@@ -51,14 +52,18 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        origin.strip()
-        for origin in os.getenv(
-            "NEWSRADAR_CORS_ORIGINS", ""
-        ).split(",")
-        if origin.strip()
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        *[
+            origin.strip()
+            for origin in os.getenv("NEWSRADAR_CORS_ORIGINS", "").split(",")
+            if origin.strip()
+        ],
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 

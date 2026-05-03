@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
+import { AlertCircle, MailCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import "./Auth.css";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -6,8 +9,10 @@ const API_BASE_URL =
 type VerificationStatus = "loading" | "success" | "error";
 
 export const VerifyEmail: React.FC = () => {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<VerificationStatus>("loading");
-  const [message, setMessage] = useState("Validando tu cuenta...");
+  const [message, setMessage] = useState("Cargando...");
+  const [countdown, setCountdown] = useState(3);
 
   const hasCalled = useRef(false);
 
@@ -20,11 +25,9 @@ export const VerifyEmail: React.FC = () => {
 
       if (!token) {
         setStatus("error");
-        setMessage("Token de verificacion no proporcionado.");
+        setMessage("Token de verificación no proporcionado.");
         return;
       }
-
-      hasCalled.current = true;
 
       hasCalled.current = true;
 
@@ -47,19 +50,19 @@ export const VerifyEmail: React.FC = () => {
           const detail =
             typeof errorData.detail === "string"
               ? errorData.detail
-              : "El enlace de verificacion es invalido o ha expirado.";
+              : "El enlace de verificación es inválido o ha expirado.";
           throw new Error(detail);
         }
 
         setStatus("success");
         setMessage(
-          "Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesion.",
+          "Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesión.",
         );
       } catch (error) {
         const errorMessage =
           error instanceof Error
             ? error.message
-            : "No se pudo verificar la cuenta. Intentalo de nuevo mas tarde.";
+            : "No se pudo verificar la cuenta. Inténtalo de nuevo mas tarde.";
         setStatus("error");
         setMessage(errorMessage);
       }
@@ -68,50 +71,91 @@ export const VerifyEmail: React.FC = () => {
     void verifyToken();
   }, []);
 
+  useEffect(() => {
+    if (status !== "success") {
+      setCountdown(3);
+      return;
+    }
+
+    const timer = globalThis.setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => {
+      globalThis.clearInterval(timer);
+    };
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "success" || countdown !== 0) {
+      return;
+    }
+
+    globalThis.close();
+    const fallbackTimer = globalThis.setTimeout(() => {
+      if (!globalThis.closed) {
+        navigate("/login", { replace: true });
+      }
+    }, 500);
+
+    return () => {
+      globalThis.clearTimeout(fallbackTimer);
+    };
+  }, [countdown, navigate, status]);
+
   return (
-    <main className="main-content" aria-labelledby="verify-email-title">
-      <section
-        className="table-container"
-        style={{ maxWidth: 700, margin: "2rem auto" }}
-      >
-        <h2 id="verify-email-title">Verificacion de Cuenta</h2>
-
-        {status === "loading" && (
-          <p role="status" aria-live="polite">
-            Cargando...
-          </p>
-        )}
-
-        {status === "success" && (
-          <div role="status" aria-live="polite">
-            <p>{message}</p>
-            <a
-              href="/"
-              className="btn-primary"
-              style={{ display: "inline-block", marginTop: "1rem" }}
-            >
-              Ir al Login
-            </a>
+    <div className="auth-page">
+      <div className="auth-card verify-email-panel" aria-labelledby="verify-email-title">
+        <header className="auth-header">
+          <div className="auth-logo">
+            <img
+              src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
+              alt="NewsRadar Logo"
+              className="auth-logo-image"
+            />
+            <span>NewsRadar</span>
           </div>
-        )}
+          <h2 id="verify-email-title">Verificación de Cuenta</h2>
+        </header>
 
-        {status === "error" && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="alert-feedback alert-feedback-error"
-          >
-            <p>{message}</p>
-            <a
-              href="/"
-              className="btn-secondary"
-              style={{ display: "inline-block", marginTop: "1rem" }}
-            >
-              Volver al Login
-            </a>
-          </div>
-        )}
-      </section>
-    </main>
+        <section className="verify-email-content">
+          {status === "loading" && (
+            <p role="status" aria-live="polite" className="verify-email-status-row">
+              <MailCheck size={24} className="verify-email-icon" aria-hidden="true" />
+              <span>{message}</span>
+            </p>
+          )}
+
+          {status === "success" && (
+            <>
+              <p role="status" aria-live="polite" className="verify-email-status-row success">
+                <span>{message}</span>
+              </p>
+              <p role="status" aria-live="polite" className="verify-email-status-row">
+                Esta ventana se cerrará automáticamente en {countdown} segundos...
+              </p>
+            </>
+          )}
+
+          {status === "error" && (
+            <>
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="alert-feedback alert-feedback-error verify-email-feedback"
+              >
+                <p className="verify-email-status-row">
+                  <AlertCircle size={20} className="verify-email-icon" aria-hidden="true" />
+                  <span>{message}</span>
+                </p>
+              </div>
+              <a href="/login" className="btn-auth-submit verify-email-submit-link">
+                Volver al Login
+              </a>
+            </>
+          )}
+        </section>
+      </div>
+    </div>
   );
 };

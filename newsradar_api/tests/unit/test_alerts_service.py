@@ -10,7 +10,6 @@ from app.api.routes.alerts import (
     _validate_rss_channels,
     create_user_alert,
     delete_user_alert,
-    get_rss_channels_for_categories,
     get_user_alert,
     list_user_alerts,
     recommend_keywords,
@@ -41,7 +40,7 @@ def test_list_user_alerts_maps_empty_descriptors_and_categories():
     assert len(result) == 1
     assert result[0].descriptors == []
     assert result[0].categories == []
-    assert result[0].rss_channel_ids == []
+    assert result[0].rss_channels_ids == []
 
 
 @pytest.mark.unit
@@ -63,6 +62,8 @@ def test_create_user_alert_owner_not_found_raises_404():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -95,6 +96,8 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -134,6 +137,8 @@ def test_create_user_alert_success_commits_and_returns_alert():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -167,7 +172,7 @@ def test_update_user_alert_applies_fields_and_commits():
         name="viejo",
         descriptors=["x"],
         categories=[],
-        rss_channel_ids=[1, 2],
+        rss_channel_ids=["1", "2"],
         cron_expression="*/5 * * * *",
         is_active=True,
         notify_inbox=True,
@@ -195,7 +200,7 @@ def test_update_user_alert_updates_categories_branch():
         name="viejo",
         descriptors=["x"],
         categories=[],
-        rss_channel_ids=[1, 2],
+        rss_channel_ids=["1", "2"],
         cron_expression="*/5 * * * *",
         is_active=True,
         notify_inbox=True,
@@ -216,6 +221,33 @@ def test_update_user_alert_updates_categories_branch():
 
     assert len(result.categories) == 2
     assert result.categories[0].code == "04010000"
+
+
+@pytest.mark.unit
+def test_update_user_alert_updates_information_sources_branch():
+    db_alert = SimpleNamespace(
+        id=5,
+        user_id=1,
+        name="viejo",
+        descriptors=["x"],
+        categories=[],
+        rss_channel_ids=["1", "2"],
+        cron_expression="*/5 * * * *",
+        is_active=True,
+        notify_inbox=True,
+        notify_email=False,
+    )
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = db_alert
+
+    payload = MagicMock()
+    payload.model_dump.return_value = {
+        "information_sources_ids": ["9", "10"],
+    }
+
+    result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
+
+    assert result.rss_channels_ids == ["9", "10"]
 
 
 @pytest.mark.unit
@@ -264,6 +296,8 @@ def test_create_user_alert_sqlalchemy_error_propagates():
         name="RF01",
         descriptors=["a"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -279,7 +313,7 @@ def test_update_user_alert_sqlalchemy_error_propagates():
         name="viejo",
         descriptors=["x"],
         categories=[],
-        rss_channel_ids=[1, 2],
+        rss_channel_ids=["1", "2"],
         cron_expression="*/5 * * * *",
         is_active=True,
     )
@@ -309,6 +343,8 @@ def test_create_user_alert_exceeds_limit_raises_400():
         name="Alert 21",
         descriptors=["test"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -349,6 +385,8 @@ def test_create_user_alert_below_limit_succeeds():
         name="Alert 20",
         descriptors=["test"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        rss_channels_ids=[],
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
@@ -356,87 +394,6 @@ def test_create_user_alert_below_limit_succeeds():
 
     assert result.id == 15
     assert result.name == "Alert 20"
-    db.add.assert_called_once()
-    db.commit.assert_called_once()
-
-
-@pytest.mark.unit
-def test_get_rss_channels_for_categories_returns_matching_channels():
-    """RF07: Test that get_rss_channels_for_categories returns channels matching the categories."""
-    db = MagicMock()
-
-    # Mock channels with id
-    mock_channels = [
-        SimpleNamespace(id=1),
-        SimpleNamespace(id=2),
-        SimpleNamespace(id=5),
-    ]
-
-    db.query.return_value.filter.return_value.filter.return_value.all.return_value = mock_channels
-
-    category_codes = ["04010000", "01000000"]
-    result = get_rss_channels_for_categories(db, category_codes)
-
-    assert result == [1, 2, 5]
-    assert len(result) == 3
-
-
-@pytest.mark.unit
-def test_get_rss_channels_for_categories_returns_empty_for_no_categories():
-    """RF07: Test that get_rss_channels_for_categories returns empty list when no categories provided."""
-    db = MagicMock()
-
-    result = get_rss_channels_for_categories(db, [])
-
-    assert result == []
-    # DB should not be queried
-    db.query.assert_not_called()
-
-
-@pytest.mark.unit
-def test_create_alert_auto_assigns_channels_when_not_specified():
-    """RF07: Test that channels are auto-assigned based on categories when not specified."""
-    owner = SimpleNamespace(id=1)
-    db = MagicMock()
-
-    # Mock user query
-    query_mock = MagicMock()
-
-    # Mock count query (for RF03)
-    count_mock = MagicMock()
-    count_mock.filter.return_value.count.return_value = 5
-
-    # Mock RSS channel query (for RF07)
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = [
-        SimpleNamespace(id=10),
-        SimpleNamespace(id=20),
-    ]
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        count_mock,  # For count query
-        channel_query_mock,  # For RSS channel auto-assignment
-    ]
-    query_mock.filter.return_value.first.return_value = owner
-
-    def _refresh_side_effect(obj):
-        obj.id = 15
-
-    db.refresh.side_effect = _refresh_side_effect
-
-    payload = AlertCreate(
-        name="Alert with auto channels",
-        descriptors=["tech"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
-        rss_channel_ids=None,  # Not specified, should auto-assign
-        cron_expression="*/1 * * * *",
-    )
-
-    result = create_user_alert(user_id=1, payload=payload, db=db)
-
-    assert result.id == 15
-    assert result.rss_channel_ids == [10, 20]
     db.add.assert_called_once()
     db.commit.assert_called_once()
 
@@ -477,57 +434,17 @@ def test_create_alert_with_explicit_channels():
         name="Alert with explicit channels",
         descriptors=["tech"],
         categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
-        rss_channel_ids=[7, 9],  # Explicitly specified
+        rss_channels_ids=["7", "9"],  # Explicitly specified
+        information_sources_ids=[],
         cron_expression="*/1 * * * *",
     )
 
     result = create_user_alert(user_id=1, payload=payload, db=db)
 
     assert result.id == 20
-    assert result.rss_channel_ids == [7, 9]
+    assert result.rss_channels_ids == ["7", "9"]
     db.add.assert_called_once()
     db.commit.assert_called_once()
-
-
-@pytest.mark.unit
-def test_create_alert_with_invalid_channels_raises_400():
-    """RF07: Test that specifying non-existent RSS channels raises 400 error."""
-    owner = SimpleNamespace(id=1)
-    db = MagicMock()
-
-    # Mock user query
-    query_mock = MagicMock()
-
-    # Mock count query (for RF03)
-    count_mock = MagicMock()
-    count_mock.filter.return_value.count.return_value = 3
-
-    # Mock RSS channel validation - only 1 channel exists instead of 2
-    channel_validation_mock = MagicMock()
-    channel_validation_mock.filter.return_value.all.return_value = [
-        SimpleNamespace(id=7),  # Only one exists
-    ]
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        count_mock,  # For count query
-        channel_validation_mock,  # For RSS channel validation
-    ]
-    query_mock.filter.return_value.first.return_value = owner
-
-    payload = AlertCreate(
-        name="Alert with invalid channels",
-        descriptors=["tech"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
-        rss_channel_ids=[7, 999],  # 999 doesn't exist
-        cron_expression="*/1 * * * *",
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        create_user_alert(user_id=1, payload=payload, db=db)
-
-    assert exc_info.value.status_code == 400
-    assert "canales rss" in exc_info.value.detail.lower()
 
 
 @pytest.mark.unit
@@ -539,7 +456,7 @@ def test_update_alert_with_rss_channels():
         name="old",
         descriptors=["x"],
         categories=[{"code": "04010000", "label": "Tech"}],
-        rss_channel_ids=[1, 2],
+        rss_channel_ids=["1", "2"],
         cron_expression="*/5 * * * *",
         is_active=True,
         notify_inbox=True,
@@ -563,11 +480,11 @@ def test_update_alert_with_rss_channels():
         SimpleNamespace(id=30),
     ]
 
-    payload = AlertUpdate(rss_channel_ids=[10, 20, 30])
+    payload = AlertUpdate(rss_channels_ids=["10", "20", "30"])
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
-    assert result.rss_channel_ids == [10, 20, 30]
+    assert result.rss_channels_ids == ["10", "20", "30"]
     db.commit.assert_called_once()
     db.refresh.assert_called_once_with(db_alert)
 
@@ -672,12 +589,12 @@ def test_update_user_alert_auto_assigns_channels_when_rss_channel_ids_is_none():
 
     db.query.side_effect = [alert_query, channels_query]
 
-    payload = AlertUpdate(rss_channel_ids=None)
+    payload = AlertUpdate(rss_channels_ids=None)
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
-    assert result.rss_channel_ids == [10, 20]
-    assert db_alert.rss_channel_ids == [10, 20]
+    assert result.rss_channels_ids == ["10", "20"]
+    assert db_alert.rss_channel_ids == ["10", "20"]
     db.commit.assert_called_once()
     db.refresh.assert_called_once_with(db_alert)
 
@@ -691,7 +608,7 @@ def test_get_user_alert_success_returns_alert_data():
         name="Mi alerta",
         descriptors=["energia"],
         categories=[{"code": "04010000", "label": "Tech"}],
-        rss_channel_ids=[5, 6],
+        rss_channel_ids=["5", "6"],
         cron_expression="*/10 * * * *",
         is_active=True,
         notify_inbox=True,
@@ -704,7 +621,7 @@ def test_get_user_alert_success_returns_alert_data():
     assert result.id == 8
     assert result.user_id == 2
     assert result.name == "Mi alerta"
-    assert result.rss_channel_ids == [5, 6]
+    assert result.rss_channels_ids == ["5", "6"]
 
 
 @pytest.mark.unit
