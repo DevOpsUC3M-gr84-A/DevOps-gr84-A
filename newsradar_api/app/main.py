@@ -49,7 +49,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_DEFAULT_DEV_ORIGINS = "http://localhost:5173,http://localhost:8000"
+_DEFAULT_DEV_ORIGINS = "http://localhost:5173,http://localhost:8000"  # NOSONAR
 
 _allowed_origins_raw = os.getenv("ALLOWED_ORIGINS") or os.getenv(
     "NEWSRADAR_CORS_ORIGINS", _DEFAULT_DEV_ORIGINS
