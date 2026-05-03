@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import {
   Bell,
+  CheckCheck,
   Menu,
   Rss,
   LayoutDashboard,
@@ -163,14 +164,276 @@ const ResumenPage = () => (
   </section>
 );
 
-const NotificationsPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Buzon de Notificaciones</h1>
-      <p className="section-subtitle">Buzon de avisos y alertas detectadas.</p>
-    </header>
-  </section>
-);
+interface NotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+const NOTIFICATION_PREVIEW_MAX_LENGTH = 250;
+
+// Linear, non-regex tag stripper. Safe against ReDoS because it scans each
+// character exactly once and never backtracks. Used only as a fallback when
+// DOMParser is not available or fails.
+const stripHtmlTagsLinear = (input: string): string => {
+  let result = "";
+  let insideTag = false;
+  for (const ch of input) {
+    if (insideTag) {
+      if (ch === ">") insideTag = false;
+    } else if (ch === "<") {
+      insideTag = true;
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+};
+
+const stripHtmlAndTruncate = (
+  html: string,
+  maxLength: number = NOTIFICATION_PREVIEW_MAX_LENGTH,
+): string => {
+  if (!html) return "";
+
+  let plainText = "";
+  if (typeof DOMParser === "undefined") {
+    plainText = stripHtmlTagsLinear(html);
+  } else {
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      plainText = doc.body?.textContent ?? "";
+    } catch {
+      plainText = stripHtmlTagsLinear(html);
+    }
+  }
+
+  plainText = plainText.replaceAll(/\s+/g, " ").trim();
+
+  if (plainText.length > maxLength) {
+    return `${plainText.slice(0, maxLength)}...`;
+  }
+  return plainText;
+};
+
+const NotificationsPage = () => {
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const userId = globalThis.localStorage.getItem("userId");
+    const token = globalThis.localStorage.getItem("token");
+
+    if (!userId || !token) {
+      setIsLoading(false);
+      setError("Sesion no valida.");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/users/${userId}/notifications?limit=30`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
+        }
+
+        const data = await response.json();
+        const items: NotificationItem[] = Array.isArray(data)
+          ? data.map((raw: any) => ({
+              id: Number(raw?.id),
+              title: String(raw?.title ?? ""),
+              message: String(raw?.message ?? ""),
+              created_at: String(raw?.created_at ?? ""),
+              is_read: Boolean(raw?.is_read),
+            }))
+          : [];
+
+        setNotifications(items);
+        setError(null);
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
+        setError(
+          err instanceof Error
+            ? err.message
+            : "No se pudieron cargar las notificaciones.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadNotifications();
+    return () => controller.abort();
+  }, []);
+
+  const markAsRead = async (notificationId: number) => {
+    const userId = globalThis.localStorage.getItem("userId");
+    const token = globalThis.localStorage.getItem("token");
+
+    if (!userId || !token) {
+      setError("Sesion no valida.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/users/${userId}/notifications/${notificationId}/read`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}`);
+      }
+
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notificationId ? { ...item, is_read: true } : item,
+        ),
+      );
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo marcar como leida la notificacion.",
+      );
+    }
+  };
+
+  const clearMailbox = async () => {
+    const userId = globalThis.localStorage.getItem("userId");
+    const token = globalThis.localStorage.getItem("token");
+
+    if (!userId || !token) {
+      setError("Sesion no valida.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/users/${userId}/notifications`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!response.ok && response.status !== 204) {
+        throw new Error(`Error ${response.status}`);
+      }
+
+      setNotifications([]);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "No se pudo limpiar el buzon.",
+      );
+    }
+  };
+
+  const formatDate = (iso: string): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  };
+
+  return (
+    <section className="main-content">
+      <header className="page-heading">
+        <div className="notifications-toolbar">
+          <div>
+            <h1 className="section-title">Buzon de Notificaciones</h1>
+            <p className="section-subtitle">
+              Buzon de avisos y alertas detectadas.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="notifications-clear-button"
+            onClick={() => void clearMailbox()}
+            disabled={isLoading || notifications.length === 0}
+          >
+            Limpiar Buzon
+          </button>
+        </div>
+      </header>
+
+      {isLoading && (
+        <p className="form-hint-text">Cargando notificaciones...</p>
+      )}
+
+      {error && (
+        <div
+          className="alert-feedback alert-feedback-error"
+          role="alert"
+          aria-live="assertive"
+        >
+          {error}
+        </div>
+      )}
+
+      {!isLoading && !error && notifications.length === 0 && (
+        <p className="form-hint-text">No tienes notificaciones todavia.</p>
+      )}
+
+      {!isLoading && !error && notifications.length > 0 && (
+        <ul className="notifications-list">
+          {notifications.map((n) => (
+            <li
+              key={n.id}
+              className={`notification-item ${
+                n.is_read ? "notification-read" : "notification-unread"
+              }`}
+            >
+              <div className="notification-item-header">
+                <h3 className="notification-title">{n.title}</h3>
+                <span className="notification-date">
+                  {formatDate(n.created_at)}
+                </span>
+              </div>
+              <p className="notification-message">
+                {stripHtmlAndTruncate(n.message)}
+              </p>
+              <div className="notification-actions">
+                {!n.is_read && (
+                  <button
+                    type="button"
+                    className="notification-read-button"
+                    onClick={() => void markAsRead(n.id)}
+                  >
+                    <CheckCheck size={16} />
+                    Marcar como leida
+                  </button>
+                )}
+                {n.is_read && (
+                  <span className="notification-read-label">Leida</span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
 
 const LanguageSwitcher = ({
   activeLanguage,
