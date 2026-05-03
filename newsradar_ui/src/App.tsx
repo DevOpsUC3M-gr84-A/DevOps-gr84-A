@@ -177,6 +177,25 @@ const API_BASE_URL =
 
 const NOTIFICATION_PREVIEW_MAX_LENGTH = 250;
 
+// Linear, non-regex tag stripper. Safe against ReDoS because it scans each
+// character exactly once and never backtracks. Used only as a fallback when
+// DOMParser is not available or fails.
+const stripHtmlTagsLinear = (input: string): string => {
+  let result = "";
+  let insideTag = false;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (insideTag) {
+      if (ch === ">") insideTag = false;
+    } else if (ch === "<") {
+      insideTag = true;
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+};
+
 const stripHtmlAndTruncate = (
   html: string,
   maxLength: number = NOTIFICATION_PREVIEW_MAX_LENGTH,
@@ -189,10 +208,10 @@ const stripHtmlAndTruncate = (
       const doc = new DOMParser().parseFromString(html, "text/html");
       plainText = doc.body?.textContent ?? "";
     } catch {
-      plainText = html.replace(/<[^>]*>/g, "");
+      plainText = stripHtmlTagsLinear(html);
     }
   } else {
-    plainText = html.replace(/<[^>]*>/g, "");
+    plainText = stripHtmlTagsLinear(html);
   }
 
   plainText = plainText.replace(/\s+/g, " ").trim();

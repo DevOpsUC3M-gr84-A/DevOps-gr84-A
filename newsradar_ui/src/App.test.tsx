@@ -1278,4 +1278,220 @@ describe("Componente Raíz App", () => {
     });
   });
 
+  describe("NotificationsPage", () => {
+    const buildNotification = (overrides: Partial<{
+      id: number;
+      title: string;
+      message: string;
+      created_at: string;
+      is_read: boolean;
+    }> = {}) => ({
+      id: 1,
+      title: "Notif 1",
+      message: "<p>Mensaje <b>uno</b></p>",
+      created_at: "2026-05-01T10:00:00Z",
+      is_read: false,
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      localStorage.setItem("token", "fake-token");
+      localStorage.setItem("userId", "1");
+      localStorage.setItem("userRoles", JSON.stringify([1]));
+      mockedUseAuth.mockReturnValue({
+        login: vi.fn(),
+        logout: vi.fn(),
+        token: "fake-token",
+        isAuthenticated: true,
+      });
+    });
+
+    test("renderiza notificaciones obtenidas del backend con limit", async () => {
+      const fetchMock = vi.fn((url: string) => {
+        if (url.includes("/notifications")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              buildNotification({ id: 1, title: "Alerta A" }),
+              buildNotification({ id: 2, title: "Alerta B", is_read: true }),
+            ],
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ first_name: "U", last_name: "T", role_ids: [1] }),
+        } as Response);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={["/notificaciones"]}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Alerta A")).toBeInTheDocument();
+        expect(screen.getByText("Alerta B")).toBeInTheDocument();
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/v1/users/1/notifications?limit=30"),
+        expect.any(Object),
+      );
+    });
+
+    test("clic en 'Marcar como leida' actualiza la UI a estado leida", async () => {
+      const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+        if (url.includes("/notifications/1/read") && init?.method === "PUT") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ ...buildNotification(), is_read: true }),
+          } as Response);
+        }
+        if (url.includes("/notifications")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [buildNotification({ id: 1, title: "Para leer" })],
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ first_name: "U", last_name: "T", role_ids: [1] }),
+        } as Response);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={["/notificaciones"]}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      const readButton = await screen.findByRole("button", {
+        name: /Marcar como leida/i,
+      });
+      fireEvent.click(readButton);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("button", { name: /Marcar como leida/i }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText("Leida")).toBeInTheDocument();
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/v1/users/1/notifications/1/read"),
+        expect.objectContaining({ method: "PUT" }),
+      );
+    });
+
+    test("clic en 'Limpiar Buzon' borra todas las notificaciones de la UI", async () => {
+      const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+        if (
+          url.endsWith("/api/v1/users/1/notifications") &&
+          init?.method === "DELETE"
+        ) {
+          return Promise.resolve({ ok: true, status: 204 } as Response);
+        }
+        if (url.includes("/notifications")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [
+              buildNotification({ id: 1, title: "N1" }),
+              buildNotification({ id: 2, title: "N2" }),
+            ],
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ first_name: "U", last_name: "T", role_ids: [1] }),
+        } as Response);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={["/notificaciones"]}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await screen.findByText("N1");
+      await screen.findByText("N2");
+
+      const clearBtn = screen.getByRole("button", { name: /Limpiar Buzon/i });
+      fireEvent.click(clearBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText("N1")).not.toBeInTheDocument();
+        expect(screen.queryByText("N2")).not.toBeInTheDocument();
+        expect(
+          screen.getByText(/No tienes notificaciones todavia/i),
+        ).toBeInTheDocument();
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://localhost:8000/api/v1/users/1/notifications",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+
+    test("muestra mensaje de error si la carga inicial falla", async () => {
+      const fetchMock = vi.fn((url: string) => {
+        if (url.includes("/notifications")) {
+          return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ first_name: "U", last_name: "T", role_ids: [1] }),
+        } as Response);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={["/notificaciones"]}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent(/Error 500/i);
+      });
+    });
+
+    test("muestra error si markAsRead falla en el backend", async () => {
+      const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+        if (url.includes("/notifications/1/read") && init?.method === "PUT") {
+          return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+        if (url.includes("/notifications")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [buildNotification({ id: 1 })],
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ first_name: "U", last_name: "T", role_ids: [1] }),
+        } as Response);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(
+        <MemoryRouter initialEntries={["/notificaciones"]}>
+          <App />
+        </MemoryRouter>,
+      );
+
+      const readBtn = await screen.findByRole("button", {
+        name: /Marcar como leida/i,
+      });
+      fireEvent.click(readBtn);
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent(/Error 500/i);
+      });
+    });
+  });
+
 });
