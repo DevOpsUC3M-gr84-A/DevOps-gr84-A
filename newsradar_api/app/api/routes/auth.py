@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.models.user import User as DBUser
-from app.schemas.user import UserCreate, User, UserInDB, TokenVerification, UserResponse
+from app.schemas.user import UserCreate, User, UserInDB, TokenVerification, UserResponse, ChangePasswordRequest
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -16,7 +16,7 @@ from app.schemas.auth import (
     MessageResponse,
 )
 from app.stores.memory import active_tokens, users_store
-from app.services.user_service import role_ids_from_role
+from app.services.user_service import role_ids_from_role, get_password_hash
 from app.utils.user_utils import ensure_role_ids_exist, sync_memory_user, to_user_schema
 from app.utils.email_utils import send_reset_password_email, send_verification_email
 from app.services.user_service import (
@@ -178,3 +178,34 @@ def reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
     return MessageResponse(message=message)
+
+
+@api_auth_router.put("/users/{user_id}/password", tags=["users"], summary="Actualiza la contraseña de un usuario")
+def change_user_password(
+    user_id: int,
+    payload: ChangePasswordRequest,
+    db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Permite a un usuario autenticado cambiar su propia contraseña proporcionando la actual.
+    """
+    # Buscar al usuario en la BD
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Usuario no encontrado."
+        )
+
+    # Comprobar que la contraseña actual coincide con el hash guardado
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="La contraseña actual es incorrecta."
+        )
+
+    # Encriptar la nueva y actualizamos
+    user.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
+
+    return {"message": "Tu contraseña se ha actualizado correctamente."}
