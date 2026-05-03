@@ -1,18 +1,45 @@
 services:
-  # Servicio del Backend API
-  backend:
+  # Servicio del Backend API (FastAPI + Uvicorn)
+  api-backend:
     build:
       context: ./newsradar_api
       dockerfile: Dockerfile
     image: newsradar_backend_image
     container_name: newsradar_backend_container
+    # Inyección de variables de entorno desde el .env local del backend.
+    # Permite mantener SMTP, contraseñas, URLs y demás secretos fuera del compose.
+    env_file:
+      - ./newsradar_api/.env
     ports:
       - "8000:8000"
     environment:
+      # Estos overrides tienen prioridad sobre el .env y fijan defaults seguros
+      # para arranque en desarrollo aunque el .env esté incompleto.
       - ENVIRONMENT=development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
+      - NEWSRADAR_ADMIN_PASSWORD=${NEWSRADAR_ADMIN_PASSWORD:-admin123}
+      - NEWSRADAR_LECTOR_PASSWORD=${NEWSRADAR_LECTOR_PASSWORD:-lector123}
     volumes:
-      - ./newsradar_api/app:/app/app
+      # Persistencia de la base de datos SQLite en el host. La carpeta debe
+      # pertenecer al UID 1001 (appuser) o ser escribible por él.
+      - ./newsradar_api/data:/app/data
+      # Hot-reload del código fuente en desarrollo. Se monta en :ro porque
+      # uvicorn solo necesita leer ficheros para detectar cambios; así
+      # appuser nunca intentará escribir __pycache__ en el host.
+      - ./newsradar_api/app:/app/app:ro
+    # Override del CMD del Dockerfile para activar el reloader en local.
+    # En producción la imagen se ejecuta con el CMD por defecto (sin --reload).
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/app
     restart: unless-stopped
     depends_on:
       - elasticsearch
