@@ -334,6 +334,44 @@ class TestUpdateDBUser:
         assert result.name == "Updated"  # Should be updated
 
 
+    def test_update_db_user_avatar_and_banner(self):
+        """Verifica que update_db_user actualiza el avatar y el banner correctamente."""
+        db = MagicMock()
+        db.commit = MagicMock()
+        db.refresh = MagicMock()
+
+        # Creamos un usuario de BD falso sin fotos
+        db_user = User(
+            id=1,
+            email="foto@test.com",
+            name="Foto",
+            surname="User",
+            organization="Org",
+            hashed_password="hash",
+            role=UserRole.LECTOR,
+            is_verified=False,
+            avatar=None,
+            banner=None,
+        )
+
+        # Simulamos el payload del frontend con las fotos en Base64
+        payload = UserUpdate(
+            avatar="data:image/png;base64,TEXTO_AVATAR_FALSO",
+            banner="data:image/png;base64,TEXTO_BANNER_FALSO",
+        )
+
+        result = update_db_user(db, db_user, payload)
+
+        # Verificamos que se han inyectado bien
+        assert result is db_user
+        assert result.avatar == "data:image/png;base64,TEXTO_AVATAR_FALSO"
+        assert result.banner == "data:image/png;base64,TEXTO_BANNER_FALSO"
+        
+        # Verificamos que se guardó en BD
+        db.commit.assert_called_once()
+        db.refresh.assert_called_once_with(result)
+
+
 @pytest.mark.unit
 class TestVerificationExpiry:
     """Tests for email verification expiry logic."""

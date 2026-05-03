@@ -9,7 +9,7 @@ from app.main import app
 from app.api.routes.auth import login, register, existe_dominio
 from app.schemas.auth import LoginRequest
 from app.schemas.user import UserCreate, UserInDB
-from app.services.user_service import UserRole
+from app.services.user_service import UserRole, get_password_hash
 from app.stores.memory import active_tokens, users_store
 from app.database.database import get_db
 
@@ -132,7 +132,9 @@ def test_register_success_returns_user_schema(monkeypatch):
         organization="QA",
         password="Secret123!",
         is_verified=False,
-        verification_token="token_fake"
+        verification_token="token_fake",
+        avatar= None,
+        banner= None,
     )
 
     fake_db_user = SimpleNamespace(
@@ -144,7 +146,9 @@ def test_register_success_returns_user_schema(monkeypatch):
         role=UserRole.GESTOR,
         hashed_password="hashed",
         is_verified=False,
-        verification_token="token_fake"
+        verification_token="token_fake",
+        avatar=None,
+        banner=None,
     )
 
     monkeypatch.setattr("app.api.routes.auth.ensure_role_ids_exist", lambda _role_ids: None)
@@ -198,7 +202,9 @@ def test_login_verified_user_returns_token(monkeypatch):
         name="Verified",
         surname="User",
         organization="QA",
-        role=UserRole.GESTOR
+        role=UserRole.GESTOR,
+        avatar=None,
+        banner=None,
     )
 
     db_mock = MagicMock()
@@ -321,3 +327,64 @@ def test_reset_password_fails(monkeypatch):
     response = client.post("/api/v1/auth/reset-password", json={"token": "fake", "new_password": "password123"})
     assert response.status_code == 400
     app.dependency_overrides.clear()
+
+@pytest.mark.unit
+def test_change_password_success(monkeypatch, api_client):
+    """Prueba el camino feliz: contraseña actual correcta y nueva válida"""
+    db_mock = MagicMock()
+    
+    # Generamos un hash real
+    real_hash = get_password_hash("old_password")
+    fake_user = SimpleNamespace(id=1, hashed_password=real_hash)
+    
+    db_mock.query.return_value.filter.return_value.first.return_value = fake_user
+    api_client.app.dependency_overrides[get_db] = lambda: db_mock
+
+    # Pasamos la contraseña correcta que corresponde al hash
+    payload = {"current_password": "old_password", "new_password": "NewPassword123!"}
+    response = api_client.put("/api/v1/users/1/password", json=payload)
+
+    assert response.status_code == 200
+    assert "actualizado correctamente" in response.json()["message"]
+    # Verificamos que se ha llamado a guardar en la DB
+    db_mock.commit.assert_called_once()
+    
+    api_client.app.dependency_overrides.clear()
+
+@pytest.mark.unit
+def test_change_password_wrong_current_password(monkeypatch, api_client):
+    """Prueba que devuelve error 400 si la contraseña actual es incorrecta"""
+    db_mock = MagicMock()
+    
+    # Generamos un hash real
+    real_hash = get_password_hash("old_password")
+    fake_user = SimpleNamespace(id=1, hashed_password=real_hash)
+    
+    db_mock.query.return_value.filter.return_value.first.return_value = fake_user
+    api_client.app.dependency_overrides[get_db] = lambda: db_mock
+
+    # Enviar contraseña incorrecta
+    payload = {"current_password": "wrong_password", "new_password": "NewPassword123!"}
+    response = api_client.put("/api/v1/users/1/password", json=payload)
+
+    assert response.status_code == 400
+    assert "actual es incorrecta" in response.json()["detail"]
+    
+    api_client.app.dependency_overrides.clear()
+
+@pytest.mark.unit
+def test_change_password_user_not_found(api_client):
+    """Prueba que devuelve error 404 si el usuario no existe"""
+    db_mock = MagicMock()
+    # BD devuelve None (usuario no existe)
+    db_mock.query.return_value.filter.return_value.first.return_value = None
+    
+    api_client.app.dependency_overrides[get_db] = lambda: db_mock
+
+    payload = {"current_password": "old_password", "new_password": "NewPassword123!"}
+    response = api_client.put("/api/v1/users/999/password", json=payload)
+
+    assert response.status_code == 404
+    assert "no encontrado" in response.json()["detail"]
+    
+    api_client.app.dependency_overrides.clear()

@@ -24,6 +24,8 @@ def sanitize_user(user: UserInDB) -> User:
         last_name=user.last_name,
         organization=user.organization,
         role_ids=user.role_ids,
+        avatar=user.avatar,
+        banner=user.banner,
     )
 
 
@@ -37,6 +39,8 @@ def to_user_schema(user: DBUser) -> User:
         role_ids=role_ids_from_role(user.role),
         is_verified=bool(user.is_verified),
         is_active=bool(user.is_verified),
+        avatar=user.avatar,
+        banner=user.banner,
     )
 
 
@@ -49,4 +53,6 @@ def sync_memory_user(user: DBUser) -> None:
         organization=user.organization or "",
         role_ids=role_ids_from_role(user.role),
         password=user.hashed_password,
+        avatar=user.avatar,
+        banner=user.banner,
     )
