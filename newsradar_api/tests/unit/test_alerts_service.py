@@ -31,6 +31,8 @@ def test_list_user_alerts_maps_empty_descriptors_and_categories():
         rss_channel_ids=None,
         cron_expression="*/5 * * * *",
         is_active=True,
+        notify_inbox=True,
+        notify_email=False,
     )
     db.query.return_value.filter.return_value.all.return_value = [db_alert]
 
@@ -168,6 +170,8 @@ def test_update_user_alert_applies_fields_and_commits():
         rss_channel_ids=[1, 2],
         cron_expression="*/5 * * * *",
         is_active=True,
+        notify_inbox=True,
+        notify_email=False,
     )
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = db_alert
@@ -194,6 +198,8 @@ def test_update_user_alert_updates_categories_branch():
         rss_channel_ids=[1, 2],
         cron_expression="*/5 * * * *",
         is_active=True,
+        notify_inbox=True,
+        notify_email=False,
     )
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = db_alert
@@ -536,6 +542,8 @@ def test_update_alert_with_rss_channels():
         rss_channel_ids=[1, 2],
         cron_expression="*/5 * * * *",
         is_active=True,
+        notify_inbox=True,
+        notify_email=False,
     )
     db = MagicMock()
 
@@ -648,6 +656,8 @@ def test_update_user_alert_auto_assigns_channels_when_rss_channel_ids_is_none():
         rss_channel_ids=[1, 2],
         cron_expression="*/5 * * * *",
         is_active=True,
+        notify_inbox=True,
+        notify_email=False,
     )
     db = MagicMock()
 
@@ -684,6 +694,8 @@ def test_get_user_alert_success_returns_alert_data():
         rss_channel_ids=[5, 6],
         cron_expression="*/10 * * * *",
         is_active=True,
+        notify_inbox=True,
+        notify_email=False,
     )
     db.query.return_value.filter.return_value.first.return_value = db_alert
 
