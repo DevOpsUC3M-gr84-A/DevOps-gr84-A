@@ -213,6 +213,7 @@ const ProtectedLayout = ({
   const [userName, setUserName] = useState("Usuario");
   const [userRole, setUserRole] = useState("Lector");
   const [userInitials, setUserInitials] = useState("US");
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   const sectionTitleByPath: Record<string, string> = {
     "/dashboard": "DASHBOARD",
@@ -267,6 +268,7 @@ const ProtectedLayout = ({
           first_name?: string;
           last_name?: string;
           role_ids?: unknown;
+          avatar?: string;
         };
 
         const firstName = (data.first_name ?? "Usuario").trim();
@@ -282,6 +284,7 @@ const ProtectedLayout = ({
         setUserName(fullName);
         setUserRole(roleIdToLabel(parsedRoleIds));
         setUserInitials(initials);
+        setUserAvatar(data.avatar || null);
       } catch {
         // Keep fallback local values if profile cannot be loaded.
       }
@@ -304,7 +307,7 @@ const ProtectedLayout = ({
       <aside className={`sidebar ${isSidebarOpen ? "" : "closed"}`}>
         <div className="brand-section app-brand-section">
           <img
-            src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
+            src={`${import.meta.env.BASE_URL}newsradar-logo-white.png`}
             alt="NewsRadar Logo"
             className="app-brand-logo"
           />
@@ -389,8 +392,16 @@ const ProtectedLayout = ({
             aria-label="Ir al perfil del usuario logueado"
           >
             <div className="user-badge" aria-label="Usuario logueado">
-              <div className="user-badge-avatar" aria-hidden="true">
-                {userInitials}
+              <div className="user-badge-avatar" aria-hidden="true" style={{ padding: userAvatar ? 0 : undefined, overflow: 'hidden' }}>
+                {userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt="Avatar" 
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} 
+                  />
+                ) : (
+                  userInitials
+                )}
               </div>
               <div className="user-badge-info">
                 <span className="user-badge-name">{userName}</span>

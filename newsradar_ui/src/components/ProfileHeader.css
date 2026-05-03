@@ -1,0 +1,216 @@
+.profile-header-card {
+  width: 100%;
+  background-color: #0f172a;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+/* --- BANNER --- */
+.profile-banner {
+  height: 180px;
+  background-color: #1e293b;
+  background-image: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  transition: opacity 0.3s ease;
+}
+
+.banner-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.profile-banner:hover .banner-actions {
+  opacity: 1;
+}
+
+.banner-action-btn {
+  background: rgba(15, 23, 42, 0.6);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.banner-action-btn:hover {
+  background: rgba(15, 23, 42, 0.8);
+  transform: scale(1.05);
+}
+
+.banner-remove-btn {
+  padding: 8px; /* Más cuadradito/redondo para solo el icono */
+  border-radius: 50%;
+  color: #fca5a5; /* Un rojo clarito */
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.banner-remove-btn:hover {
+  background: rgba(153, 27, 27, 0.8);
+  color: white;
+}
+
+/* --- INFO & AVATAR --- */
+.profile-header-info {
+  display: flex;
+  padding: 0 2rem 2rem 2rem;
+  position: relative;
+  align-items: flex-end;
+  gap: 1.5rem;
+}
+
+.profile-avatar-wrapper {
+  margin-top: -60px;
+  position: relative;
+  z-index: 2;
+}
+
+.profile-avatar {
+  width: 130px;
+  height: 130px;
+  background-color: #ffffff;
+  border: 5px solid #0f172a;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.avatar-initials {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.profile-avatar:hover .avatar-edit-overlay {
+  opacity: 1;
+}
+
+/* Botón flotante eliminar avatar */
+.avatar-remove-btn {
+  position: absolute;
+  top: 0px;
+  right: -5px;
+  background: #1e293b;
+  color: #94a3b8;
+  border: 3px solid #0f172a;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.avatar-remove-btn:hover {
+  background: #334155;
+  color: #fca5a5;
+  transform: scale(1.1);
+}
+
+
+/* --- TEXTOS --- */
+.profile-user-details {
+  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-fullname {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.header-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #15803d;
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.profile-header-role {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .profile-header-info {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .profile-avatar-wrapper {
+    margin-top: -80px;
+  }
+
+  .profile-name-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .profile-fullname {
+    font-size: 1.8rem;
+  }
+}

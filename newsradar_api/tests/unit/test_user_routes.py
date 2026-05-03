@@ -96,3 +96,20 @@ class TestUsersAPIEndpoints:
 	def test_delete_user_api_404(self, api_client, auth_headers):
 		response = api_client.delete("/api/v1/users/9999", headers=auth_headers)
 		assert response.status_code == 404
+	
+	def test_update_user_api_avatar_and_banner(self, api_client, auth_headers, seeded_user):
+		"""Verifica que al hacer PUT al endpoint de usuario, se guarden las imágenes."""
+		payload = {
+			"avatar": "data:image/png;base64,AVATAR_REAL_API",
+			"banner": "data:image/jpeg;base64,BANNER_REAL_API"
+		}
+		
+		# Simulamos la petición del frontend
+		response = api_client.put(f"/api/v1/users/{seeded_user.id}", json=payload, headers=auth_headers)
+		
+		# Verificamos que el servidor responde OK
+		assert response.status_code == 200
+		
+		# Verificamos que el JSON devuelto contiene las fotos (confirmando que el to_user_schema funciona)
+		assert response.json()["avatar"] == "data:image/png;base64,AVATAR_REAL_API"
+		assert response.json()["banner"] == "data:image/jpeg;base64,BANNER_REAL_API"

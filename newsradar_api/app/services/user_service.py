@@ -85,6 +85,10 @@ def update_db_user(db: Session, db_user: User, payload: UserUpdate) -> User:
         db_user.hashed_password = get_password_hash(data["password"])
     if "role_ids" in data and data["role_ids"] is not None:
         db_user.role = role_from_role_ids(data["role_ids"])
+    if "avatar" in data:
+        db_user.avatar = data["avatar"]
+    if "banner" in data:
+        db_user.banner = data["banner"]
 
     try:
         db.commit()

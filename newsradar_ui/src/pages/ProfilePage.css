@@ -10,14 +10,32 @@
 
 .profile-container {
   display: grid;
-  width: min(100%, 1280px);
+  width: min(100%, 1400px); /* Ensanchado un poco más para pantallas grandes */
   margin: 0 auto;
-  gap: 1.5rem;
+  gap: 2rem;
+}
+
+/* Títulos principales de la página (¡Faltaban!) */
+.page-heading {
+  margin-bottom: 0.5rem;
+}
+
+.section-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+}
+
+.section-subtitle {
+  font-size: 1.15rem;
+  color: #64748b;
+  margin: 0;
 }
 
 .profile-layout {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr); /* Columna derecha más ancha */
   gap: 2rem;
   align-items: start;
 }
@@ -25,7 +43,7 @@
 .form-row-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: end;
   margin-bottom: 1.5rem;
 }
@@ -44,7 +62,7 @@
 .profile-main-column,
 .profile-side-column {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
   min-width: 0;
 }
 
@@ -59,23 +77,25 @@
 }
 
 .profile-card {
-  padding: 1.75rem;
+  padding: 2rem; /* Más espacio interior */
 }
 
 .profile-card-header {
   display: grid;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .profile-card-header h2 {
   margin: 0;
-  font-size: 1.1rem;
-  color: #334155;
+  font-size: 1.4rem; /* Arreglado: solo 1 tamaño y más grande */
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .profile-card-header p {
   margin: 0;
+  font-size: 1.05rem;
   color: #64748b;
   line-height: 1.5;
 }
@@ -83,7 +103,7 @@
 .profile-field {
   width: 100%;
   display: grid;
-  gap: 6px;
+  gap: 8px; /* Separación entre la etiqueta y la caja */
   margin-bottom: 1.5rem;
 }
 
@@ -91,8 +111,29 @@
   margin-bottom: 0;
 }
 
+.profile-field label{
+  font-size: 0.95rem; /* Etiqueta más grande */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+}
+
+.profile-field p {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 14px 18px; /* Cajas mucho más amplias */
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  color: #1e293b;
+  line-height: 1.5;
+  font-size: 1.15rem;
+}
+
 .profile-card-actions {
-  margin-top: 1.25rem;
+  margin-top: 2rem;
   display: flex;
   justify-content: flex-end;
 }
@@ -101,7 +142,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1rem;
+  padding: 0.8rem 1.25rem;
+  font-size: 1.05rem;
   border-radius: 10px;
   border: 1px solid #2563eb;
   background: #ffffff;
@@ -119,84 +161,33 @@
   transform: translateY(-1px);
 }
 
-.profile-field label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #475569;
-}
-
-.profile-field p {
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
-  color: #334155;
-  line-height: 1.45;
-}
-
 .security-card {
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
 .security-actions {
   display: grid;
-  gap: 0.75rem;
-}
-
-.verification-message {
-  margin: 0;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.verification-message-success {
-  color: #15803d;
-}
-
-.verification-message-error {
-  color: #b91c1c;
-}
-
-.email-verification-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: 10px;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
-.verified {
-  color: #15803d;
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-
-.not-verified {
-  color: #c2410c;
-  background: #fff7ed;
-  border-color: #fdba74;
+  gap: 1rem; /* Botones más separados */
 }
 
 .security-action-link {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.9rem 1rem;
+  padding: 1.1rem 1.25rem; /* Botones mucho más altos */
   border-radius: 12px;
   border: 1px solid #dbe4f0;
   text-decoration: none;
   color: #334155;
   background: #f8fafc;
   font-weight: 600;
+  font-size: 1.05rem; /* Texto principal del botón más grande */
   transition: background-color 0.2s ease, border-color 0.2s ease,
     transform 0.2s ease, color 0.2s ease;
+}
+
+.security-action-link span {
+  font-size: 1.1rem; /* El span interior también crece */
 }
 
 .security-action-button {
@@ -221,31 +212,48 @@
   transform: none;
 }
 
+
+.verification-message {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.4;
+  font-size: 0.95rem;
+}
+
+.verification-message-success {
+  color: #15803d;
+}
+
+.verification-message-error {
+  color: #b91c1c;
+}
+
 .danger-card {
-  padding: 1.5rem;
+  padding: 2rem;
   border-color: #fecaca;
   background: linear-gradient(180deg, #fffafa 0%, #fff5f5 100%);
 }
 
 .danger-content {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .danger-warning {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.9rem 1rem;
+  padding: 1.1rem 1.25rem;
   border-radius: 12px;
-  background: #fef2f2; /* Un rojo muy, muy pálido de fondo */
-  color: #991b1b;      /* Un rojo oscuro muy sólido para el texto */
+  background: #fef2f2; 
+  color: #991b1b;      
   border: 1px solid #fee2e2;
 }
 
 .danger-warning p {
   margin: 0;
   line-height: 1.5;
+  font-size: 1.05rem;
 }
 
 .danger-button {
@@ -254,41 +262,80 @@
   justify-content: center;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.9rem 1rem;
+  padding: 1.1rem 1.25rem;
   border: none;
   border-radius: 12px;
-  background: #b91c1c; /* Rojo oscuro */
-  color: #ffffff;      /* Blanco sobre rojo oscuro SIEMPRE pasa */
+  background: #b91c1c; 
+  color: #ffffff;      
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .danger-button:hover {
-  background: #b91c1c;
+  background: #991b1b;
   transform: translateY(-1px);
 }
 
-.loading-state {
-  min-height: 220px;
+.profile-edit-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 18px; /* Igualamos al padding de los <p> */
+  border-radius: 10px;
+  border: 1px solid #2563eb;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 1.15rem; /* Letra de edición más grande */
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
+}
+
+.disabled-field {
+  opacity: 0.7;
+  background-color: #f1f5f9 !important;
+}
+
+.edit-actions {
   display: flex;
+  gap: 1rem; /* Botones más separados al guardar */
+}
+
+.profile-save-button,
+.profile-cancel-button {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #64748b;
-  border: 1px dashed #cbd5e1;
-  border-radius: 14px;
-  background-color: #f8fafc;
+  gap: 0.5rem;
+  padding: 0.8rem 1.25rem;
+  font-size: 1.05rem;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s ease;
 }
 
-.error-alert {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #fecaca;
-  background-color: #fef2f2;
-  color: #b91c1c;
+.profile-save-button {
+  background: #110594;
+  color: white;
 }
 
+.profile-save-button:hover {
+  background: #2d01cd;
+  transform: translateY(-1px);
+}
+
+.profile-cancel-button {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.profile-cancel-button:hover {
+  background: #e2e8f0;
+}
+
+/* Modales */
 .delete-account-modal-overlay {
   position: fixed;
   inset: 0;
@@ -302,32 +349,33 @@
 
 .delete-account-modal-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px; /* Modal más ancho */
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
-  padding: 1.25rem;
+  padding: 1.75rem;
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .delete-account-modal-card h2 {
   margin: 0;
   color: #1e293b;
-  font-size: 1.1rem;
+  font-size: 1.4rem; /* Letra del modal más grande */
 }
 
 .delete-account-modal-card p {
   margin: 0;
   color: #475569;
-  line-height: 1.45;
+  line-height: 1.5;
+  font-size: 1.05rem;
 }
 
 .delete-account-label {
   color: #334155;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.95rem; /* Etiquetas del modal más grandes */
 }
 
 .delete-account-input {
@@ -335,8 +383,8 @@
   box-sizing: border-box;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 0.95rem;
+  padding: 12px 14px;
+  font-size: 1.05rem; /* Letra al teclear contraseñas más grande */
 }
 
 .delete-account-input:focus {
@@ -352,14 +400,16 @@
 .delete-account-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 1rem;
+  margin-top: 0.5rem;
 }
 
 .delete-account-cancel,
 .delete-account-confirm {
   border: none;
   border-radius: 8px;
-  padding: 0.6rem 0.9rem;
+  padding: 0.8rem 1.25rem;
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -380,7 +430,29 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 1024px) {
+.loading-state {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background-color: #f8fafc;
+  font-size: 1.1rem;
+}
+
+.error-alert {
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  background-color: #fef2f2;
+  color: #b91c1c;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 1200px) {
   .profile-layout {
     grid-template-columns: 1fr;
   }
@@ -399,10 +471,11 @@
   .security-card,
   .danger-card {
     border-radius: 14px;
-    padding: 1.25rem;
+    padding: 1.5rem;
   }
 
-  .profile-field p {
-    font-size: 0.93rem;
+  .profile-field p,
+  .profile-edit-input {
+    font-size: 1.05rem;
   }
 }
