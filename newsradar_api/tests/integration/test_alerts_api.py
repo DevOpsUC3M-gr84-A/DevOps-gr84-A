@@ -278,11 +278,11 @@ def test_alert_with_multiple_categories_gets_all_channels_rf07(api_client, seede
         assert response.status_code == 201
         data = response.json()
         # Should have channels from both categories (1 tech + 2 cultura)
-        assert len(data["rss_channel_ids"]) == 3
-        assert set(data["rss_channel_ids"]) == {
-            tech_channel.id,
-            cultura_channel_1.id,
-            cultura_channel_2.id,
+        assert len(data["rss_channels_ids"]) == 3
+        assert set(data["rss_channels_ids"]) == {
+            str(tech_channel.id),
+            str(cultura_channel_1.id),
+            str(cultura_channel_2.id),
         }
 
     finally:

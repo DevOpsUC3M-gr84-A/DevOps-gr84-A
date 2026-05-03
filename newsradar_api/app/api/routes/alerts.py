@@ -126,7 +126,18 @@ def create_user_alert(
         or payload.information_sources_ids
         or []
     )
-    _validate_rss_channels(db, sources_ids)
+    if not sources_ids:
+        codes = _extract_category_codes(payload.categories)
+        if codes:
+            channels = (
+                db.query(RSSChannel)
+                .filter(RSSChannel.iptc_category.in_(codes))
+                .filter(RSSChannel.is_active.is_(True))
+                .all()
+            )
+            sources_ids = [str(c.id) for c in channels]
+    else:
+        _validate_rss_channels(db, sources_ids)
     db_alert = AlertRule(
         user_id=user_id,
         name=payload.name,
