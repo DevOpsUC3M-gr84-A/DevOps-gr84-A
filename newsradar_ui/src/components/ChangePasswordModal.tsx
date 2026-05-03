@@ -111,56 +111,59 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       <dialog open className="delete-account-modal-card">
         <h2>Cambiar Contraseña</h2>
 
-        <label className="delete-account-label">Contraseña actual</label>
-        <div style={{ position: "relative" }}>
-          <input
-            id = "current-password"
-            type={showCurrent ? "text" : "password"}
-            className="delete-account-input"
-            value={formData.current}
-            onChange={(e) => setFormData({ ...formData, current: e.target.value })}
-            placeholder="••••••••"
-            style={{ paddingRight: "40px" }}
-          />
-          <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={eyeButtonStyle}>
-            {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
+        <label className="delete-account-label" style={{ display: "block" }}>
+          Contraseña actual
+          <div style={{ position: "relative", marginTop: "4px" }}>
+            <input
+              type={showCurrent ? "text" : "password"}
+              className="delete-account-input"
+              value={formData.current}
+              onChange={(e) => setFormData({ ...formData, current: e.target.value })}
+              placeholder="••••••••"
+              style={{ paddingRight: "40px" }}
+            />
+            <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={eyeButtonStyle} aria-label="Mostrar/Ocultar contraseña">
+              {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </label>
 
-        <label className="delete-account-label" style={{ marginTop: "10px" }}>Nueva contraseña</label>
-        <div style={{ position: "relative" }}>
-          <input
-            id = "new-password"
-            type={showNew ? "text" : "password"}
-            className="delete-account-input"
-            value={formData.new}
-            onChange={(e) => setFormData({ ...formData, new: e.target.value })}
-            placeholder="••••••••"
-            style={{ paddingRight: "40px" }}
-          />
-          <button type="button" onClick={() => setShowNew(!showNew)} style={eyeButtonStyle}>
-            {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
+        <label className="delete-account-label" style={{ display: "block", marginTop: "10px" }}>
+          Nueva contraseña
+          <div style={{ position: "relative", marginTop: "4px" }}>
+            <input
+              type={showNew ? "text" : "password"}
+              className="delete-account-input"
+              value={formData.new}
+              onChange={(e) => setFormData({ ...formData, new: e.target.value })}
+              placeholder="••••••••"
+              style={{ paddingRight: "40px" }}
+            />
+            <button type="button" onClick={() => setShowNew(!showNew)} style={eyeButtonStyle} aria-label="Mostrar/Ocultar contraseña">
+              {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </label>
         <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "4px 0 0 0", lineHeight: "1.4" }}>
           Debe tener al menos 8 caracteres, incluir una mayúscula, un número y un carácter especial.
         </p>
 
-        <label className="delete-account-label" style={{ marginTop: "10px" }}>Confirmar nueva contraseña</label>
-        <div style={{ position: "relative" }}>
-          <input
-            id = "confirm-password"
-            type={showConfirm ? "text" : "password"}
-            className="delete-account-input"
-            value={formData.confirm}
-            onChange={(e) => setFormData({ ...formData, confirm: e.target.value })}
-            placeholder="••••••••"
-            style={{ paddingRight: "40px" }}
-          />
-          <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeButtonStyle}>
-            {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
+        <label className="delete-account-label" style={{ display: "block", marginTop: "10px" }}>
+          Confirmar nueva contraseña
+          <div style={{ position: "relative", marginTop: "4px" }}>
+            <input
+              type={showConfirm ? "text" : "password"}
+              className="delete-account-input"
+              value={formData.confirm}
+              onChange={(e) => setFormData({ ...formData, confirm: e.target.value })}
+              placeholder="••••••••"
+              style={{ paddingRight: "40px" }}
+            />
+            <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeButtonStyle} aria-label="Mostrar/Ocultar contraseña">
+              {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </label>
 
         {error && <p className="delete-account-error" style={{ marginTop: "10px", color: "#ef4444" }}>{error}</p>}
 

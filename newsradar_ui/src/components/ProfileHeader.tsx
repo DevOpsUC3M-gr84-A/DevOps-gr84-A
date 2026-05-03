@@ -98,14 +98,16 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               <span className="avatar-initials">{initials}</span>
             )}
             
-            <div 
+            <button 
+              type="button"
               className="avatar-edit-overlay" 
               onClick={() => avatarInputRef.current?.click()}
               title="Cambiar foto de perfil"
-              role = "button"
+              aria-label="Cambiar foto de perfil"
+              style={{ border: "none", cursor: "pointer", padding: 0, width: "100%", height: "100%" }}
             >
               <Camera size={24} color="white" />
-            </div>
+            </button>
             <input
               type="file"
               hidden
