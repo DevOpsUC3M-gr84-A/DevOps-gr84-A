@@ -29,6 +29,7 @@ import { ResetPassword } from "./pages/ResetPassword";
 import { useAuth } from "./hooks/useAuth";
 import { SourcesRss } from "./pages/SourcesRss";
 import { ProfilePage } from "./pages/ProfilePage";
+import { Dashboard } from "./pages/Dashboard";
 import { normalizeRoleToId } from "./utils/roleUtils";
 
 interface ProtectedLayoutProps {
@@ -140,17 +141,6 @@ const getStoredUserRoles = (): number[] => {
 
 const canAccessManagementSections = (roles: number[]): boolean =>
   roles.includes(1) || roles.includes(3);
-
-const DashboardPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Dashboard</h1>
-      <p className="section-subtitle">
-        Vision general y metricas clave de tu entorno.
-      </p>
-    </header>
-  </section>
-);
 
 const ResumenPage = () => (
   <section className="main-content">
@@ -513,7 +503,7 @@ function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="resumen" element={<ResumenPage />} />
         <Route
           path="alertas"
