@@ -175,6 +175,34 @@ interface NotificationItem {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+const NOTIFICATION_PREVIEW_MAX_LENGTH = 250;
+
+const stripHtmlAndTruncate = (
+  html: string,
+  maxLength: number = NOTIFICATION_PREVIEW_MAX_LENGTH,
+): string => {
+  if (!html) return "";
+
+  let plainText = "";
+  if (typeof DOMParser !== "undefined") {
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      plainText = doc.body?.textContent ?? "";
+    } catch {
+      plainText = html.replace(/<[^>]*>/g, "");
+    }
+  } else {
+    plainText = html.replace(/<[^>]*>/g, "");
+  }
+
+  plainText = plainText.replace(/\s+/g, " ").trim();
+
+  if (plainText.length > maxLength) {
+    return `${plainText.slice(0, maxLength)}...`;
+  }
+  return plainText;
+};
+
 const NotificationsPage = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -363,7 +391,9 @@ const NotificationsPage = () => {
                   {formatDate(n.created_at)}
                 </span>
               </div>
-              <p className="notification-message">{n.message}</p>
+              <p className="notification-message">
+                {stripHtmlAndTruncate(n.message)}
+              </p>
               <div className="notification-actions">
                 {!n.is_read && (
                   <button
