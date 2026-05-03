@@ -62,6 +62,11 @@ newsradar_api/.coverage
 newsradar_api/htmlcov/
 
 # ==============================
+# Docker persistent volumes (local data)
+# ==============================
+newsradar_api/data/
+
+# ==============================
 # IDE/editor settings
 # ==============================
 .vscode/
