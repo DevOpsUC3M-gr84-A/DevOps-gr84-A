@@ -39,7 +39,7 @@ RSS_REQUEST_HEADERS = {
     "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 }
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
-RSS_FETCH_TIMEOUT_SECONDS = float(os.getenv("RSS_FETCH_TIMEOUT_SECONDS", "10"))
+RSS_FETCH_TIMEOUT_SECONDS = float(os.getenv("RSS_FETCH_TIMEOUT_SECONDS", "5"))
 
 
 class ParsedEntry(BaseModel):
@@ -95,20 +95,24 @@ def _normalize_feed_entry(raw_entry: dict) -> ParsedEntry | None:
 def _parse_feed(channel_url: str):
     def _fetch_and_parse(url: str):
         try:
+            logger.debug("Fetching RSS url=%s", url)
             response = requests.get(
                 url,
                 headers=RSS_REQUEST_HEADERS,
                 timeout=RSS_FETCH_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
+            logger.debug("Successfully fetched RSS url=%s, status=%s", url, response.status_code)
             return feedparser.parse(response.content)
         except requests.RequestException as exc:
             logger.warning("Fallo leyendo RSS url=%s: %s", url, exc)
             return feedparser.parse("")
 
+    logger.debug("Starting to parse feed: %s", channel_url)
     parsed = _fetch_and_parse(channel_url)
 
     if getattr(parsed, "entries", None):
+        logger.debug("Feed parsed successfully with %s entries", len(parsed.entries))
         return parsed
 
     # Forma profesional de actualizar el protocolo a seguro
@@ -116,11 +120,14 @@ def _parse_feed(channel_url: str):
     if parsed_url.scheme == "http":
         # Cambiamos el esquema de forma segura y reconstruimos la URL
         secure_url = urlunparse(parsed_url._replace(scheme="https"))
+        logger.debug("Trying HTTPS version: %s", secure_url)
 
         parsed_https = _fetch_and_parse(secure_url)
         if getattr(parsed_https, "entries", None):
+            logger.debug("HTTPS feed parsed successfully with %s entries", len(parsed_https.entries))
             return parsed_https
 
+    logger.debug("Feed parsing completed for %s", channel_url)
     return parsed
 
 
@@ -310,8 +317,17 @@ def run_alert_monitoring_cycle(db: Session) -> int:
     es_client = _create_elasticsearch_client()
 
     try:
-        for channel in channels:
-            created_articles += _process_channel_entries(channel, alerts, es_client, db)
+        for i, channel in enumerate(channels, 1):
+            logger.info("Processing channel %s/%s: id=%s media=%s url=%s",
+                       i, len(channels), channel.id, channel.media_name, channel.url)
+            try:
+                channel_created = _process_channel_entries(channel, alerts, es_client, db)
+                created_articles += channel_created
+                logger.info("Channel %s/%s completed: created_articles=%s",
+                           i, len(channels), channel_created)
+            except Exception as exc:
+                logger.error("Error processing channel %s/%s id=%s: %s",
+                           i, len(channels), channel.id, exc)
 
         check_time = datetime.now(timezone.utc)
         for alert in alerts:

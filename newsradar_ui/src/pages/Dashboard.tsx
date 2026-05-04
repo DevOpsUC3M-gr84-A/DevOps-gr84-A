@@ -40,6 +40,12 @@ interface DashboardMetrics {
   capturedNews: number;
 }
 
+interface DashboardCategory {
+  label: string;
+  value: number;
+  color: string;
+}
+
 interface DashboardSummaryResponse {
   active_sources: number;
   rss_channels: number;
@@ -57,13 +63,34 @@ const DEFAULT_METRICS: DashboardMetrics = {
   capturedNews: 0,
 };
 
-const DEFAULT_CATEGORIES = [
-  { label: "Política", value: 450, color: "#0f172a" },
-  { label: "Economía", value: 300, color: "#0f172a" },
-  { label: "Tecnología", value: 200, color: "#0f172a" },
-  { label: "Salud", value: 150, color: "#0f172a" },
-  { label: "Deportes", value: 100, color: "#0f172a" },
+const DEFAULT_CATEGORIES: DashboardCategory[] = [
+  { label: "Política", value: 0, color: "#0f172a" },
+  { label: "Economía", value: 0, color: "#0f172a" },
+  { label: "Tecnología", value: 0, color: "#0f172a" },
+  { label: "Salud", value: 0, color: "#0f172a" },
+  { label: "Deportes", value: 0, color: "#0f172a" },
 ];
+
+const DASHBOARD_CACHE_KEY = "newsradar_dashboard_summary";
+
+const getDashboardCache = () => {
+  try {
+    if (typeof window === "undefined") return null;
+    const rawCache = window.sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+    return rawCache ? JSON.parse(rawCache) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setDashboardCache = (cache: unknown) => {
+  try {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // ignore write errors
+  }
+};
 
 const statLookup: Array<{
   title: string;
@@ -111,25 +138,31 @@ const buildAxisLabel = (dateString: string, range: "7d" | "30d") => {
 };
 
 export const Dashboard = () => {
+  const cache = getDashboardCache();
+
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics>(
-    DEFAULT_METRICS,
+    cache?.metrics ?? DEFAULT_METRICS,
   );
   const [trendData, setTrendData] = useState<{
     last_7_days: TrendPoint[];
     last_30_days: TrendPoint[];
-  }>({
-    last_7_days: Array.from({ length: 7 }, (_, index) => ({
-      date: new Date(Date.now() - (6 - index) * 86400000).toISOString().slice(0, 10),
-      value: 0,
-    })),
-    last_30_days: Array.from({ length: 30 }, (_, index) => ({
-      date: new Date(Date.now() - (29 - index) * 86400000).toISOString().slice(0, 10),
-      value: 0,
-    })),
-  });
-  const [topCategories, setTopCategories] = useState(DEFAULT_CATEGORIES);
+  }>(
+    cache?.trendData ?? {
+      last_7_days: Array.from({ length: 7 }, (_, index) => ({
+        date: new Date(Date.now() - (6 - index) * 86400000).toISOString().slice(0, 10),
+        value: 0,
+      })),
+      last_30_days: Array.from({ length: 30 }, (_, index) => ({
+        date: new Date(Date.now() - (29 - index) * 86400000).toISOString().slice(0, 10),
+        value: 0,
+      })),
+    },
+  );
+  const [topCategories, setTopCategories] = useState<DashboardCategory[]>(
+    cache?.topCategories ?? DEFAULT_CATEGORIES,
+  );
   const [selectedRange, setSelectedRange] = useState<"7d" | "30d">("7d");
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(!cache);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -172,15 +205,30 @@ export const Dashboard = () => {
           last_30_days: data.last_30_days,
         });
 
-        if (Array.isArray(data.top_categories) && data.top_categories.length > 0) {
-          setTopCategories(
-            data.top_categories.map((item, index) => ({
-              label: item.label,
-              value: item.value,
-              color: DEFAULT_CATEGORIES[index]?.color ?? "#0f172a",
-            })),
-          );
-        }
+        const categories =
+          Array.isArray(data.top_categories) && data.top_categories.length > 0
+            ? data.top_categories.map((item, index) => ({
+                label: item.label,
+                value: item.value,
+                color: DEFAULT_CATEGORIES[index]?.color ?? "#0f172a",
+              }))
+            : DEFAULT_CATEGORIES;
+
+        setTopCategories(categories);
+
+        setDashboardCache({
+          metrics: {
+            activeSources: data.active_sources,
+            rssChannels: data.rss_channels,
+            alertsConfigured: data.alerts_configured,
+            capturedNews: data.captured_news_total,
+          },
+          trendData: {
+            last_7_days: data.last_7_days,
+            last_30_days: data.last_30_days,
+          },
+          topCategories: categories,
+        });
       } catch (error) {
         if (abortController.signal.aborted) {
           return;
