@@ -4,6 +4,9 @@
   border: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .user-management-section h2 {

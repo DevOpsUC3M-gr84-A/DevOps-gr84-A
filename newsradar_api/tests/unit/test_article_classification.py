@@ -76,10 +76,10 @@ class TestClassifyArticle:
         # Ejecutar
         classify_article("doc-123")
         
-        # Verificar que se actualiza ES con la categoría de la alerta
+        # Verificar que se actualiza ES con la categoría de la alerta (como lista)
         mock_es.index.assert_called_once()
         call_args = mock_es.index.call_args
-        assert call_args[1]["document"]["iptc_category"] == "04010000"  # Primer nivel
+        assert call_args[1]["document"]["iptc_category"] == ["04010000"]
         assert call_args[1]["document"]["iptc_category_source"] == "alert"
 
     @patch("app.services.workflows.classification_workflow.SessionLocal")
@@ -122,11 +122,91 @@ class TestClassifyArticle:
         # Ejecutar
         classify_article("doc-456")
         
-        # Verificar que se actualiza ES con la categoría del canal
+        # Verificar que se actualiza ES con la categoría del canal (como lista)
         mock_es.index.assert_called_once()
         call_args = mock_es.index.call_args
-        assert call_args[1]["document"]["iptc_category"] == "04010000"  # Primer nivel de TECNOLOGIA
+        assert call_args[1]["document"]["iptc_category"] == ["04010000"]
         assert call_args[1]["document"]["iptc_category_source"] == "channel"
+
+    @patch("app.services.workflows.classification_workflow.SessionLocal")
+    @patch("app.services.workflows.classification_workflow.Elasticsearch")
+    def test_classifies_all_categories_when_alert_has_multiple(
+        self, mock_es_class, mock_session_class
+    ):
+        """RF08: Si la alerta tiene varias categorías, todas deben aparecer en ES."""
+
+        mock_es = MagicMock(spec=Elasticsearch)
+        mock_es_class.return_value = mock_es
+        mock_es.get.return_value = {
+            "_source": {
+                "title": "Multi-category article",
+                "alert_id": 1,
+                "channel_id": 1,
+                "source": "Reuters",
+            }
+        }
+
+        mock_db = MagicMock(spec=Session)
+        mock_session_class.return_value = mock_db
+
+        mock_alert = MagicMock(spec=AlertRule)
+        mock_alert.categories = [
+            {"code": "11000000", "label": "Política"},
+            {"code": "04010000", "label": "Economía"},
+        ]
+
+        mock_channel = MagicMock(spec=RSSChannel)
+        mock_channel.iptc_category = CategoriaIPTC.DEPORTES
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value.first.side_effect = [mock_alert, mock_channel]
+        mock_db.query.return_value = mock_query
+
+        classify_article("doc-multi")
+
+        mock_es.index.assert_called_once()
+        stored = mock_es.index.call_args[1]["document"]["iptc_category"]
+        assert isinstance(stored, list), "iptc_category debe ser una lista"
+        assert "11000000" in stored   # 11000000[:4]+"0000" = "11000000"
+        assert "04010000" in stored   # 04010000[:4]+"0000" = "04010000"
+        assert len(stored) == 2
+        assert mock_es.index.call_args[1]["document"]["iptc_category_source"] == "alert"
+
+    @patch("app.services.workflows.classification_workflow.SessionLocal")
+    @patch("app.services.workflows.classification_workflow.Elasticsearch")
+    def test_deduplicates_categories_when_alert_has_duplicates(
+        self, mock_es_class, mock_session_class
+    ):
+        """Las categorías duplicadas (mismo nivel 1) se almacenan una sola vez."""
+
+        mock_es = MagicMock(spec=Elasticsearch)
+        mock_es_class.return_value = mock_es
+        mock_es.get.return_value = {
+            "_source": {"title": "Dup article", "alert_id": 1, "channel_id": 1, "source": "X"}
+        }
+
+        mock_db = MagicMock(spec=Session)
+        mock_session_class.return_value = mock_db
+
+        mock_alert = MagicMock(spec=AlertRule)
+        # Dos subcategorías que se mapean al mismo nivel 1 (04000000)
+        # Dos entradas con el mismo código → se deduplican a una sola
+        mock_alert.categories = [
+            {"code": "11000000", "label": "Política A"},
+            {"code": "11000000", "label": "Política B"},
+        ]
+
+        mock_channel = MagicMock(spec=RSSChannel)
+        mock_channel.iptc_category = None
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value.first.side_effect = [mock_alert, mock_channel]
+        mock_db.query.return_value = mock_query
+
+        classify_article("doc-dup")
+
+        stored = mock_es.index.call_args[1]["document"]["iptc_category"]
+        assert stored == ["11000000"], "Duplicados deben colapsarse en uno"
 
     @patch("app.services.workflows.classification_workflow.SessionLocal")
     @patch("app.services.workflows.classification_workflow.Elasticsearch")
@@ -212,5 +292,5 @@ class TestClassifyArticle:
         assert updated_document["title"] == "Breaking News"
         assert updated_document["source"] == "CNN"
         assert updated_document["user_id"] == 5
-        assert updated_document["iptc_category"] == "15000000"  # Primer nivel de Deportes
-        assert updated_document["iptc_category_source"] == "alert"  # Nuevo campo
+        assert updated_document["iptc_category"] == ["15000000"]
+        assert updated_document["iptc_category_source"] == "alert"

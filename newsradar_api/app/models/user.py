@@ -24,6 +24,8 @@ class User(Base):
     name = Column(String, nullable=False)
     surname = Column(String, nullable=False)
     organization = Column(String, nullable=True)
+    avatar = Column(String, nullable=True)
+    banner = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
 
     # El rol por defecto en la creación de usuarios es "Gestor"

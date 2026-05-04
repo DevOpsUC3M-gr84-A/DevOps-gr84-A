@@ -1,5 +1,5 @@
 // @ts-ignore: CSS module declaration not found
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 
 import "./App.css";
 import {
@@ -11,6 +11,7 @@ import {
   UserCog,
   Inbox,
   LogOut,
+  Cloud,
 } from "lucide-react";
 import {
   Link,
@@ -22,15 +23,37 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { AlertsManagement } from "./pages/AlertsManagement";
 import { Auth } from "./pages/Auth";
-import { VerifyEmail } from "./pages/VerifyEmail";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ResetPassword } from "./pages/ResetPassword";
 import { useAuth } from "./hooks/useAuth";
-import { SourcesRss } from "./pages/SourcesRss";
-import { ProfilePage } from "./pages/ProfilePage";
 import { normalizeRoleToId } from "./utils/roleUtils";
+
+const AlertsManagement = lazy(
+  () =>
+    import("./pages/AlertsManagement").then((module) => ({
+      default: module.AlertsManagement,
+    })),
+);
+const SourcesRss = lazy(
+  () => import("./pages/SourcesRss").then((module) => ({ default: module.SourcesRss })),
+);
+const ProfilePage = lazy(
+  () => import("./pages/ProfilePage").then((module) => ({ default: module.ProfilePage })),
+);
+const Dashboard = lazy(
+  () => import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })),
+);
+const ResumenPage = lazy(
+  () => import("./pages/Resumen").then((module) => ({ default: module.ResumenPage })),
+);
+const VerifyEmail = lazy(
+  () => import("./pages/VerifyEmail").then((module) => ({ default: module.VerifyEmail })),
+);
+const ForgotPassword = lazy(
+  () => import("./pages/ForgotPassword").then((module) => ({ default: module.ForgotPassword })),
+);
+const ResetPassword = lazy(
+  () => import("./pages/ResetPassword").then((module) => ({ default: module.ResetPassword })),
+);
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
@@ -476,6 +499,7 @@ const ProtectedLayout = ({
   const [userName, setUserName] = useState("Usuario");
   const [userRole, setUserRole] = useState("Lector");
   const [userInitials, setUserInitials] = useState("US");
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   const sectionTitleByPath: Record<string, string> = {
     "/dashboard": "DASHBOARD",
@@ -530,6 +554,7 @@ const ProtectedLayout = ({
           first_name?: string;
           last_name?: string;
           role_ids?: unknown;
+          avatar?: string;
         };
 
         const firstName = (data.first_name ?? "Usuario").trim();
@@ -545,6 +570,7 @@ const ProtectedLayout = ({
         setUserName(fullName);
         setUserRole(roleIdToLabel(parsedRoleIds));
         setUserInitials(initials);
+        setUserAvatar(data.avatar || null);
       } catch {
         // Keep fallback local values if profile cannot be loaded.
       }
@@ -567,7 +593,7 @@ const ProtectedLayout = ({
       <aside className={`sidebar ${isSidebarOpen ? "" : "closed"}`}>
         <div className="brand-section app-brand-section">
           <img
-            src={`${import.meta.env.BASE_URL}newsradar-logo.png`}
+            src={`${import.meta.env.BASE_URL}newsradar-logo-white.png`}
             alt="NewsRadar Logo"
             className="app-brand-logo"
           />
@@ -589,7 +615,7 @@ const ProtectedLayout = ({
             </li>
             <li>
               <NavLink to="/resumen" className="nav-item">
-                <LayoutDashboard size={20} />
+                <Cloud size={20} />
                 <span>Resumen</span>
               </NavLink>
             </li>
@@ -652,8 +678,16 @@ const ProtectedLayout = ({
             aria-label="Ir al perfil del usuario logueado"
           >
             <div className="user-badge" aria-label="Usuario logueado">
-              <div className="user-badge-avatar" aria-hidden="true">
-                {userInitials}
+              <div className="user-badge-avatar" aria-hidden="true" style={{ padding: userAvatar ? 0 : undefined, overflow: 'hidden' }}>
+                {userAvatar ? (
+                  <img 
+                    src={userAvatar} 
+                    alt="Avatar" 
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} 
+                  />
+                ) : (
+                  userInitials
+                )}
               </div>
               <div className="user-badge-info">
                 <span className="user-badge-name">{userName}</span>
@@ -757,11 +791,12 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route
+    <Suspense fallback={<div className="app-loading">Cargando…</div>}>
+      <Routes>
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
         path="/"
         element={
           isSessionAuthenticated ? (
@@ -776,7 +811,7 @@ function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="resumen" element={<ResumenPage />} />
         <Route
           path="alertas"
@@ -813,6 +848,7 @@ function App() {
         }
       />
     </Routes>
+  </Suspense>
   );
 }
 

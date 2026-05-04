@@ -122,5 +122,7 @@ def test_scheduler_run_job_handles_cancelled_error(monkeypatch):
 
     monkeypatch.setattr("app.core.scheduler.asyncio.to_thread", fake_to_thread)
 
+    # CancelledError debe re-lanzarse para respetar el protocolo de cancelación
+    # cooperativa de asyncio (python:S7497).
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(scheduler._run_job())

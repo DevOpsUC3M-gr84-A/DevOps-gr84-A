@@ -10,6 +10,8 @@ class UserBase(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=120)
     organization: str = Field(..., min_length=1, max_length=180)
     role_ids: List[int] = Field(default_factory=list)
+    avatar: Optional[str] = None
+    banner: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -41,6 +43,8 @@ class UserUpdate(BaseModel):
     organization: Optional[str] = Field(None, min_length=1, max_length=180)
     role_ids: Optional[List[int]] = None
     password: Optional[str] = Field(None, min_length=6, max_length=128)
+    avatar: Optional[str] = None
+    banner: Optional[str] = None
 
 
 class User(UserBase):
@@ -71,3 +75,8 @@ class UserListItem(BaseModel):
 class UpdateUserRoleRequest(BaseModel):
     """Esquema para actualizar el rol de un usuario."""
     role_id: int = Field(..., description="ID del nuevo rol (1=Gestor, 2=Lector, 3=Admin)")
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8, description="La nueva contraseña debe tener al menos 8 caracteres")

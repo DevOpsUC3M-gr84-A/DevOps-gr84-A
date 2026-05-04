@@ -2,10 +2,12 @@
 Este módulo configura la conexión a la base de datos y define la base para los modelos de datos.
 """
 
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./newsradar.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./newsradar.db")
 
 engine = create_engine(
     DATABASE_URL,

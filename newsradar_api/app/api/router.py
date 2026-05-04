@@ -11,6 +11,7 @@ from .routes.roles import roles_router
 from .routes.alerts import api_alerts_router
 from .routes.notifications import notifications_router
 from .routes.categories import categories_router
+from .routes.dashboard import dashboard_router
 from .routes.information_sources import information_sources_router
 from .routes.stats import stats_router
 from .routes.rss_channels import router as rss_channels_router
@@ -23,6 +24,7 @@ api_router.include_router(roles_router)
 api_router.include_router(api_alerts_router)
 api_router.include_router(notifications_router)
 api_router.include_router(categories_router)
+api_router.include_router(dashboard_router)
 api_router.include_router(information_sources_router)
 api_router.include_router(stats_router)
 api_router.include_router(rss_channels_router)
