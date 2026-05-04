@@ -5,6 +5,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from urllib.parse import urlunsplit
 
 from app.api.router import api_router
 from app.core.scheduler import AlertMonitorScheduler
@@ -56,9 +57,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_DEFAULT_DEV_ORIGINS = (
-    "http://localhost:5173,http://127.0.0.1:5173,"
-    "http://localhost:8000,http://127.0.0.1:8000"
+_DEFAULT_DEV_ORIGIN_HOSTS = (
+    "localhost:5173",
+    "127.0.0.1:5173",
+    "localhost:8000",
+    "127.0.0.1:8000",
+)
+_DEFAULT_DEV_ORIGINS = ",".join(
+    urlunsplit(("http", host, "", "", "")) for host in _DEFAULT_DEV_ORIGIN_HOSTS
 )  # NOSONAR
 
 _allowed_origins_raw = os.getenv("ALLOWED_ORIGINS") or os.getenv(
