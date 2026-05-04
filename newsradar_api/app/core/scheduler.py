@@ -50,7 +50,7 @@ class AlertMonitorScheduler:
             await asyncio.to_thread(self._run_job_sync)
         except asyncio.CancelledError:
             logger.info("Scheduler cancelado durante el apagado.")
-            # No relanzar para evitar que APScheduler reporte como excepción
+            raise
         except Exception as exc:
             logger.exception("Error inesperado en job del scheduler: %s", exc)
             raise
