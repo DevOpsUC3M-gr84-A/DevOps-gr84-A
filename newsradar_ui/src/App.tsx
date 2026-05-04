@@ -165,28 +165,6 @@ const getStoredUserRoles = (): number[] => {
 const canAccessManagementSections = (roles: number[]): boolean =>
   roles.includes(1) || roles.includes(3);
 
-const DashboardPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Dashboard</h1>
-      <p className="section-subtitle">
-        Vision general y metricas clave de tu entorno.
-      </p>
-    </header>
-  </section>
-);
-
-const ResumenPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Resumen</h1>
-      <p className="section-subtitle">
-        Resumen ejecutivo de actividad y principales indicadores.
-      </p>
-    </header>
-  </section>
-);
-
 interface NotificationItem {
   id: number;
   title: string;
