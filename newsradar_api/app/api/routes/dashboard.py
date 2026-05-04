@@ -8,6 +8,7 @@ from elasticsearch import Elasticsearch
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.iptc_categories import IPTC_FIRST_LEVEL
 from app.database.database import get_db
 from app.models.alert_monitoring import AlertRule
 from app.models.rss import InformationSource as DBInformationSource
@@ -88,7 +89,10 @@ def _build_top_categories(es: Elasticsearch) -> list[DashboardCategory]:
             buckets = response["aggregations"]["top_categories"]["buckets"]
             if buckets:
                 return [
-                    DashboardCategory(label=bucket["key"], value=bucket["doc_count"])
+                    DashboardCategory(
+                        label=IPTC_FIRST_LEVEL.get(bucket["key"], bucket["key"]),
+                        value=bucket["doc_count"],
+                    )
                     for bucket in buckets
                 ]
         except Exception:
