@@ -17,6 +17,7 @@ services:
       # para arranque en desarrollo aunque el .env esté incompleto.
       - ENVIRONMENT=development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - DATABASE_URL=postgresql://newsradar_user:newsradar_password@postgres:5432/newsradar_db
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
       - NEWSRADAR_ADMIN_PASSWORD=${NEWSRADAR_ADMIN_PASSWORD:-admin123}
       - NEWSRADAR_LECTOR_PASSWORD=${NEWSRADAR_LECTOR_PASSWORD:-lector123}
@@ -43,6 +44,21 @@ services:
     restart: unless-stopped
     depends_on:
       - elasticsearch
+      - postgres
+
+  # Base de datos relacional PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: newsradar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: newsradar_user
+      POSTGRES_PASSWORD: newsradar_password
+      POSTGRES_DB: newsradar_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   # Motor documental para noticias y artículos
   elasticsearch:
@@ -60,3 +76,4 @@ services:
 
 volumes:
   elasticsearch_data:
+  postgres_data:

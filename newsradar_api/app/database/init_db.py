@@ -7,6 +7,7 @@ import json
 import os
 import logging
 from json import JSONDecodeError
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -14,6 +15,18 @@ from app.database.database import SessionLocal, engine, Base
 from app.database.generate_rss_seed import generate_seed_data
 from app.models.rss import CategoriaIPTC, InformationSource, RSSChannel
 from app.models.user import User, UserRole
+
+# Tablas con PK autoincremental cuyas secuencias deben sincronizarse cuando se
+# insertan filas con id explícito (típicamente vía seed). En PostgreSQL la
+# secuencia no avanza al hacer INSERT con id explícito, así que el siguiente
+# INSERT genera id=1 y colisiona con la PK existente.
+_SEQUENCE_SYNC_TABLES: tuple[str, ...] = (
+    "usuarios",
+    "information_sources",
+    "rss_channels",
+    "alert_rules",
+    "notifications",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +195,41 @@ def load_rss_seed_if_empty(db: Session) -> None:
     except SQLAlchemyError as exc:
         db.rollback()
         logger.exception("Error al insertar seed RSS en la base de datos: %s", exc)
+
+
+def sync_postgres_sequences(db: Session) -> None:
+    """Sincroniza las secuencias `SERIAL` en PostgreSQL con el MAX(id) actual.
+
+    Sin esto, los inserts manuales del seed dejan la secuencia atrás del MAX(id)
+    y el siguiente INSERT auto-incremental colisiona con la PK existente,
+    devolviendo IntegrityError de `_pkey` que se confunde con duplicados de
+    nombre/URL. En SQLite no hace nada (no aplica).
+    """
+
+    if not engine.url.get_backend_name().startswith("postgres"):
+        return
+
+    for table in _SEQUENCE_SYNC_TABLES:
+        try:
+            # `is_called=true` arranca desde el siguiente valor; COALESCE evita
+            # NULL si la tabla está vacía. Idempotente y seguro de re-ejecutar.
+            db.execute(
+                text(
+                    f"SELECT setval("
+                    f"  pg_get_serial_sequence('{table}', 'id'),"
+                    f"  COALESCE((SELECT MAX(id) FROM {table}), 1),"
+                    f"  (SELECT MAX(id) IS NOT NULL FROM {table})"
+                    f")"
+                )
+            )
+        except SQLAlchemyError as exc:
+            db.rollback()
+            logger.warning(
+                "No se pudo sincronizar la secuencia de %s: %s", table, exc
+            )
+            continue
+    db.commit()
+    logger.info("Secuencias PostgreSQL sincronizadas: %s", ", ".join(_SEQUENCE_SYNC_TABLES))
 
 
 def create_initial_admin(db: Session) -> None:

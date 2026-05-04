@@ -16,8 +16,9 @@ from app.services.agents.alert_monitor_agent import run_alert_monitoring_cycle
 logger = logging.getLogger("uvicorn.error")
 
 
-DEFAULT_CRON = "*/2 * * * *"
+DEFAULT_CRON = "*/15 * * * *"
 DEFAULT_MAX_INSTANCES = 1
+DEFAULT_MISFIRE_GRACE_TIME = 300
 
 
 class AlertMonitorScheduler:
@@ -30,7 +31,20 @@ class AlertMonitorScheduler:
         self._max_instances = int(
             os.getenv("ALERT_MONITOR_MAX_INSTANCES", str(DEFAULT_MAX_INSTANCES))
         )
-        self._scheduler = AsyncIOScheduler(timezone="UTC")
+        self._misfire_grace_time = int(
+            os.getenv(
+                "ALERT_MONITOR_MISFIRE_GRACE_TIME",
+                str(DEFAULT_MISFIRE_GRACE_TIME),
+            )
+        )
+        self._scheduler = AsyncIOScheduler(
+            timezone="UTC",
+            job_defaults={
+                "coalesce": True,
+                "max_instances": self._max_instances,
+                "misfire_grace_time": self._misfire_grace_time,
+            },
+        )
         self._is_started = False
 
     @property
@@ -81,6 +95,7 @@ class AlertMonitorScheduler:
             replace_existing=True,
             max_instances=self._max_instances,
             coalesce=True,
+            misfire_grace_time=self._misfire_grace_time,
         )
 
         self._scheduler.start()

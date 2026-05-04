@@ -10,7 +10,11 @@ from app.api.router import api_router
 from app.core.scheduler import AlertMonitorScheduler
 from app.database.database import Base, engine, SessionLocal
 import app.models  # noqa: F401
-from app.database.init_db import create_initial_admin, load_rss_seed_if_empty
+from app.database.init_db import (
+    create_initial_admin,
+    load_rss_seed_if_empty,
+    sync_postgres_sequences,
+)
 
 logger = logging.getLogger("uvicorn.error")
 scheduler = AlertMonitorScheduler()
@@ -25,6 +29,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         create_initial_admin(db)
         load_rss_seed_if_empty(db)
+        # Tras el seed (y en cada arranque, por si se cargaron datos manualmente),
+        # alinear las secuencias de PG con el MAX(id) para evitar PK collisions.
+        sync_postgres_sequences(db)
     finally:
         db.close()
 
@@ -49,7 +56,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_DEFAULT_DEV_ORIGINS = "http://localhost:5173,http://localhost:8000"  # NOSONAR
+_DEFAULT_DEV_ORIGINS = (
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "http://localhost:8000,http://127.0.0.1:8000"
+)  # NOSONAR
 
 _allowed_origins_raw = os.getenv("ALLOWED_ORIGINS") or os.getenv(
     "NEWSRADAR_CORS_ORIGINS", _DEFAULT_DEV_ORIGINS

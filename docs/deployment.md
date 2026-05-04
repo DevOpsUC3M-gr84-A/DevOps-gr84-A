@@ -46,7 +46,13 @@ El evaluador puede reproducir el sistema con un único comando:
 docker compose up --build
 ```
 
-Esto construye, siembra los datos (100 canales / 10 medios) y arranca todos los servicios.
+Esto construye, siembra los datos (100 canales / 10 medios) y arranca todos los servicios (FastAPI, **PostgreSQL 15** y Elasticsearch).
+
+Para desarrollo local con hot-reload se utiliza el modo *detached*:
+
+```bash
+docker compose up -d --build
+```
 
 ## 3. Estrategia de ramas
 

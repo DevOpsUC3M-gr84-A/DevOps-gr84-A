@@ -11,6 +11,10 @@ from app.schemas.notification import Notification
 from app.stores.memory import alerts_store, notifications_store, users_store
 from app.utils.email_utils import send_alert_notification_email
 
+# Barrera anti-spam: si una alerta produce más de este número de coincidencias en
+# un mismo ciclo, se sustituyen los correos individuales por un único resumen.
+MAX_EMAILS_PER_ALERT_PER_CYCLE = 5
+
 
 @runtime_checkable
 class AlertLike(Protocol):
@@ -96,6 +100,56 @@ def noticia_coincide_alerta(noticia: Mapping[str, Any], alerta: Alert) -> bool:
         f"{noticia.get('summary', '')}"
     ).lower()
     return any(descriptor.lower() in texto for descriptor in alerta.descriptors)
+
+
+def build_summary_email_payload(alert_name: str, total: int) -> dict[str, str]:
+    """Construye el payload de un correo resumen cuando se supera el cap por ciclo."""
+
+    return {
+        "title": f"Resumen de alerta: {alert_name}",
+        "message": (
+            f"Se han detectado {total} noticias nuevas para tu alerta {alert_name}. "
+            "Puedes ver el detalle completo en el buzón interno de la aplicación."
+        ),
+    }
+
+
+def dispatch_alert_emails_with_cap(
+    *,
+    to_email: str,
+    alert_name: str,
+    payloads: list[Mapping[str, str]],
+    sender: Callable[..., None] = send_alert_notification_email,
+) -> int:
+    """Envía correos respetando el cap anti-spam.
+
+    Si hay <= MAX_EMAILS_PER_ALERT_PER_CYCLE coincidencias se envía un correo por
+    cada noticia. En caso contrario se envía UN único correo de resumen.
+    Devuelve el número real de correos enviados.
+    """
+
+    if not payloads or not to_email:
+        return 0
+
+    total = len(payloads)
+    if total <= MAX_EMAILS_PER_ALERT_PER_CYCLE:
+        for payload in payloads:
+            sender(
+                to_email=to_email,
+                alert_name=alert_name,
+                title=payload["title"],
+                message=payload["message"],
+            )
+        return total
+
+    summary = build_summary_email_payload(alert_name, total)
+    sender(
+        to_email=to_email,
+        alert_name=alert_name,
+        title=summary["title"],
+        message=summary["message"],
+    )
+    return 1
 
 
 def generar_notificacion_si_coincide(noticia: Mapping[str, Any]) -> int:
