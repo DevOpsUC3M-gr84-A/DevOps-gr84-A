@@ -76,33 +76,37 @@ def classify_article(article_id: str | int) -> None:
             logger.warning("Canal RSS no encontrado para channel_id=%s", channel_id)
             return
         
-        # RF08: Determinar categoría IPTC según precedencia
-        classified_category = None
+        # RF08: Determinar categorías IPTC según precedencia
+        classified_categories: list[str] = []
         source_of_category = None
-        
-        # Precedencia 1: Categoría de la alerta (primer nivel)
+
+        # Precedencia 1: Todas las categorías de la alerta (primer nivel)
         if alert.categories:
-            # alert.categories es una lista de dicts con {code, label}
             alert_categories = alert.categories if isinstance(alert.categories, list) else []
-            if alert_categories:
-                first_alert_category = alert_categories[0]
-                if isinstance(first_alert_category, dict):
-                    category_code = first_alert_category.get("code")
-                else:
-                    category_code = str(first_alert_category)
-                
-                classified_category = _get_first_level_iptc_category(category_code)
+            seen: set[str] = set()
+            for cat in alert_categories:
+                code = cat.get("code") if isinstance(cat, dict) else str(cat)
+                level1_code = _get_first_level_iptc_category(code)
+                if level1_code and level1_code not in seen:
+                    classified_categories.append(level1_code)
+                    seen.add(level1_code)
+            if classified_categories:
                 source_of_category = "alert"
-        
+
         # Fallback: Categoría del canal RSS (primer nivel)
-        if not classified_category and channel.iptc_category:
-            # channel.iptc_category es un enum CategoriaIPTC, extraer su valor
-            channel_code = channel.iptc_category.value if hasattr(channel.iptc_category, 'value') else str(channel.iptc_category)
-            classified_category = _get_first_level_iptc_category(channel_code)
-            source_of_category = "channel"
-        
+        if not classified_categories and channel.iptc_category:
+            channel_code = (
+                channel.iptc_category.value
+                if hasattr(channel.iptc_category, "value")
+                else str(channel.iptc_category)
+            )
+            level1_code = _get_first_level_iptc_category(channel_code)
+            if level1_code:
+                classified_categories = [level1_code]
+                source_of_category = "channel"
+
         # Si no hay categoría, registrar advertencia
-        if not classified_category:
+        if not classified_categories:
             logger.warning(
                 "No se pudo determinar categoría IPTC para article_id=%s "
                 "(alert_categories=%s, channel_category=%s)",
@@ -111,21 +115,23 @@ def classify_article(article_id: str | int) -> None:
                 channel.iptc_category,
             )
             return
-        
-        # Actualizar el documento en Elasticsearch con la categoría clasificada
-        article["iptc_category"] = classified_category
+
+        # Actualizar el documento en Elasticsearch.
+        # iptc_category almacena una lista: Elasticsearch acumula cada valor
+        # en su propio bucket dentro de la agregación terms del dashboard.
+        article["iptc_category"] = classified_categories
         article["iptc_category_source"] = source_of_category
-        
+
         es_client.index(
             index="articles",
             id=str(article_id),
             document=article,
         )
-        
+
         logger.info(
-            "RF08: Artículo clasificado article_id=%s category=%s source=%s",
+            "RF08: Artículo clasificado article_id=%s categories=%s source=%s",
             article_id,
-            classified_category,
+            classified_categories,
             source_of_category,
         )
     

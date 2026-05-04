@@ -1,5 +1,5 @@
 // @ts-ignore: CSS module declaration not found
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 
 import "./App.css";
 import {
@@ -10,6 +10,7 @@ import {
   UserCog,
   Inbox,
   LogOut,
+  Cloud,
 } from "lucide-react";
 import {
   Link,
@@ -21,15 +22,37 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { AlertsManagement } from "./pages/AlertsManagement";
 import { Auth } from "./pages/Auth";
-import { VerifyEmail } from "./pages/VerifyEmail";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ResetPassword } from "./pages/ResetPassword";
 import { useAuth } from "./hooks/useAuth";
-import { SourcesRss } from "./pages/SourcesRss";
-import { ProfilePage } from "./pages/ProfilePage";
 import { normalizeRoleToId } from "./utils/roleUtils";
+
+const AlertsManagement = lazy(
+  () =>
+    import("./pages/AlertsManagement").then((module) => ({
+      default: module.AlertsManagement,
+    })),
+);
+const SourcesRss = lazy(
+  () => import("./pages/SourcesRss").then((module) => ({ default: module.SourcesRss })),
+);
+const ProfilePage = lazy(
+  () => import("./pages/ProfilePage").then((module) => ({ default: module.ProfilePage })),
+);
+const Dashboard = lazy(
+  () => import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })),
+);
+const ResumenPage = lazy(
+  () => import("./pages/Resumen").then((module) => ({ default: module.ResumenPage })),
+);
+const VerifyEmail = lazy(
+  () => import("./pages/VerifyEmail").then((module) => ({ default: module.VerifyEmail })),
+);
+const ForgotPassword = lazy(
+  () => import("./pages/ForgotPassword").then((module) => ({ default: module.ForgotPassword })),
+);
+const ResetPassword = lazy(
+  () => import("./pages/ResetPassword").then((module) => ({ default: module.ResetPassword })),
+);
 
 interface ProtectedLayoutProps {
   handleLogout: () => void;
@@ -140,28 +163,6 @@ const getStoredUserRoles = (): number[] => {
 
 const canAccessManagementSections = (roles: number[]): boolean =>
   roles.includes(1) || roles.includes(3);
-
-const DashboardPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Dashboard</h1>
-      <p className="section-subtitle">
-        Vision general y metricas clave de tu entorno.
-      </p>
-    </header>
-  </section>
-);
-
-const ResumenPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Resumen</h1>
-      <p className="section-subtitle">
-        Resumen ejecutivo de actividad y principales indicadores.
-      </p>
-    </header>
-  </section>
-);
 
 const NotificationsPage = () => (
   <section className="main-content">
@@ -329,7 +330,7 @@ const ProtectedLayout = ({
             </li>
             <li>
               <NavLink to="/resumen" className="nav-item">
-                <LayoutDashboard size={20} />
+                <Cloud size={20} />
                 <span>Resumen</span>
               </NavLink>
             </li>
@@ -505,11 +506,12 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route
+    <Suspense fallback={<div className="app-loading">Cargando…</div>}>
+      <Routes>
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
         path="/"
         element={
           isSessionAuthenticated ? (
@@ -524,7 +526,7 @@ function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="resumen" element={<ResumenPage />} />
         <Route
           path="alertas"
@@ -561,6 +563,7 @@ function App() {
         }
       />
     </Routes>
+  </Suspense>
   );
 }
 
