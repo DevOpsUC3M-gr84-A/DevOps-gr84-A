@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, Mail } from "lucide-react";
 import { AlertForm } from "../components/AlertForm";
 import type {
   AlertCategoryOption,
@@ -23,6 +23,8 @@ interface AlertApiItem {
   categories?: Array<string | AlertCategory> | null;
   information_sources_ids?: string[] | null;
   rss_channels_ids?: string[] | null;
+  notify_inbox?: boolean | null;
+  notify_email?: boolean | null;
 }
 
 interface AlertFeedback {
@@ -42,6 +44,8 @@ interface ApiAlertPayload {
   cron_expression: string;
   rss_channels_ids?: string[];
   information_sources_ids?: string[];
+  notify_inbox: boolean;
+  notify_email: boolean;
 }
 
 const API_BASE_URL =
@@ -103,6 +107,8 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       categories,
       information_sources_ids:
         item.information_sources_ids ?? item.rss_channels_ids ?? [],
+      notify_inbox: item.notify_inbox ?? true,
+      notify_email: item.notify_email ?? false,
     };
   };
 
@@ -351,6 +357,8 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       descriptors: descriptorsArray,
       categories: apiCategories,
       cron_expression: alertData.cron_expression,
+      notify_inbox: alertData.notify_inbox,
+      notify_email: alertData.notify_email,
     };
 
     // Always include the sources/channels fields (empty array if none)
@@ -470,6 +478,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                 <th>Nombre de la Alerta</th>
                 <th>Categoria IPTC</th>
                 <th>Descriptores</th>
+                <th>Notificaciones</th>
                 {canManageAlerts && <th>Acciones</th>}
               </tr>
             </thead>
@@ -477,7 +486,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
               {filteredAlertas.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canManageAlerts ? 4 : 3}
+                    colSpan={canManageAlerts ? 5 : 4}
                     className="empty-state-cell"
                   >
                     No hay alertas todavía.
@@ -509,6 +518,33 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                         : "Todas"}
                     </td>
                     <td>{alerta.descriptores}</td>
+                    <td>
+                      <div className="notification-chips">
+                        {alerta.notify_inbox && (
+                          <span
+                            className="notification-chip notification-chip-inbox"
+                            title="Notificaciones al buzon activadas"
+                            aria-label="Buzon activado"
+                          >
+                            <Inbox size={14} aria-hidden="true" />
+                            <span>Buzon</span>
+                          </span>
+                        )}
+                        {alerta.notify_email && (
+                          <span
+                            className="notification-chip notification-chip-email"
+                            title="Notificaciones por correo activadas"
+                            aria-label="Email activado"
+                          >
+                            <Mail size={14} aria-hidden="true" />
+                            <span>Email</span>
+                          </span>
+                        )}
+                        {!alerta.notify_inbox && !alerta.notify_email && (
+                          <span className="notification-chip-empty">—</span>
+                        )}
+                      </div>
+                    </td>
                       {canManageAlerts && (
                       <td>
                         <div className="action-buttons">

@@ -129,6 +129,15 @@ def test_monitor_no_match_indexes_nothing(db_session, seeded_user):
 
 @pytest.mark.unit
 def test_monitor_duplicate_article_is_not_indexed_twice(db_session, seeded_user):
+    """
+    Tras la refactorización la deduplicación se hace contra la BD:
+    se consulta Notification por (alert_id, article_url) y, si ya existe,
+    se omite tanto la persistencia como el indexado en Elasticsearch.
+
+    Usamos el fixture `db_session` (SQLite real en memoria) en lugar de
+    parchear `db.query`, para no romper el resto de queries SQLAlchemy
+    (canales activos, alertas activas, etc.) que el agente ejecuta.
+    """
     _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(
@@ -143,23 +152,40 @@ def test_monitor_duplicate_article_is_not_indexed_twice(db_session, seeded_user)
         bozo=False,
     )
     es_client = _make_es_client(
-        index_side_effect=[{"result": "created", "_id": "doc-dup"}, Exception("conflict")]
+        index_return_value={"result": "created", "_id": "doc-dup"}
     )
 
-    with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
+    with patch(
+        "app.services.agents.alert_monitor_agent.feedparser.parse",
+        return_value=fake_feed,
+    ), patch(
         "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
         return_value=es_client,
     ), patch("app.services.agents.alert_monitor_agent.classify_article"):
         first_created = run_alert_monitoring_cycle(db_session)
         second_created = run_alert_monitoring_cycle(db_session)
 
+    # Primer ciclo: notificación nueva => persistida e indexada.
     assert first_created == 1
+    # Segundo ciclo: dedupe por BD => ni notificación nueva ni indexado.
     assert second_created == 0
-    assert es_client.index.call_count == 2
+    assert es_client.index.call_count == 1
 
 
 @pytest.mark.unit
 def test_monitor_es_index_error_is_handled(db_session, seeded_user):
+    """
+    Graceful degradation: si Elasticsearch falla al indexar, el agente
+    debe seguir creando la notificación en la BD y NO debe lanzar.
+    Como la indexación falla, classify_article tampoco se invoca
+    (no hay article_id válido).
+
+    Se usa `db_session` real para que la dedup query
+    (`db.query(Notification).filter(...).first()`) funcione contra una
+    sesión SQLAlchemy auténtica, evitando el
+    `AttributeError: 'types.SimpleNamespace' object has no attribute 'all'`
+    que aparecía al sustituir `db.query` por un mock manual.
+    """
     _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(
@@ -175,14 +201,21 @@ def test_monitor_es_index_error_is_handled(db_session, seeded_user):
     )
     es_client = _make_es_client(index_side_effect=RuntimeError("es down"))
 
-    with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
+    with patch(
+        "app.services.agents.alert_monitor_agent.feedparser.parse",
+        return_value=fake_feed,
+    ), patch(
         "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
         return_value=es_client,
-    ), patch("app.services.agents.alert_monitor_agent.classify_article") as classify_mock:
+    ), patch(
+        "app.services.agents.alert_monitor_agent.classify_article"
+    ) as classify_mock:
         created = run_alert_monitoring_cycle(db_session)
 
-    assert created == 0
+    # Aun cuando ES rompe, la notificación queda persistida en BD.
+    assert created == 1
     es_client.index.assert_called_once()
+    # Sin article_id válido no se debe invocar al clasificador.
     classify_mock.assert_not_called()
 
 
@@ -204,13 +237,20 @@ def test_monitor_handles_bozo_feed_with_no_entries(db_session, seeded_user):
 
 
 @pytest.mark.unit
-def test_monitor_rolls_back_when_classification_fails(db_session, seeded_user):
+def test_monitor_continues_when_classification_fails(db_session, seeded_user):
+    """
+    Renombrado desde `test_monitor_rolls_back_when_classification_fails`.
+
+    Por diseño, el clasificador de IA es un servicio externo NO crítico:
+    si falla, registramos un warning y seguimos. La notificación debe
+    persistirse igualmente (commit) y NO se debe llamar a rollback.
+    """
     _seed_monitor_entities(db_session, seeded_user, descriptors=["technology"])
 
     fake_feed = SimpleNamespace(
         entries=[
             {
-                "title": "Technology rollback check",
+                "title": "Technology classification check",
                 "summary": "Classification should fail",
                 "link": "https://example.test/article-classify-error",
                 "published": "Tue, 31 Mar 2026 10:15:00 GMT",
@@ -218,20 +258,33 @@ def test_monitor_rolls_back_when_classification_fails(db_session, seeded_user):
         ],
         bozo=False,
     )
-    es_client = _make_es_client(index_return_value={"result": "created", "_id": "doc-rollback"})
+    es_client = _make_es_client(
+        index_return_value={"result": "created", "_id": "doc-classify"}
+    )
 
-    with patch("app.services.agents.alert_monitor_agent.feedparser.parse", return_value=fake_feed), patch(
+    with patch(
+        "app.services.agents.alert_monitor_agent.feedparser.parse",
+        return_value=fake_feed,
+    ), patch(
         "app.services.agents.alert_monitor_agent._create_elasticsearch_client",
         return_value=es_client,
     ), patch(
         "app.services.agents.alert_monitor_agent.classify_article",
         side_effect=RuntimeError("classification failed"),
-    ), patch.object(db_session, "rollback", wraps=db_session.rollback) as rollback_mock:
+    ), patch.object(
+        db_session, "rollback", wraps=db_session.rollback
+    ) as rollback_mock, patch.object(
+        db_session, "commit", wraps=db_session.commit
+    ) as commit_mock:
         created = run_alert_monitoring_cycle(db_session)
 
+    # Tolerancia a fallos: notificación persistida pese al error del clasificador.
     assert created == 1
     es_client.index.assert_called_once()
-    assert rollback_mock.called is True
+    assert rollback_mock.called is False, (
+        "El fallo del clasificador NO debe disparar rollback (graceful degradation)."
+    )
+    assert commit_mock.called is True
 
 
 @pytest.mark.unit

@@ -93,9 +93,13 @@ describe("AlertForm Component", () => {
     expect(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS")).toHaveValue(
       "",
     );
+    const checkedBoxes = screen.queryAllByRole("checkbox", { checked: true });
+    // El buzón de la aplicación viene marcado por defecto (notify_inbox=true),
+    // pero ninguna categoría IPTC debe estar preseleccionada.
+    expect(checkedBoxes).toHaveLength(1);
     expect(
-      screen.queryAllByRole("checkbox", { checked: true }),
-    ).toHaveLength(0);
+      screen.getByRole("checkbox", { name: /Buzon de la aplicacion/i }),
+    ).toBeChecked();
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "",
     );

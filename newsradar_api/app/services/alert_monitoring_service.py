@@ -8,7 +8,8 @@ from typing import Any, Callable, Mapping, Protocol, runtime_checkable
 
 from app.schemas.alert import Alert
 from app.schemas.notification import Notification
-from app.stores.memory import alerts_store, notifications_store
+from app.stores.memory import alerts_store, notifications_store, users_store
+from app.utils.email_utils import send_alert_notification_email
 
 
 @runtime_checkable
@@ -98,23 +99,39 @@ def noticia_coincide_alerta(noticia: Mapping[str, Any], alerta: Alert) -> bool:
 
 
 def generar_notificacion_si_coincide(noticia: Mapping[str, Any]) -> int:
-    """Genera notificaciones para cada alerta activa que coincida con la noticia."""
+    """Genera notificaciones para cada alerta activa que coincida con la noticia (RF10)."""
 
     created_notifications = 0
     for alerta in alerts_store.values():
         if not noticia_coincide_alerta(noticia, alerta):
             continue
 
-        # Mantiene el formato RF11/RF12 preparado para integraciones de salida.
-        build_notification_payload(alerta, noticia)
+        # Genera el título y mensaje de la notificación según RF11/RF12
+        payload = build_notification_payload(alerta, noticia)
 
-        notificacion = Notification(
-            id=max(notifications_store.keys(), default=0) + 1,
-            alert_id=alerta.id,
-            timestamp=_resolve_title_datetime(noticia, datetime.now),
-            metrics=[],
-        )
-        notifications_store[notificacion.id] = notificacion
-        created_notifications += 1
+        # RF10: Crear notificación en inbox si está configurado
+        if alerta.notify_inbox:
+            notificacion = Notification(
+                id=max(notifications_store.keys(), default=0) + 1,
+                alert_id=alerta.id,
+                timestamp=_resolve_title_datetime(noticia, datetime.now),
+                metrics=[],
+                title=payload["title"],
+                message=payload["message"],
+            )
+            notifications_store[notificacion.id] = notificacion
+            created_notifications += 1
+
+        # RF10: Enviar notificación por email si está configurado
+        if alerta.notify_email:
+            # Obtener el email del usuario
+            user = users_store.get(alerta.user_id)
+            if user and user.email:
+                send_alert_notification_email(
+                    to_email=user.email,
+                    alert_name=alerta.name,
+                    title=payload["title"],
+                    message=payload["message"],
+                )
 
     return created_notifications

@@ -16,8 +16,8 @@ from app.services.agents.alert_monitor_agent import run_alert_monitoring_cycle
 logger = logging.getLogger("uvicorn.error")
 
 
-DEFAULT_CRON = "*/1 * * * *"
-DEFAULT_MAX_INSTANCES = 5
+DEFAULT_CRON = "*/2 * * * *"
+DEFAULT_MAX_INSTANCES = 1
 
 
 class AlertMonitorScheduler:

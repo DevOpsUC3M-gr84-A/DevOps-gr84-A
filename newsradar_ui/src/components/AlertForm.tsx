@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X, Inbox, Mail } from "lucide-react";
 import { CategoryCheckboxList } from "./CategoryCheckboxList";
 
 const API_BASE_URL =
@@ -12,6 +12,8 @@ export interface AlertFormPayload {
   information_sources_ids: string[];
   rss_channels_ids: string[];
   cron_expression: string;
+  notify_inbox: boolean;
+  notify_email: boolean;
 }
 
 export interface AlertCategoryOption {
@@ -41,6 +43,8 @@ export interface AlertTableItem {
   descriptores: string;
   categories: Array<string | AlertCategoryLike>;
   information_sources_ids: string[];
+  notify_inbox?: boolean;
+  notify_email?: boolean;
 }
 
 interface AlertFormProps {
@@ -83,6 +87,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   const [selectedCategoriesIds, setSelectedCategoriesIds] = useState<string[]>([]);
   const [informationSourcesIds, setInformationSourcesIds] = useState<string[]>([]);
   const [cronExpression, setCronExpression] = useState("0 * * * *");
+  const [notifyInbox, setNotifyInbox] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(false);
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [hasFetchedRecommendations, setHasFetchedRecommendations] =
     useState(false);
@@ -215,6 +221,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
             .filter(Boolean);
       setInformationSourcesIds(initSourcesArray);
       setCronExpression("0 * * * *");
+      setNotifyInbox((initialData as any)?.notify_inbox ?? true);
+      setNotifyEmail((initialData as any)?.notify_email ?? false);
       setFormError(null);
       setRecommendations([]);
       setHasFetchedRecommendations(false);
@@ -226,6 +234,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     setSelectedCategoriesIds([]);
     setInformationSourcesIds([]);
     setCronExpression("0 * * * *");
+    setNotifyInbox(true);
+    setNotifyEmail(false);
     setFormError(null);
     setRecommendations([]);
     setHasFetchedRecommendations(false);
@@ -339,6 +349,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       information_sources_ids: informationSourcesArray,
       rss_channels_ids: informationSourcesArray,
       cron_expression: cronExpression,
+      notify_inbox: notifyInbox,
+      notify_email: notifyEmail,
     };
 
     const categoriesToSave = selectedCategoriesIds
@@ -374,6 +386,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
       setSelectedCategoriesIds([]);
       setInformationSourcesIds([]);
       setCronExpression("0 * * * *");
+      setNotifyInbox(true);
+      setNotifyEmail(false);
       setFormError(null);
       setRecommendations([]);
       setHasFetchedRecommendations(false);
@@ -525,6 +539,32 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               <p className="form-hint-text">
                 Si lo dejas vacio, se aplicaran todas las fuentes de la categoria
                 seleccionada.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <span className="form-group-label">NOTIFICACIONES</span>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={notifyInbox}
+                  onChange={(e) => setNotifyInbox(e.target.checked)}
+                />
+                <Inbox size={16} aria-hidden="true" />
+                <span>Buzon de la aplicacion</span>
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.checked)}
+                />
+                <Mail size={16} aria-hidden="true" />
+                <span>Correo electronico</span>
+              </label>
+              <p className="form-hint-text">
+                Elige donde quieres recibir los avisos cuando esta alerta detecte
+                coincidencias.
               </p>
             </div>
           </div>
