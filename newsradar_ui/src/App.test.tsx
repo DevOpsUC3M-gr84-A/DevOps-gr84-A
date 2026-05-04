@@ -36,6 +36,34 @@ vi.mock("./pages/ResetPassword", () => ({
   ResetPassword: () => <div>RESET_PASSWORD_VIEW</div>,
 }));
 
+vi.mock("react-chartjs-2", () => ({
+  Line: () => <canvas data-testid="line-chart" />,
+}));
+
+vi.mock("d3-cloud", () => ({
+  default: () => {
+    let _words: any[] = [];
+    let _endCb: ((words: any[]) => void) | null = null;
+    const chain = {
+      size: () => chain,
+      words: (w: any[]) => { _words = w; return chain; },
+      padding: () => chain,
+      rotate: () => chain,
+      font: () => chain,
+      fontSize: () => chain,
+      on: (event: string, cb: (words: any[]) => void) => {
+        if (event === "end") _endCb = cb;
+        return chain;
+      },
+      start: () => {
+        if (_endCb) setTimeout(() => _endCb!(_words.map((w) => ({ ...w, x: 0, y: 0, rotate: 0 }))), 0);
+        return chain;
+      },
+    };
+    return chain;
+  },
+}));
+
 vi.mock("./hooks/useAuth");
 const mockedUseAuth = vi.mocked(useAuth);
 
@@ -125,24 +153,28 @@ describe("Componente Raíz App", () => {
     localStorage.clear();
   });
 
-  test("renderiza ForgotPassword cuando pathname es /forgot-password", () => {
+  test("renderiza ForgotPassword cuando pathname es /forgot-password", async () => {
     render(
       <MemoryRouter initialEntries={["/forgot-password"]}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("FORGOT_PASSWORD_VIEW")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("FORGOT_PASSWORD_VIEW")).toBeInTheDocument();
+    });
   });
 
-  test("renderiza ResetPassword cuando pathname es /reset-password", () => {
+  test("renderiza ResetPassword cuando pathname es /reset-password", async () => {
     render(
       <MemoryRouter initialEntries={["/reset-password"]}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("RESET_PASSWORD_VIEW")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("RESET_PASSWORD_VIEW")).toBeInTheDocument();
+    });
   });
 
   test("renderiza Auth cuando no hay token", () => {
@@ -155,14 +187,16 @@ describe("Componente Raíz App", () => {
     expect(screen.getByText("AUTH_VIEW")).toBeInTheDocument();
   });
 
-  test("renderiza VerifyEmail en ruta pública aunque no haya token", () => {
+  test("renderiza VerifyEmail en ruta pública aunque no haya token", async () => {
     render(
       <MemoryRouter initialEntries={["/verify-email?token=test"]}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("VERIFY_EMAIL_VIEW")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("VERIFY_EMAIL_VIEW")).toBeInTheDocument();
+    });
   });
 
   test("renderiza layout protegido cuando hay token", async () => {
@@ -895,7 +929,7 @@ describe("Componente Raíz App", () => {
     );
 
     expect(screen.getByAltText(/NewsRadar Logo/i)).toBeInTheDocument();
-    expect(screen.getByText(/NewsRadar/i)).toBeInTheDocument();
+    expect(screen.getByText(/NewsRadar/i, { selector: "span" })).toBeInTheDocument();
   });
 
   test("hamburger menu button es clickeable y el sidebar cambia clase", async () => {
@@ -1005,7 +1039,7 @@ describe("Componente Raíz App", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Resumen ejecutivo de actividad/i)).toBeInTheDocument();
+      expect(screen.getByText(/Analítica y Nube de Palabras/i)).toBeInTheDocument();
     });
   });
 

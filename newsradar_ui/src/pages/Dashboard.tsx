@@ -194,15 +194,15 @@ export const Dashboard = () => {
         const data = (await response.json()) as DashboardSummaryResponse;
 
         setDashboardMetrics({
-          activeSources: data.active_sources,
-          rssChannels: data.rss_channels,
-          alertsConfigured: data.alerts_configured,
-          capturedNews: data.captured_news_total,
+          activeSources: data.active_sources ?? 0,
+          rssChannels: data.rss_channels ?? 0,
+          alertsConfigured: data.alerts_configured ?? 0,
+          capturedNews: data.captured_news_total ?? 0,
         });
 
         setTrendData({
-          last_7_days: data.last_7_days,
-          last_30_days: data.last_30_days,
+          last_7_days: Array.isArray(data.last_7_days) ? data.last_7_days : [],
+          last_30_days: Array.isArray(data.last_30_days) ? data.last_30_days : [],
         });
 
         const categories =
@@ -259,7 +259,7 @@ export const Dashboard = () => {
             <div className="dashboard-card-content">
               <p className="dashboard-card-title">{item.title}</p>
               <p className="dashboard-card-value">
-                {dashboardMetrics[item.metricKey].toLocaleString()}
+                {(dashboardMetrics[item.metricKey] ?? 0).toLocaleString()}
               </p>
               <p className="dashboard-card-description">{item.description}</p>
             </div>
@@ -269,7 +269,7 @@ export const Dashboard = () => {
     [dashboardMetrics],
   );
 
-  const activeTrend = selectedRange === "7d" ? trendData.last_7_days : trendData.last_30_days;
+  const activeTrend = (selectedRange === "7d" ? trendData.last_7_days : trendData.last_30_days) ?? [];
   const labels = activeTrend.map((point) => buildAxisLabel(point.date, selectedRange));
   const dataValues = activeTrend.map((point) => point.value);
 

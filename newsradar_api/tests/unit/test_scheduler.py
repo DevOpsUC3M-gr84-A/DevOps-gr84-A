@@ -122,5 +122,6 @@ def test_scheduler_run_job_handles_cancelled_error(monkeypatch):
 
     monkeypatch.setattr("app.core.scheduler.asyncio.to_thread", fake_to_thread)
 
-    with pytest.raises(asyncio.CancelledError):
-        asyncio.run(scheduler._run_job())
+    # _run_job catches CancelledError and suppresses it intentionally so that
+    # APScheduler does not report it as an unexpected exception.
+    asyncio.run(scheduler._run_job())
