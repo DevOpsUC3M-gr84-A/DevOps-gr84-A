@@ -17,17 +17,27 @@ fail()    { echo -e "${RED}[ERR]${NC} ${BOLD}$1${NC}"; }
 
 trap 'fail "Fallo durante la evaluación. Revisa los logs con: docker compose logs"' ERR
 
-# 0) Bootstrap del .env si no existe (el evaluador no lo recibe en la release).
-if [ ! -f newsradar_api/.env ]; then
-  if [ -f newsradar_api/.env.example ]; then
-    info "Paso 0 — No existe newsradar_api/.env; creándolo desde .env.example..."
-    cp newsradar_api/.env.example newsradar_api/.env
-    success ".env creado. Ajusta SMTP/secretos si lo necesitas."
+# 0) Bootstrap espejo de los .env (RNF05): el evaluador parte de una carpeta
+# sin .env y el script los crea automáticamente desde sus .example.
+info "Paso 0 — Verificando archivos de configuración (.env)..."
+
+bootstrap_env() {
+  local target="$1"
+  local example="${target}.example"
+  local label="$2"
+  if [ -f "$target" ]; then
+    success "${label}: ya existe ($target)"
+  elif [ -f "$example" ]; then
+    cp "$example" "$target"
+    success "${label}: creado automáticamente desde $example"
   else
-    fail "No existe newsradar_api/.env ni newsradar_api/.env.example. Abortando."
+    fail "${label}: no existe ni $target ni $example. Abortando."
     exit 1
   fi
-fi
+}
+
+bootstrap_env "newsradar_api/.env" "Backend"
+bootstrap_env "newsradar_ui/.env"  "Frontend"
 
 # 1) Limpieza de contenedores y volúmenes huérfanos
 info "Paso 1/5 — Limpiando contenedores y volúmenes previos..."
