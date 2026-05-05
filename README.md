@@ -61,7 +61,7 @@ make down                # equivale a: docker compose down -v
 ## Índice
 
 - [Descripción](#descripción)
-- [Inicio Rápido (desarrollador)](#inicio-rápido-desarrollador)
+- [Para el Desarrollador: Ejecución Manual](#-para-el-desarrollador-ejecución-manual-hot-reload)
 - [APIs disponibles](#apis-disponibles)
 - [Arquitectura](#arquitectura)
 - [Documentación](#documentación)
@@ -82,19 +82,40 @@ El sistema cumple los requisitos arquitectónicos exigidos: 5 capas (RNF01), API
 
 ---
 
-## Inicio Rápido (desarrollador)
+## 🧑‍💻 Para el Desarrollador: Ejecución Manual (hot-reload)
 
-> Para la **corrección de la asignatura** usa la sección [👨‍🏫 Para el Evaluador](#-para-el-evaluador-ejecución-en-1-clic-rnf10). Esta sección está orientada al desarrollo iterativo del backend y del frontend por separado. Guía completa en [docs/quickstart.md](docs/quickstart.md).
+> Esta sección es para **desarrollo iterativo** con hot-reload sobre Python y Vite. Si lo que buscas es **corregir** el proyecto, usa la sección [👨‍🏫 Para el Evaluador](#-para-el-evaluador-ejecución-en-1-clic-rnf10). Guía detallada en [docs/quickstart.md](docs/quickstart.md).
 
-### Arranque manual (desarrollo)
+Aquí los servicios **no van todos en Docker**: solo PostgreSQL (y Elasticsearch) corren en contenedor. El backend Python se ejecuta sobre un `.venv` local con `uvicorn --reload`, y el frontend con `npm run dev`. Así obtienes recarga instantánea al editar código.
+
+### 1. Levantar solo la base de datos (Postgres + Elasticsearch)
 
 ```bash
-docker compose up -d --build
+docker compose up -d postgres elasticsearch
 ```
 
-Esto levanta el **backend FastAPI**, **PostgreSQL 15** y **Elasticsearch** de forma autocontenida.
+### 2. Backend FastAPI en local con `.venv`
 
-**Frontend (React + Vite, puerto 5173):**
+```bash
+cd newsradar_api
+python -m venv .venv
+# Linux / macOS / WSL:
+source .venv/bin/activate
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt   # opcional: pytest, linters
+
+# Apuntar a la DB del contenedor (puerto host expuesto):
+export DATABASE_URL="postgresql://newsradar_user:newsradar_password@localhost:5432/newsradar_db"
+
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 3. Frontend React + Vite en local
+
+En otra terminal:
 
 ```bash
 cd newsradar_ui

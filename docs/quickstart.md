@@ -1,12 +1,18 @@
-# 🚀 Guía de Desarrollo Local: NewsRadar (Backend + Frontend)
+# 🚀 Guía de Arranque: NewsRadar
 
-Con la nueva integración de Docker, el backend ahora vive en una caja autosuficiente: ya no necesitas instalar Python ni PostgreSQL en tu máquina para arrancarlo.
+Este proyecto admite **dos vías de ejecución** claramente diferenciadas. Elige la que corresponda a tu rol:
+
+| Vía | Para quién | Tiempo de setup | Servicios en Docker |
+|-----|------------|-----------------|---------------------|
+| **A. Evaluador (1 clic)** | Profesorado, corrección | ~3–5 min | **TODO**: frontend + backend + Postgres + Elasticsearch |
+| **B. Desarrollador (manual)** | Equipo de desarrollo | ~10 min | Solo Postgres + Elasticsearch (back y front en local con hot-reload) |
 
 ---
 
-## 👨‍🏫 Para el Evaluador: Ejecución en 1 Clic (RNF10)
+## 👨‍🏫 A. Para el Evaluador: Ejecución en 1 Clic (RNF10)
 
-> **Único requisito previo:** tener **Docker Desktop** arrancado. No hace falta Python, Node ni PostgreSQL en local.
+> **Único requisito previo:** tener **Docker Desktop** arrancado.
+> **No hace falta** instalar Python, Node.js, npm ni PostgreSQL en local. Todo — incluido el **frontend** — está dockerizado.
 
 ### Pasos desde cero
 
@@ -29,8 +35,15 @@ make evaluate            # Linux / macOS / WSL
 bash evaluate.sh
 ```
 
-**Qué hace este comando:** levanta Docker (backend FastAPI + PostgreSQL + Elasticsearch) e inyecta los **100 canales RSS semilla**.
-Después ejecuta `pytest` con cobertura HTML dentro del contenedor del backend y, al finalizar, imprime las URLs de la aplicación (Frontend, API y Swagger).
+**Qué hace este comando** (ver [evaluate.sh](../evaluate.sh)):
+
+1. Limpia contenedores y volúmenes previos (`docker compose down -v --remove-orphans`).
+2. Construye **todas** las imágenes Docker — backend FastAPI **y frontend React/Vite**.
+3. Levanta los 4 servicios: `api-backend`, `frontend`, `postgres`, `elasticsearch`.
+4. Inyecta los **100 canales RSS semilla** de ≥10 medios cubriendo IPTC L1 (RF14).
+5. Espera activamente a que API y frontend respondan en sus puertos.
+6. Ejecuta `pytest --cov=app --cov-report=html` dentro del contenedor del backend.
+7. Imprime las URLs en verde.
 
 **3. Apagar el entorno cuando se termine:**
 
@@ -38,91 +51,122 @@ Después ejecuta `pytest` con cobertura HTML dentro del contenedor del backend y
 make down                # equivale a: docker compose down -v
 ```
 
-**URLs tras la ejecución:** Frontend → http://localhost:5173 · API → http://localhost:8000 · Swagger → http://localhost:8000/docs.
-*El frontend también está dockerizado: no necesitas Node.js instalado en local.*
+### URLs tras la ejecución
+
+| Servicio | URL |
+|----------|-----|
+| Frontend (React + Vite, dockerizado) | http://localhost:5173 |
+| API Backend (FastAPI)                | http://localhost:8000 |
+| Swagger / OpenAPI                    | http://localhost:8000/docs |
+| ReDoc                                | http://localhost:8000/redoc |
+| Elasticsearch                        | http://localhost:9200 |
+
 **Cobertura HTML:** `newsradar_api/htmlcov/index.html`.
 **Credenciales por defecto:** `admin@newsradar.com` / `admin123456`.
 
 ---
 
-## 🛠️ 1. Dependencias Previas
+## 🧑‍💻 B. Para el Desarrollador: Ejecución Manual (hot-reload)
 
-- **Docker Desktop** (imprescindible — levanta backend, PostgreSQL y Elasticsearch).
-- **Node.js / npm** (para el frontend con Vite).
+Esta vía está pensada para el **trabajo diario del equipo**: editar código Python o React y ver los cambios al instante sin reconstruir la imagen Docker. La diferencia clave frente a la vía A es que **solo la base de datos corre en Docker**; backend y frontend se ejecutan nativamente sobre tu máquina.
+
+### B.0 Dependencias previas
+
+- **Docker Desktop** (para Postgres y Elasticsearch).
+- **Python 3.11+**.
+- **Node.js 20+** y **npm**.
 - **Git**.
 
-## 🐍 2. ¿Necesito el entorno virtual (`.venv`)?
+### B.1 Variables de entorno
 
-- **Para EJECUTAR el backend: NO.** La imagen Docker ya lleva Python 3.11 y todas las dependencias.
-- **Para PROGRAMAR (Opcional): Sí**, conviene crear un `.venv` con `pip install -r requirements.txt` para que VS Code / Pylance den autocompletado y type-checking sobre las librerías.
-
-> Si sólo necesitas **corregir** el proyecto, usa la sección [👨‍🏫 Para el Evaluador](#-para-el-evaluador-ejecución-en-1-clic-rnf10) al inicio de esta guía. El resto de esta página es para desarrollo iterativo.
-
-## 🏃‍♂️ 3. Pasos para levantar el proyecto
-
-### 3.1 Configurar variables de entorno
-
-Crea tu fichero `newsradar_api/.env` local con los datos de SMTP (Gmail / MailHog / etc.) y los secretos de admin/lector. **No hace falta definir `DATABASE_URL`**: el `docker-compose.yml` ya inyecta la URL de PostgreSQL apuntando al contenedor `postgres`:
+Crea tu fichero `newsradar_api/.env` con SMTP (Gmail / MailHog) y secretos de admin/lector. Para esta vía manual **sí** debes definir `DATABASE_URL` apuntando a `localhost` (en la vía A, el contenedor del backend la recibe automáticamente apuntando al host `postgres`):
 
 ```
-DATABASE_URL=postgresql://newsradar_user:newsradar_password@postgres:5432/newsradar_db
+DATABASE_URL=postgresql://newsradar_user:newsradar_password@localhost:5432/newsradar_db
 ```
 
-### 3.2 Levantar el backend (FastAPI + PostgreSQL + Elasticsearch)
+### B.2 Levantar solo la base de datos en Docker
 
-Desde la raíz del repositorio:
+Desde la raíz del repo, arranca **únicamente** los servicios de datos:
 
 ```bash
-docker compose up -d --build
+docker compose up -d postgres elasticsearch
 ```
 
-Esto construye la imagen del backend y arranca tres contenedores: `newsradar_backend_container`, `newsradar_postgres` y `newsradar_elasticsearch`.
+Esto levanta `newsradar_postgres` (puerto 5432) y `newsradar_elasticsearch` (puerto 9200). El backend y el frontend los lanzarás tú a mano.
 
-### 3.3 Levantar el frontend
+### B.3 Backend FastAPI con `.venv` y `uvicorn --reload`
 
-En otra terminal:
+```bash
+cd newsradar_api
+
+# 1) Crear el entorno virtual
+python -m venv .venv
+
+# 2) Activarlo
+source .venv/bin/activate          # Linux / macOS / WSL
+# .venv\Scripts\Activate.ps1       # Windows PowerShell
+# .venv\Scripts\activate.bat       # Windows CMD
+
+# 3) Instalar dependencias
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-dev.txt   # opcional: pytest, linters, herramientas dev
+
+# 4) Arrancar el servidor con recarga automática
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Cada vez que guardes un `.py`, `uvicorn` recargará automáticamente. La API queda disponible en http://localhost:8000 y la documentación Swagger en http://localhost:8000/docs.
+
+### B.4 Frontend React + Vite
+
+En **otra terminal**, sin cerrar el backend:
 
 ```bash
 cd newsradar_ui
-npm install
+npm install               # solo la primera vez
 npm run dev
 ```
 
-## 🗺️ 4. ¿Dónde está todo ahora?
+Vite arranca con HMR (Hot Module Replacement) en http://localhost:5173. Está preconfigurado para llamar al backend en `http://localhost:8000`.
 
-| Servicio          | URL                                              |
-|-------------------|--------------------------------------------------|
-| Frontend (Vite)   | http://localhost:5173                            |
-| Backend API       | http://localhost:8000                            |
-| Swagger / OpenAPI | http://localhost:8000/docs                       |
-| ReDoc             | http://localhost:8000/redoc                      |
-| Elasticsearch     | http://localhost:9200                            |
-| PostgreSQL        | localhost:5432 (`newsradar_db`)                  |
+### B.5 Mapa de servicios (vía manual)
 
-Para inspeccionar los logs en vivo del backend:
+| Servicio          | Dónde corre              | URL                                       |
+|-------------------|--------------------------|-------------------------------------------|
+| Frontend (Vite)   | Local (`npm run dev`)    | http://localhost:5173                     |
+| Backend API       | Local (`uvicorn`)        | http://localhost:8000                     |
+| Swagger / OpenAPI | Local                    | http://localhost:8000/docs                |
+| ReDoc             | Local                    | http://localhost:8000/redoc               |
+| Elasticsearch     | Docker                   | http://localhost:9200                     |
+| PostgreSQL        | Docker                   | localhost:5432 (`newsradar_db`)           |
 
-```bash
-docker logs -f newsradar_backend_container
-```
-
-## 🛑 5. Cómo apagar
+### B.6 Ejecutar pruebas (vía manual)
 
 ```bash
-docker compose down
-```
-
-Añade `-v` si quieres borrar también los volúmenes (`postgres_data`, `elasticsearch_data`) y empezar desde cero.
-
-## 6. Ejecutar pruebas
-
-```bash
-# Backend (dentro del .venv local o vía docker exec)
+# Backend (con .venv activado)
 cd newsradar_api
-pytest --cov=app --cov-report=term-missing
+pytest --cov=app --cov-report=term-missing --cov-report=html
 
 # Frontend
 cd newsradar_ui
 npm test
 ```
+
+### B.7 Apagar la base de datos
+
+```bash
+docker compose down            # mantiene volúmenes
+docker compose down -v         # borra también postgres_data y elasticsearch_data
+```
+
+---
+
+## ¿Qué vía debo usar?
+
+- ¿Vas a **corregir** o evaluar el proyecto sin tocar código? → **Vía A (Evaluador)**.
+- ¿Vas a **modificar** código Python o React y quieres iteración rápida? → **Vía B (Desarrollador)**.
+- ¿Quieres comprobar que todo el sistema arranca como en producción? → **Vía A**.
 
 **Credenciales de administrador por defecto:** `admin@newsradar.com` / `admin123456`.
