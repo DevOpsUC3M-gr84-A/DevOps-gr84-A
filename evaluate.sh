@@ -26,7 +26,7 @@ info "Paso 2/5 — Construyendo imágenes Docker..."
 docker compose build
 
 # 3) Arranque en segundo plano
-info "Paso 3/5 — Levantando servicios (api-backend, postgres, elasticsearch)..."
+info "Paso 3/5 — Levantando servicios (api-backend, frontend, postgres, elasticsearch)..."
 docker compose up -d
 
 # 4) Espera activa a que la API responda
@@ -44,6 +44,21 @@ until curl -fsS http://localhost:8000/docs >/dev/null 2>&1; do
 done
 success "API disponible en http://localhost:8000"
 
+# 4b) Espera activa a que el frontend (Vite dev server) esté sirviendo
+info "Esperando a que el frontend esté listo..."
+ATTEMPTS=0
+MAX_ATTEMPTS=40
+until curl -fsS http://localhost:5173 >/dev/null 2>&1; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+    fail "El frontend no respondió tras $((MAX_ATTEMPTS * 3))s. Abortando."
+    docker compose logs --tail=80 frontend
+    exit 1
+  fi
+  sleep 3
+done
+success "Frontend disponible en http://localhost:5173"
+
 # 5) Pruebas y cobertura dentro del contenedor del backend
 info "Paso 5/5 — Ejecutando pruebas y generando cobertura HTML dentro del contenedor..."
 docker compose exec -T api-backend pytest --cov=app --cov-report=html --cov-report=term
@@ -54,11 +69,11 @@ success "Despliegue completado correctamente (RNF10)."
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 echo -e "${BOLD}URLs de la aplicación:${NC}"
-echo -e "  ${GREEN}•${NC} Frontend (Vite, requiere 'cd newsradar_ui && npm run dev'): ${BOLD}http://localhost:5173${NC}"
-echo -e "  ${GREEN}•${NC} API Backend (FastAPI):                                       ${BOLD}http://localhost:8000${NC}"
-echo -e "  ${GREEN}•${NC} Documentación Swagger / OpenAPI:                             ${BOLD}http://localhost:8000/docs${NC}"
-echo -e "  ${GREEN}•${NC} ReDoc:                                                       ${BOLD}http://localhost:8000/redoc${NC}"
-echo -e "  ${GREEN}•${NC} Elasticsearch:                                               ${BOLD}http://localhost:9200${NC}"
+echo -e "  ${GREEN}•${NC} Frontend (React + Vite):           ${BOLD}http://localhost:5173${NC}"
+echo -e "  ${GREEN}•${NC} API Backend (FastAPI):              ${BOLD}http://localhost:8000${NC}"
+echo -e "  ${GREEN}•${NC} Documentación Swagger / OpenAPI:    ${BOLD}http://localhost:8000/docs${NC}"
+echo -e "  ${GREEN}•${NC} ReDoc:                              ${BOLD}http://localhost:8000/redoc${NC}"
+echo -e "  ${GREEN}•${NC} Elasticsearch:                      ${BOLD}http://localhost:9200${NC}"
 echo ""
 echo -e "${BOLD}Cobertura HTML:${NC} newsradar_api/htmlcov/index.html (dentro del contenedor: /app/htmlcov)"
 echo -e "${BOLD}Apagar el entorno:${NC} docker compose down -v"

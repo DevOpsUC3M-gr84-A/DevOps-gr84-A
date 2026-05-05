@@ -9,10 +9,59 @@ Sistema avanzado de **monitorización de noticias** sobre canales RSS, con clasi
 
 ---
 
+## 👨‍🏫 Para el Evaluador: Ejecución en 1 Clic (RNF10)
+
+> **Único requisito previo:** tener **Docker Desktop** en marcha. No hace falta instalar Python, Node ni PostgreSQL.
+
+### Pasos desde cero
+
+**1.** Obtener el código (cualquiera de las dos opciones):
+
+```bash
+# Opción A — descomprimir la release
+tar -xzf DevOps-gr84-A-v*.tar.gz && cd DevOps-gr84-A-*
+
+# Opción B — clonar el repositorio
+git clone https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A.git
+cd DevOps-gr84-A
+```
+
+**2.** Lanzar la evaluación con **un único comando**:
+
+```bash
+make evaluate            # Linux / macOS / WSL
+# Windows con Git Bash:
+bash evaluate.sh
+```
+
+**Qué hace este comando:** levanta los contenedores Docker (backend + PostgreSQL + Elasticsearch) e inyecta los **100 canales RSS semilla**.
+A continuación ejecuta `pytest` con cobertura HTML dentro del contenedor del backend y, al finalizar, imprime en verde las URLs de la aplicación (Frontend, API y Swagger).
+
+**3.** Al terminar, apagar el entorno limpiamente:
+
+```bash
+make down                # equivale a: docker compose down -v
+```
+
+### URLs que verás impresas al finalizar
+
+| Servicio | URL |
+|----------|-----|
+| Frontend (React + Vite) | http://localhost:5173 |
+| API Backend (FastAPI)   | http://localhost:8000 |
+| Swagger / OpenAPI       | http://localhost:8000/docs |
+
+> Todos los servicios — incluido el **frontend** — están dockerizados. El evaluador **no** necesita instalar Node.js ni Python: basta con Docker Desktop.
+
+**Credenciales por defecto:** `admin@newsradar.com` / `admin123456`.
+**Informe de cobertura:** `newsradar_api/htmlcov/index.html`.
+
+---
+
 ## Índice
 
 - [Descripción](#descripción)
-- [Inicio Rápido](#inicio-rápido)
+- [Inicio Rápido (desarrollador)](#inicio-rápido-desarrollador)
 - [APIs disponibles](#apis-disponibles)
 - [Arquitectura](#arquitectura)
 - [Documentación](#documentación)
@@ -33,20 +82,9 @@ El sistema cumple los requisitos arquitectónicos exigidos: 5 capas (RNF01), API
 
 ---
 
-## Inicio Rápido
+## Inicio Rápido (desarrollador)
 
-Guía completa en [docs/quickstart.md](docs/quickstart.md).
-
-### Evaluación con un único comando (RNF10)
-
-```bash
-git clone https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A.git
-cd DevOps-gr84-A
-chmod +x evaluate.sh
-make evaluate          # equivalente a: bash evaluate.sh
-```
-
-El script [evaluate.sh](evaluate.sh) limpia contenedores previos, construye las imágenes, arranca los servicios (con los **100 canales RSS semilla**), espera a que la API esté lista, ejecuta `pytest` con cobertura HTML dentro del contenedor del backend e imprime las URLs de la aplicación y de Swagger.
+> Para la **corrección de la asignatura** usa la sección [👨‍🏫 Para el Evaluador](#-para-el-evaluador-ejecución-en-1-clic-rnf10). Esta sección está orientada al desarrollo iterativo del backend y del frontend por separado. Guía completa en [docs/quickstart.md](docs/quickstart.md).
 
 ### Arranque manual (desarrollo)
 
