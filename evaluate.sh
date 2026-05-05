@@ -17,16 +17,28 @@ fail()    { echo -e "${RED}[ERR]${NC} ${BOLD}$1${NC}"; }
 
 trap 'fail "Fallo durante la evaluación. Revisa los logs con: docker compose logs"' ERR
 
+# 0) Bootstrap del .env si no existe (el evaluador no lo recibe en la release).
+if [ ! -f newsradar_api/.env ]; then
+  if [ -f newsradar_api/.env.example ]; then
+    info "Paso 0 — No existe newsradar_api/.env; creándolo desde .env.example..."
+    cp newsradar_api/.env.example newsradar_api/.env
+    success ".env creado. Ajusta SMTP/secretos si lo necesitas."
+  else
+    fail "No existe newsradar_api/.env ni newsradar_api/.env.example. Abortando."
+    exit 1
+  fi
+fi
+
 # 1) Limpieza de contenedores y volúmenes huérfanos
 info "Paso 1/5 — Limpiando contenedores y volúmenes previos..."
 docker compose down -v --remove-orphans || true
 
-# 2) Construcción de imágenes
-info "Paso 2/5 — Construyendo imágenes Docker..."
+# 2) Construcción de imágenes (backend + frontend)
+info "Paso 2/5 — Construyendo imágenes Docker (backend FastAPI y frontend React/Vite)..."
 docker compose build
 
 # 3) Arranque en segundo plano
-info "Paso 3/5 — Levantando servicios (api-backend, frontend, postgres, elasticsearch)..."
+info "Paso 3/5 — Levantando servicios (frontend, api-backend, postgres, elasticsearch)..."
 docker compose up -d
 
 # 4) Espera activa a que la API responda

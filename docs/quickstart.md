@@ -37,13 +37,14 @@ bash evaluate.sh
 
 **Qué hace este comando** (ver [evaluate.sh](../evaluate.sh)):
 
-1. Limpia contenedores y volúmenes previos (`docker compose down -v --remove-orphans`).
-2. Construye **todas** las imágenes Docker — backend FastAPI **y frontend React/Vite**.
-3. Levanta los 4 servicios: `api-backend`, `frontend`, `postgres`, `elasticsearch`.
-4. Inyecta los **100 canales RSS semilla** de ≥10 medios cubriendo IPTC L1 (RF14).
-5. Espera activamente a que API y frontend respondan en sus puertos.
-6. Ejecuta `pytest --cov=app --cov-report=html` dentro del contenedor del backend.
-7. Imprime las URLs en verde.
+1. Crea `newsradar_api/.env` desde `.env.example` si no existe.
+2. Limpia contenedores y volúmenes previos (`docker compose down -v --remove-orphans`).
+3. Construye **todas** las imágenes Docker — backend FastAPI **y frontend React/Vite**.
+4. Levanta los 4 servicios: `frontend`, `api-backend`, `postgres`, `elasticsearch`.
+5. El backend, al arrancar, **autoinyecta los 100 canales RSS semilla** de ≥10 medios cubriendo IPTC L1 (RF14) si la base está vacía.
+6. Espera activamente a que API y frontend respondan en sus puertos.
+7. Ejecuta `pytest --cov=app --cov-report=html` dentro del contenedor del backend.
+8. Imprime las URLs en verde.
 
 **3. Apagar el entorno cuando se termine:**
 
@@ -61,7 +62,7 @@ make down                # equivale a: docker compose down -v
 | ReDoc                                | http://localhost:8000/redoc |
 | Elasticsearch                        | http://localhost:9200 |
 
-**Cobertura HTML:** `newsradar_api/htmlcov/index.html`.
+**Cobertura HTML:** `newsradar_api/htmlcov/index.html` (montado desde el contenedor al host vía bind-mount; se abre directamente en el navegador).
 **Credenciales por defecto:** `admin@newsradar.com` / `admin123456`.
 
 ---

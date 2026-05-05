@@ -19,9 +19,9 @@ RUN apt-get update \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
-COPY requirements.txt .
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements-dev.txt
 
 
 # ============================================================
@@ -44,6 +44,8 @@ COPY --from=builder /opt/venv /opt/venv
 
 # Copiamos el código fuente con propiedad explícita del usuario no root
 COPY --chown=appuser:appgroup ./app ./app
+# Copiamos los tests para que pytest pueda ejecutarse dentro del contenedor (RNF10)
+COPY --chown=appuser:appgroup ./tests ./tests
 
 # Directorio dedicado a datos persistentes (SQLite, etc.). Si se monta un
 # bind-mount del host sobre /app/data, debe pertenecer al UID 1001 (appuser)

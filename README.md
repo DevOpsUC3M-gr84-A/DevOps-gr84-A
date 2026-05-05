@@ -34,7 +34,7 @@ make evaluate            # Linux / macOS / WSL
 bash evaluate.sh
 ```
 
-**Qué hace este comando:** levanta los contenedores Docker (backend + PostgreSQL + Elasticsearch) e inyecta los **100 canales RSS semilla**.
+**Qué hace este comando:** levanta los 4 contenedores Docker (frontend + backend + PostgreSQL + Elasticsearch). El backend, al arrancar, **autoinyecta los 100 canales RSS semilla** (RF14) si la base está vacía.
 A continuación ejecuta `pytest` con cobertura HTML dentro del contenedor del backend y, al finalizar, imprime en verde las URLs de la aplicación (Frontend, API y Swagger).
 
 **3.** Al terminar, apagar el entorno limpiamente:
@@ -54,7 +54,7 @@ make down                # equivale a: docker compose down -v
 > Todos los servicios — incluido el **frontend** — están dockerizados. El evaluador **no** necesita instalar Node.js ni Python: basta con Docker Desktop.
 
 **Credenciales por defecto:** `admin@newsradar.com` / `admin123456`.
-**Informe de cobertura:** `newsradar_api/htmlcov/index.html`.
+**Informe de cobertura:** `newsradar_api/htmlcov/index.html` (montado desde el contenedor al host vía bind-mount; se abre directamente en el navegador del evaluador).
 
 ---
 

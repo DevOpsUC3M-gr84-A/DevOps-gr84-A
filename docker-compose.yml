@@ -33,6 +33,10 @@ services:
       # uvicorn solo necesita leer ficheros para detectar cambios; así
       # appuser nunca intentará escribir __pycache__ en el host.
       - ./newsradar_api/app:/app/app:ro
+      # Tests montados en :ro para que pytest los ejecute sin reconstruir la imagen.
+      - ./newsradar_api/tests:/app/tests:ro
+      # htmlcov en bind-mount: el evaluador abre el informe directamente desde su host.
+      - ./newsradar_api/htmlcov:/app/htmlcov
     # Override del CMD del Dockerfile para activar el reloader en local.
     # En producción la imagen se ejecuta con el CMD por defecto (sin --reload).
     command:
