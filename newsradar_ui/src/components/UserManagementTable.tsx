@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useI18n } from "../i18n/i18n";
 import { AlertCircle, Loader } from "lucide-react";
 import "./UserManagementTable.css";
 
@@ -16,21 +17,8 @@ interface UserManagementTableProps {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-const getRoleLabel = (roleIds: number[]): string => {
-  const roleSet = new Set(roleIds);
-
-  if (roleSet.has(3)) {
-    return "Administrador";
-  }
-
-  if (roleSet.has(1)) {
-    return "Gestor";
-  }
-
-  return "Lector";
-};
-
 export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmin }) => {
+  const { t } = useI18n();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +51,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
       try {
         const token = globalThis.localStorage.getItem("token");
         if (!token) {
-          setError("No autenticado");
+          setError(t("userManagement.notAuthenticated"));
           setLoading(false);
           return;
         }
@@ -108,7 +96,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
     try {
       const token = globalThis.localStorage.getItem("token");
       if (!token) {
-        setError("No autenticado");
+        setError(t("userManagement.notAuthenticated"));
         setUpdatingUserId(null);
         return;
       }
@@ -155,7 +143,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
           };
         }),
       );
-      setSuccessMessage("Rol actualizado correctamente");
+      setSuccessMessage(t("userManagement.roleUpdated"));
     } catch (err) {
       setError(
         err instanceof Error
@@ -173,7 +161,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
 
   return (
     <section className="user-management-section" aria-labelledby="user-management-title" data-testid="user-management-table">
-      <h2 id="user-management-title">Gestión de Usuarios</h2>
+      <h2 id="user-management-title">{t("userManagement.title")}</h2>
 
       {error && (
         <div className="error-message" role="alert" aria-live="polite">
@@ -191,7 +179,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
       {loading && (
         <div className="loading-state" role="status" aria-live="polite">
           <Loader size={24} className="spinner" aria-hidden="true" />
-          <p>Cargando usuarios...</p>
+          <p>{t("userManagement.loading")}</p>
         </div>
       )}
 
@@ -200,10 +188,10 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
           <table className="users-table" role="grid">
             <thead>
               <tr>
-                <th scope="col">Email</th>
-                <th scope="col">Nombre Completo</th>
-                <th scope="col">Rol Actual</th>
-                <th scope="col">Cambiar Rol</th>
+                <th scope="col">{t("userManagement.email")}</th>
+                <th scope="col">{t("userManagement.fullName")}</th>
+                <th scope="col">{t("userManagement.currentRole")}</th>
+                <th scope="col">{t("userManagement.changeRole")}</th>
               </tr>
             </thead>
             <tbody>
@@ -211,8 +199,8 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
                 <tr key={user.id}>
                   <td>{user.email}</td>
                   <td>{user.first_name} {user.last_name}</td>
-                  <td>{getRoleLabel(user.role_ids)}</td>
-                  <td>
+                  <td>{user.role_ids.includes(3) ? t("roles.admin") : user.role_ids.includes(1) ? t("roles.gestor") : t("roles.lector")}</td>
+                  <td aria-label={`${t("userManagement.changeRole")}: ${user.email}`}>
                     <select
                       value={user.role_ids[0] || 2}
                       onChange={(event) =>
@@ -222,13 +210,13 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
                       aria-label={`Cambiar rol de usuario ${user.email}`}
                       className="role-select"
                     >
-                      <option value={1}>Gestor</option>
-                      <option value={2}>Lector</option>
-                      <option value={3}>Admin</option>
+                      <option value={1}>{t("roles.gestor")}</option>
+                      <option value={2}>{t("roles.lector")}</option>
+                      <option value={3}>{t("roles.admin")}</option>
                     </select>
                     {updatingUserId === user.id && (
                       <span className="updating-indicator" aria-hidden="true">
-                        Actualizando...
+                        {t("common.updating")}
                       </span>
                     )}
                   </td>
@@ -240,7 +228,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ isAdmi
       )}
 
       {!loading && users.length === 0 && !error && (
-        <p className="no-users-message">No hay usuarios para mostrar.</p>
+        <p className="no-users-message">{t("userManagement.noUsers")}</p>
       )}
     </section>
   );

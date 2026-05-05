@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "../test-utils";
 import { ForgotPassword } from "./ForgotPassword";
 
 describe("ForgotPassword", () => {

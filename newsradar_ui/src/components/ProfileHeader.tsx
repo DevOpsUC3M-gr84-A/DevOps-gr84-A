@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { useI18n } from "../i18n/i18n";
 import { CheckCircle, Camera, Trash2 } from "lucide-react";
 import "./ProfileHeader.css";
 
@@ -21,6 +22,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   banner,
   onImageUpdate,
 }) => {
+  const { t } = useI18n();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,13 +43,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
 
   const handleRemoveAvatar = () => {
-    if (globalThis.confirm("¿Estás seguro de que quieres quitar tu foto de perfil?")) {
+    if (globalThis.confirm(t("profileHeader.confirmRemoveAvatar"))) {
       onImageUpdate("avatar", null);
     }
   };
 
   const handleRemoveBanner = () => {
-    if (globalThis.confirm("¿Estás seguro de que quieres quitar la imagen de portada?")) {
+    if (globalThis.confirm(t("profileHeader.confirmRemoveBanner"))) {
       onImageUpdate("banner", null);
     }
   };
@@ -67,7 +69,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             <button
               className="banner-action-btn banner-remove-btn"
               onClick={handleRemoveBanner}
-              title="Quitar portada"
+              title={t("profileHeader.removeBanner")}
             >
               <Trash2 size={18} />
             </button>
@@ -77,7 +79,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             onClick={() => bannerInputRef.current?.click()}
             title="Cambiar fondo"
           >
-            <Camera size={18} /> <span>Cambiar portada</span>
+            <Camera size={18} /> <span>{t("profileHeader.changeBanner")}</span>
           </button>
         </div>
         <input
@@ -102,8 +104,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               type="button"
               className="avatar-edit-overlay" 
               onClick={() => avatarInputRef.current?.click()}
-              title="Cambiar foto de perfil"
-              aria-label="Cambiar foto de perfil"
+              title={t("profileHeader.changeAvatar")}
+              aria-label={t("profileHeader.changeAvatar")}
               style={{ border: "none", cursor: "pointer", padding: 0, width: "100%", height: "100%" }}
             >
               <Camera size={24} color="white" />
@@ -121,7 +123,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             <button 
               className="avatar-remove-btn" 
               onClick={handleRemoveAvatar}
-              title="Quitar foto"
+              title={t("profileHeader.removeAvatar")}
             >
               <Trash2 size={16} />
             </button>
@@ -135,7 +137,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             </h1>
             {isVerified && (
               <span className="header-verified-badge">
-                <CheckCircle size={16} /> Verificado
+                <CheckCircle size={16} /> {t("profileHeader.verified")}
               </span>
             )}
           </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useI18n } from "../i18n/i18n";
 import { AlertCircle, MailCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./Auth.css";
@@ -10,8 +11,9 @@ type VerificationStatus = "loading" | "success" | "error";
 
 export const VerifyEmail: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [status, setStatus] = useState<VerificationStatus>("loading");
-  const [message, setMessage] = useState("Cargando...");
+  const [message, setMessage] = useState(() => "");
   const [countdown, setCountdown] = useState(3);
 
   const hasCalled = useRef(false);
@@ -115,14 +117,14 @@ export const VerifyEmail: React.FC = () => {
             />
             <span>NewsRadar</span>
           </div>
-          <h2 id="verify-email-title">Verificación de Cuenta</h2>
+          <h2 id="verify-email-title">{t("verifyEmail.title")}</h2>
         </header>
 
         <section className="verify-email-content">
           {status === "loading" && (
             <p role="status" aria-live="polite" className="verify-email-status-row">
               <MailCheck size={24} className="verify-email-icon" aria-hidden="true" />
-              <span>{message}</span>
+              <span>{t("verifyEmail.loading")}</span>
             </p>
           )}
 
@@ -132,7 +134,7 @@ export const VerifyEmail: React.FC = () => {
                 <span>{message}</span>
               </p>
               <p role="status" aria-live="polite" className="verify-email-status-row">
-                Esta ventana se cerrará automáticamente en {countdown} segundos...
+                {t("verifyEmail.autoClose1")} {countdown} {t("verifyEmail.autoClose2")}
               </p>
             </>
           )}
@@ -150,7 +152,7 @@ export const VerifyEmail: React.FC = () => {
                 </p>
               </div>
               <a href="/login" className="btn-auth-submit verify-email-submit-link">
-                Volver al Login
+                {t("verifyEmail.backToLogin")}
               </a>
             </>
           )}

@@ -1,4 +1,5 @@
 import React, { memo } from "react";
+import { useI18n } from "../i18n/i18n";
 import type { AlertCategoryOption } from "./AlertForm";
 
 interface CategoryCheckboxListProps {
@@ -17,9 +18,10 @@ export const CategoryCheckboxList = memo<CategoryCheckboxListProps>(
     selectedCategoriesIds,
     onToggle,
   }) => {
+    const { t } = useI18n();
     return (
       <fieldset className="categories-checkbox-list">
-        <legend className="visually-hidden">CATEGORIA IPTC (NIVEL 1)</legend>
+        <legend className="visually-hidden">{t("alertForm.categoryLabel")}</legend>
         {categories.map((category) => {
           const code = String(category.iptc_code ?? category.id ?? "");
           const label = String(
@@ -36,7 +38,7 @@ export const CategoryCheckboxList = memo<CategoryCheckboxListProps>(
                 className="category-checkbox-input"
                 checked={isChecked}
                 onChange={(event) => onToggle(code, event)}
-                aria-label={`Seleccionar ${label}`}
+                aria-label={`${t("alertForm.selectPrefix")} ${label}`}
               />
               <label htmlFor={checkboxId} className="category-checkbox-label">
                 {label}

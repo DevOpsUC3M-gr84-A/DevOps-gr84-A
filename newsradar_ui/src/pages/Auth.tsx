@@ -4,6 +4,7 @@ import { LogIn, UserPlus, Mail, Lock, User, Building } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { normalizeRoleToId } from "../utils/roleUtils";
+import { useI18n } from "../i18n/i18n";
 import "./Auth.css";
 
 const API_BASE_URL =
@@ -115,6 +116,7 @@ const normalizeLoginErrorMessage = (
 export const Auth = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [isLogin, setIsLogin] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState(false);
@@ -206,10 +208,8 @@ export const Auth = () => {
     return (
       <div className="auth-page">
         <div className="auth-card" role="status" aria-live="polite">
-          <h2>Registro exitoso</h2>
-          <p>
-            Por favor, revisa tu bandeja de entrada para verificar tu cuenta.
-          </p>
+          <h2>{t("auth.successTitle")}</h2>
+          <p>{t("auth.successMessage")}</p>
           <button
             type="button"
             className="btn-toggle-auth"
@@ -219,13 +219,13 @@ export const Auth = () => {
               setAuthError(null);
             }}
           >
-            Ir al Login
+            {t("auth.goToLogin")}
           </button>
         </div>
       </div>
     );
   }
-  const submitText = isLogin ? "Entrar al sistema" : "Crear mi cuenta";
+
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -238,11 +238,9 @@ export const Auth = () => {
             />
             <span>NewsRadar</span>
           </div>
-          <h2>{isLogin ? "Iniciar Sesión" : "Crear Cuenta"}</h2>
+          <h2>{isLogin ? t("auth.login") : t("auth.register")}</h2>
           <p className="auth-subtitle">
-            {isLogin
-              ? "Accede a tu panel de control"
-              : "Únete a la plataforma de monitoreo"}
+            {isLogin ? t("auth.subtitle") : t("auth.registerSubtitle")}
           </p>
         </header>
 
@@ -261,25 +259,25 @@ export const Auth = () => {
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="first_name">
-                  <User size={16} /> Nombre
+                  <User size={16} /> {t("auth.firstName")}
                 </label>
                 <input
                   id="first_name"
                   type="text"
                   name="first_name"
                   required
-                  placeholder="Ej: Juan"
+                  placeholder={t("auth.firstNamePlaceholder")}
                   onChange={handleChange}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="last_name">Apellidos</label>
+                <label htmlFor="last_name">{t("auth.lastName")}</label>
                 <input
                   id="last_name"
                   type="text"
                   name="last_name"
                   required
-                  placeholder="Ej: Pérez"
+                  placeholder={t("auth.lastNamePlaceholder")}
                   onChange={handleChange}
                 />
               </div>
@@ -289,14 +287,14 @@ export const Auth = () => {
           {!isLogin && (
             <div className="form-group">
               <label htmlFor="organization">
-                <Building size={16} /> Organización
+                <Building size={16} /> {t("auth.organization")}
               </label>
               <input
                 id="organization"
                 type="text"
                 name="organization"
                 required
-                placeholder="Nombre de tu empresa/institución"
+                placeholder={t("auth.orgPlaceholder")}
                 onChange={handleChange}
               />
             </div>
@@ -304,27 +302,23 @@ export const Auth = () => {
 
           <div className="form-group">
             <label htmlFor="email">
-              <Mail size={16} /> Email Corporativo
+              <Mail size={16} /> {t("auth.emailCorporate")}
             </label>
             <input
               id="email"
               type="email"
               name="email"
               required
-              placeholder="tu@organizacion.com"
+              placeholder={t("auth.emailPlaceholder")}
               onChange={handleChange}
             />
           </div>
 
-          <div
-            className="form-group password-field-group"
-          >
+          <div className="form-group password-field-group">
             <label htmlFor="password">
-              <Lock size={16} /> Contraseña
+              <Lock size={16} /> {t("auth.password")}
             </label>
-            <div
-              className="password-input-wrapper"
-            >
+            <div className="password-input-wrapper">
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -338,9 +332,7 @@ export const Auth = () => {
               />
               <button
                 type="button"
-                aria-label={
-                  showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-                }
+                aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                 onClick={() => setShowPassword((v) => !v)}
                 className="password-toggle-button"
                 tabIndex={0}
@@ -352,7 +344,7 @@ export const Auth = () => {
 
           <button type="submit" className="btn-auth-submit">
             {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-            {submitText}
+            {isLogin ? t("auth.loginButton") : t("auth.registerButton")}
           </button>
 
           {isLogin && (
@@ -360,14 +352,14 @@ export const Auth = () => {
               href="/forgot-password"
               className="btn-toggle-auth forgot-password-link"
             >
-              ¿Has olvidado tu contraseña?
+              {t("auth.forgotPassword")}
             </a>
           )}
         </form>
 
         <footer className="auth-footer">
           <p>
-            {isLogin ? "¿No tienes cuenta todavía?" : "¿Ya tienes una cuenta?"}
+            {isLogin ? t("auth.switchToRegister") : t("auth.switchToLogin")}
           </p>
           <button
             type="button"
@@ -378,7 +370,7 @@ export const Auth = () => {
             }}
             className="btn-toggle-auth"
           >
-            {isLogin ? "Regístrate ahora" : "Inicia sesión aquí"}
+            {isLogin ? t("auth.registerNow") : t("auth.loginHere")}
           </button>
         </footer>
       </div>

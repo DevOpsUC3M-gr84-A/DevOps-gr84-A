@@ -4,15 +4,18 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { I18nProvider } from './i18n/i18n';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <App />
-    </BrowserRouter>
+    <I18nProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </I18nProvider>
   </React.StrictMode>
 );
 
@@ -20,3 +23,4 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+

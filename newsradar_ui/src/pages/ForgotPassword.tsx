@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useI18n } from "../i18n/i18n";
 import { AuthLayout } from "../components/AuthLayout";
 
 const API_BASE_URL =
@@ -9,6 +10,7 @@ interface ForgotPasswordResponse {
 }
 
 export const ForgotPassword = () => {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export const ForgotPassword = () => {
     setSuccessMessage(null);
 
     if (!email.trim()) {
-      setErrorMessage("Debes introducir un email.");
+      setErrorMessage(t("forgotPassword.emailRequired"));
       return;
     }
 
@@ -61,18 +63,16 @@ export const ForgotPassword = () => {
 
   return (
     <AuthLayout
-      title="Recuperar contraseña"
-      description="Introduce tu correo corporativo y te enviaremos instrucciones."
+      title={t("forgotPassword.title")}
+      description={t("forgotPassword.description")}
       errorMessage={errorMessage}
       successMessage={successMessage}
       isSubmitting={isSubmitting}
-      submitText={
-        isSubmitting ? "Enviando..." : "Enviar enlace de recuperación"
-      }
+      submitText={isSubmitting ? t("forgotPassword.sending") : t("forgotPassword.submitButton")}
       onSubmit={handleSubmit}
     >
       <div className="form-group">
-        <label htmlFor="forgot-email">Email</label>
+        <label htmlFor="forgot-email">{t("forgotPassword.emailLabel")}</label>
         <input
           id="forgot-email"
           name="email"

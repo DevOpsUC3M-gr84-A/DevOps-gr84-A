@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../i18n/i18n';
 // @ts-ignore: CSS module declaration not found
 import '../pages/Auth.css';
 
@@ -23,6 +24,7 @@ export const AuthLayout = ({
   onSubmit,
   children,
 }: AuthLayoutProps) => {
+  const { t } = useI18n();
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="auth-layout-title">
@@ -49,7 +51,7 @@ export const AuthLayout = ({
           </button>
 
           <a href="/login" className="btn-toggle-auth auth-layout-back-link">
-            Volver al Login
+            {t("auth.backToLogin")}
           </a>
         </form>
       </section>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useI18n } from "../i18n/i18n";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
 
@@ -10,6 +11,7 @@ interface ResetPasswordResponse {
 }
 
 export const ResetPassword = () => {
+  const { t } = useI18n();
   const token = useMemo(
     () => new URLSearchParams(globalThis.location.search).get("token") ?? "",
     [],
@@ -28,12 +30,12 @@ export const ResetPassword = () => {
     setSuccessMessage(null);
 
     if (!token) {
-      setErrorMessage("El enlace de recuperación no es válido.");
+      setErrorMessage(t("resetPassword.invalidToken"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage("Las contraseñas no coinciden.");
+      setErrorMessage(t("resetPassword.mismatch"));
       return;
     }
 
@@ -77,16 +79,16 @@ export const ResetPassword = () => {
 
   return (
     <AuthLayout
-      title="Restablecer contraseña"
-      description="Escribe tu nueva contraseña para completar el proceso."
+      title={t("resetPassword.title")}
+      description={t("resetPassword.description")}
       errorMessage={errorMessage}
       successMessage={successMessage}
       isSubmitting={isSubmitting}
-      submitText={isSubmitting ? "Actualizando..." : "Actualizar contraseña"}
+      submitText={isSubmitting ? t("resetPassword.updating") : t("resetPassword.submitButton")}
       onSubmit={handleSubmit}
     >
       <div className="form-group" style={{ position: "relative" }}>
-        <label htmlFor="new-password">Nueva Contraseña</label>
+        <label htmlFor="new-password">{t("resetPassword.newPassword")}</label>
         <div
           style={{
             position: "relative",
@@ -106,9 +108,7 @@ export const ResetPassword = () => {
           />
           <button
             type="button"
-            aria-label={
-              showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-            }
+            aria-label={showNewPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             onClick={() => setShowNewPassword((v) => !v)}
             style={{
               position: "absolute",
@@ -130,7 +130,7 @@ export const ResetPassword = () => {
       </div>
 
       <div className="form-group" style={{ position: "relative" }}>
-        <label htmlFor="confirm-password">Confirmar Contraseña</label>
+        <label htmlFor="confirm-password">{t("resetPassword.confirmPassword")}</label>
         <div
           style={{
             position: "relative",
@@ -150,9 +150,7 @@ export const ResetPassword = () => {
           />
           <button
             type="button"
-            aria-label={
-              showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-            }
+            aria-label={showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             onClick={() => setShowConfirmPassword((v) => !v)}
             style={{
               position: "absolute",

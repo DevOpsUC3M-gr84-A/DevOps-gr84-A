@@ -25,6 +25,8 @@ import {
 import { Auth } from "./pages/Auth";
 import { useAuth } from "./hooks/useAuth";
 import { normalizeRoleToId } from "./utils/roleUtils";
+import { useI18n } from "./i18n/i18n";
+import { LanguageToggle } from "./components/LanguageToggle";
 
 const AlertsManagement = lazy(
   () =>
@@ -57,7 +59,6 @@ const ResetPassword = lazy(
 interface ProtectedLayoutProps {
   handleLogout: () => void;
   canManageSections: boolean;
-  onLanguageChange: (language: "es" | "en") => void;
 }
 
 const parseStoredRoles = (rawRoles: string | null): number[] => {
@@ -152,7 +153,6 @@ const getStoredUserRoles = (): number[] => {
     return primaryRoles;
   }
 
-  // Fallback for older localStorage keys.
   const legacyRoles = parseStoredRoles(globalThis.localStorage.getItem("role_ids"));
   if (legacyRoles.length > 0) {
     return legacyRoles;
@@ -164,65 +164,37 @@ const getStoredUserRoles = (): number[] => {
 const canAccessManagementSections = (roles: number[]): boolean =>
   roles.includes(1) || roles.includes(3);
 
-const NotificationsPage = () => (
-  <section className="main-content">
-    <header className="page-heading">
-      <h1 className="section-title">Buzon de Notificaciones</h1>
-      <p className="section-subtitle">Buzon de avisos y alertas detectadas.</p>
-    </header>
-  </section>
-);
-
-const LanguageSwitcher = ({
-  activeLanguage,
-  onLanguageChange,
-}: {
-  activeLanguage: "es" | "en";
-  onLanguageChange: (language: "es" | "en") => void;
-}) => (
-  <div className="language-switcher">
-    <button
-      type="button"
-      className={`language-switcher-item ${
-        activeLanguage === "es" ? "is-active" : ""
-      }`}
-      onClick={() => onLanguageChange("es")}
-    >
-      ES
-    </button>
-    <span className="language-switcher-separator"> / </span>
-    <button
-      type="button"
-      className={`language-switcher-item ${
-        activeLanguage === "en" ? "is-active" : ""
-      }`}
-      onClick={() => onLanguageChange("en")}
-    >
-      EN
-    </button>
-  </div>
-);
+const NotificationsPage = () => {
+  const { t } = useI18n();
+  return (
+    <section className="main-content">
+      <header className="page-heading">
+        <h1 className="section-title">{t("notifications.title")}</h1>
+        <p className="section-subtitle">{t("notifications.subtitle")}</p>
+      </header>
+    </section>
+  );
+};
 
 const ProtectedLayout = ({
   handleLogout,
   canManageSections,
-  onLanguageChange,
 }: ProtectedLayoutProps) => {
   const location = useLocation();
+  const { t } = useI18n();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeLanguage, setActiveLanguage] = useState<"es" | "en">("es");
   const [userName, setUserName] = useState("Usuario");
-  const [userRole, setUserRole] = useState("Lector");
+  const [userRole, setUserRole] = useState(() => t("roles.lector"));
   const [userInitials, setUserInitials] = useState("US");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   const sectionTitleByPath: Record<string, string> = {
-    "/dashboard": "DASHBOARD",
-    "/resumen": "RESUMEN",
-    "/alertas": "ALERTAS",
-    "/fuentes-rss": "FUENTES Y RSS",
-    "/notificaciones": "NOTIFICACIONES",
-    "/perfil": "PERFIL",
+    "/dashboard": t("nav.dashboard").toUpperCase(),
+    "/resumen": t("nav.resumen").toUpperCase(),
+    "/alertas": t("nav.alerts").toUpperCase(),
+    "/fuentes-rss": t("nav.sourcesRss").toUpperCase(),
+    "/notificaciones": t("nav.notifications").toUpperCase(),
+    "/perfil": t("nav.profile").toUpperCase(),
   };
 
   const currentSectionTitle = sectionTitleByPath[location.pathname] ?? "DASHBOARD";
@@ -237,14 +209,14 @@ const ProtectedLayout = ({
 
     const roleIdToLabel = (roleIds: number[]): string => {
       if (roleIds.includes(3)) {
-        return "Admin";
+        return t("roles.admin");
       }
 
       if (roleIds.includes(1)) {
-        return "Gestor";
+        return t("roles.gestor");
       }
 
-      return "Lector";
+      return t("roles.lector");
     };
 
     const controller = new AbortController();
@@ -298,11 +270,6 @@ const ProtectedLayout = ({
     };
   }, []);
 
-  const handleLanguageChange = (language: "es" | "en") => {
-    setActiveLanguage(language);
-    onLanguageChange(language);
-  };
-
   return (
     <div className="app-container">
       <aside className={`sidebar ${isSidebarOpen ? "" : "closed"}`}>
@@ -315,23 +282,20 @@ const ProtectedLayout = ({
           <span>NewsRadar</span>
         </div>
 
-        <LanguageSwitcher
-          activeLanguage={activeLanguage}
-          onLanguageChange={handleLanguageChange}
-        />
+        <LanguageToggle />
 
         <nav className="nav-container">
           <ul className="nav-links">
             <li>
               <NavLink to="/dashboard" className="nav-item">
                 <LayoutDashboard size={20} />
-                <span>Dashboard</span>
+                <span>{t("nav.dashboard")}</span>
               </NavLink>
             </li>
             <li>
               <NavLink to="/resumen" className="nav-item">
                 <Cloud size={20} />
-                <span>Resumen</span>
+                <span>{t("nav.resumen")}</span>
               </NavLink>
             </li>
             {canManageSections && (
@@ -339,13 +303,13 @@ const ProtectedLayout = ({
                 <li>
                   <NavLink to="/alertas" className="nav-item">
                     <Bell size={20} />
-                    <span>Alertas</span>
+                    <span>{t("nav.alerts")}</span>
                   </NavLink>
                 </li>
                 <li>
                   <NavLink to="/fuentes-rss" className="nav-item">
                     <Rss size={20} />
-                    <span>Fuentes y RSS</span>
+                    <span>{t("nav.sourcesRss")}</span>
                   </NavLink>
                 </li>
               </>
@@ -353,13 +317,13 @@ const ProtectedLayout = ({
             <li>
               <NavLink to="/notificaciones" className="nav-item">
                 <Inbox size={20} />
-                <span>Notificaciones</span>
+                <span>{t("nav.notifications")}</span>
               </NavLink>
             </li>
             <li>
               <NavLink to="/perfil" className="nav-item">
                 <UserCog size={20} />
-                <span>Perfil</span>
+                <span>{t("nav.profile")}</span>
               </NavLink>
             </li>
           </ul>
@@ -367,7 +331,7 @@ const ProtectedLayout = ({
           <div className="nav-footer">
             <button onClick={handleLogout} className="logout-button">
               <LogOut size={20} />
-              <span>Cerrar Sesion</span>
+              <span>{t("nav.logout")}</span>
             </button>
           </div>
         </nav>
@@ -380,7 +344,7 @@ const ProtectedLayout = ({
               type="button"
               className="sidebar-toggle-button"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              aria-label={isSidebarOpen ? "Cerrar menú lateral" : "Abrir menú lateral"}
+              aria-label={isSidebarOpen ? t("nav.closeSidebar") : t("nav.openSidebar")}
             >
               <Menu size={20} />
             </button>
@@ -395,10 +359,10 @@ const ProtectedLayout = ({
             <div className="user-badge" aria-label="Usuario logueado">
               <div className="user-badge-avatar" aria-hidden="true" style={{ padding: userAvatar ? 0 : undefined, overflow: 'hidden' }}>
                 {userAvatar ? (
-                  <img 
-                    src={userAvatar} 
-                    alt="Avatar" 
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} 
+                  <img
+                    src={userAvatar}
+                    alt="Avatar"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                   />
                 ) : (
                   userInitials
@@ -432,6 +396,8 @@ function App() {
     hasStoredToken,
   );
 
+  const { t } = useI18n();
+
   useEffect(() => {
     const validateSession = async () => {
       const token = globalThis.localStorage.getItem("token");
@@ -439,9 +405,6 @@ function App() {
 
       if (!token || !userId) {
         if (isAuthenticated) {
-          // When the auth hook reports the session as authenticated (e.g. in tests
-          // or alternative auth flows), skip forcing a logout due to missing
-          // localStorage tokens and preserve computed `canManageSections`.
           setIsCheckingAuth(false);
           return;
         }
@@ -500,70 +463,69 @@ function App() {
     return (
       <div className="auth-checking" role="status" aria-live="polite">
         <span className="auth-checking-spinner" aria-hidden="true" />
-        <span>Cargando…</span>
+        <span>{t("common.loading")}</span>
       </div>
     );
   }
 
   return (
-    <Suspense fallback={<div className="app-loading">Cargando…</div>}>
+    <Suspense fallback={<div className="app-loading">{t("common.loading")}</div>}>
       <Routes>
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route
-        path="/"
-        element={
-          isSessionAuthenticated ? (
-            <ProtectedLayout
-              handleLogout={handleLogout}
-              canManageSections={canManageSections}
-              onLanguageChange={() => {}}
-            />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="resumen" element={<ResumenPage />} />
-        <Route
-          path="alertas"
+          path="/"
           element={
-            canManageSections ? (
-              <AlertsManagement onLogout={handleLogout} />
+            isSessionAuthenticated ? (
+              <ProtectedLayout
+                handleLogout={handleLogout}
+                canManageSections={canManageSections}
+              />
             ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="resumen" element={<ResumenPage />} />
+          <Route
+            path="alertas"
+            element={
+              canManageSections ? (
+                <AlertsManagement onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="fuentes-rss"
+            element={
+              canManageSections ? (
+                <SourcesRss />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route path="notificaciones" element={<NotificationsPage />} />
+          <Route path="perfil" element={<ProfilePage />} />
+        </Route>
+        <Route path="/login" element={<Auth />} />
+        <Route
+          path="*"
+          element={
+            isSessionAuthenticated ? (
               <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
             )
           }
         />
-        <Route
-          path="fuentes-rss"
-          element={
-            canManageSections ? (
-              <SourcesRss />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          }
-        />
-        <Route path="notificaciones" element={<NotificationsPage />} />
-        <Route path="perfil" element={<ProfilePage />} />
-      </Route>
-      <Route path="/login" element={<Auth />} />
-      <Route
-        path="*"
-        element={
-          isSessionAuthenticated ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-    </Routes>
-  </Suspense>
+      </Routes>
+    </Suspense>
   );
 }
 

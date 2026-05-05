@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useI18n } from "../i18n/i18n";
 import { ChangePasswordModal } from "../components/ChangePasswordModal";
 import { ProfileHeader } from "../components/ProfileHeader";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +36,7 @@ interface UserProfile {
 export const ProfilePage: React.FC = () => {
   const { token, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -295,7 +297,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
     return (
       <main className="profile-page">
         <div className="loading-state" role="status" aria-live="polite">
-          <p>Cargando perfil...</p>
+          <p>{t("profile.loading")}</p>
         </div>
       </main>
     );
@@ -305,16 +307,16 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
     return (
       <main className="profile-page">
         <div role="alert" className="error-alert">
-          {error || "No se pudo cargar el perfil"}
+          {error || t("profile.loadError")}
         </div>
       </main>
     );
   }
 
   const roleSet = new Set(profile.role_ids || []);
-  let roleLabel = "Lector";
-  if (roleSet.has(3)) roleLabel = "Administrador";
-  else if (roleSet.has(1)) roleLabel = "Gestor";
+  let roleLabel = t("roles.lector");
+  if (roleSet.has(3)) roleLabel = t("roles.admin");
+  else if (roleSet.has(1)) roleLabel = t("roles.gestor");
 
   const isAdmin = roleSet.has(3);
   const isEmailVerified = profile.is_verified === true || profile.email_verified === true || profile.is_active === true;
@@ -340,13 +342,13 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
           <section className="profile-main-column" aria-label="Información y gestión">
             <article className="profile-card" aria-label="Información personal">
               <div className="profile-card-header">
-                <h2>Información Personal</h2>
+                <h2>{t("profile.personalInfo")}</h2>
               </div>
               {saveError && <div className="error-alert" style={{ marginBottom: "1rem" }}>{saveError}</div>}
 
               <div className="form-row-split">
                 <div className="profile-field">
-                  <label htmlFor="first_name">Nombre:</label>
+                  <label htmlFor="first_name">{t("profile.firstName")}</label>
                   {isEditing ? (
                     <input
                       id="first_name"
@@ -360,7 +362,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
                 </div>
 
                 <div className="profile-field">
-                  <label htmlFor="last_name">Apellido/s:</label>
+                  <label htmlFor="last_name">{t("profile.lastName")}</label>
                   {isEditing ? (
                     <input
                       id="last_name"
@@ -375,11 +377,11 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
               <div className="profile-field">
                 <span style={{ "color": "#475569", "fontSize": "0.95rem", "textTransform": "uppercase", "letterSpacing": "0.05em", "fontWeight": "700" }}>
                   Email:</span>
-                <p className="disabled-field">{profile.email} <small>(No editable)</small></p>
+                <p className="disabled-field">{profile.email} <small>{t("profile.notEditable")}</small></p>
               </div>
 
               <div className="profile-field">
-                <label htmlFor="organization">Organización:</label>
+                <label htmlFor="organization">{t("profile.organization")}</label>
                 {isEditing ? (
                   <input
                     id="organization"
@@ -387,7 +389,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
                     value={editFormData.organization}
                     onChange={(e) => setEditFormData({ ...editFormData, organization: e.target.value })}
                   />
-                ) : <p>{profile.organization || "No especificada"}</p>}
+                ) : <p>{profile.organization || t("profile.notSpecified")}</p>}
               </div>
 
               <div className="profile-field">
@@ -400,15 +402,15 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
                 {isEditing ? (
                   <div className="edit-actions">
                     <button type="button" className="profile-cancel-button" onClick={handleCancelEdit} disabled={isSaving}>
-                      <X size={16} /> Cancelar
+                      <X size={16} />{t("common.cancel")}
                     </button>
                     <button type="button" className="profile-save-button" onClick={handleSaveProfile} disabled={isSaving}>
-                      <Save size={16} /> {isSaving ? "Guardando..." : "Guardar"}
+                      <Save size={16} /> {isSaving ? t("profile.saving") : t("common.save")}
                     </button>
                   </div>
                 ) : (
                   <button type="button" className="profile-edit-button" onClick={handleEditClick}>
-                    <Pencil size={16} /><span>Editar Perfil</span>
+                    <Pencil size={16} /><span>{t("profile.editProfile")}</span>
                   </button>
                 )}
               </div>
@@ -420,7 +422,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
           <aside className="profile-side-column">
             <article className="security-card">
               <div className="profile-card-header">
-                <h2>Seguridad</h2>
+                <h2>{t("profile.security")}</h2>
               </div>
               <div className="security-actions">
                 {/* Cambiar contraseña*/}
@@ -429,7 +431,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
                     className="security-action-link security-action-button" 
                     onClick={openPasswordModal}
                   >
-                    <Key size={16} /><span>Cambiar contraseña</span>
+                    <Key size={16} /><span>{t("profile.changePassword")}</span>
                   </button>
 
                   {/* Recuperar acceso */}
@@ -438,7 +440,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
                     className="security-action-link security-action-button" 
                     onClick={handlePasswordResetRequest}
                   >
-                    <RefreshCw size={16} /><span>Recuperar acceso</span>
+                    <RefreshCw size={16} /><span>{t("profile.recoverAccess")}</span>
                   </button>
                 
                 {passwordMessage && (
@@ -452,7 +454,7 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
                   onClick={handleResendVerification}
                   disabled={isEmailVerified}
                 >
-                  <Mail size={16} /> Verificar correo
+                  <Mail size={16} /> {t("profile.verifyEmail")}
                 </button>
                 {verificationMessage && (
                   <p className={`verification-message verification-message-${verificationMessage.type}`}>
@@ -464,22 +466,22 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
 
             <article className="danger-card">
               <div className="profile-card-header">
-                <h2>Zona de Peligro</h2>
+                <h2>{t("profile.dangerZone")}</h2>
               </div>
               <div className="danger-content">
                 <div className="danger-warning">
                   <AlertTriangle size={18} />
                   <p>
                     {isAdmin 
-                      ? "Las cuentas de administrador no pueden ser eliminadas para garantizar la gestión del sistema." 
-                      : "Eliminar la cuenta borra el acceso y los datos de forma permanente."}
+                      ? t("profile.adminCannotDelete") 
+                      : t("profile.deleteWarning")}
                   </p>
                 </div>
                 
                 {/* Solo mostrar el botón si no es administrador*/}
                 {!isAdmin && (
                   <button type="button" className="danger-button" onClick={openDeleteModal}>
-                    <Trash2 size={16} /><span>Eliminar Cuenta</span>
+                    <Trash2 size={16} /><span>{t("profile.deleteAccount")}</span>
                   </button>
                 )}
               </div>
@@ -491,8 +493,8 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
       {isDeleteModalOpen && (
         <div className="delete-account-modal-overlay">
           <dialog open className="delete-account-modal-card">
-            <h2>Confirmar eliminación</h2>
-            <p>Introduce tu contraseña para eliminar definitivamente tu cuenta.</p>
+            <h2>{t("profile.confirmDelete")}</h2>
+            <p>{t("profile.deleteConfirmText")}</p>
             <input
               type="password"
               className="delete-account-input"
@@ -502,9 +504,9 @@ const handleImageUpdate = async (type: "avatar" | "banner", base64Data: string |
             />
             {deleteError && <p className="delete-account-error">{deleteError}</p>}
             <div className="delete-account-actions">
-              <button type="button" className="delete-account-cancel" onClick={closeDeleteModal}>Cancelar</button>
+              <button type="button" className="delete-account-cancel" onClick={closeDeleteModal}>{t("common.cancel")}</button>
               <button type="button" className="delete-account-confirm" onClick={handleDeleteAccount} disabled={isDeleting}>
-                {isDeleting ? "Eliminando..." : "Eliminar"}
+                {isDeleting ? t("profile.deleting") : t("common.delete")}
               </button>
             </div>
           </dialog>

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, test, expect, beforeEach, vi, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "../test-utils";
 import { MemoryRouter } from "react-router-dom";
 import { ProfilePage } from "./ProfilePage";
 import { useAuth } from "../hooks/useAuth";

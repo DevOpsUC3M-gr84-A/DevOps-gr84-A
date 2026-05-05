@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import cloud from "d3-cloud";
+import { useI18n } from "../i18n/i18n";
 import "./Resumen.css";
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -89,6 +90,7 @@ const buildCategoryGroups = (alerts: Alert[]): CategoryData[] => {
 };
 
 export const ResumenPage = () => {
+  const { t } = useI18n();
   const [cloudWords, setCloudWords] = useState<CloudWord[]>([]);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,15 +170,15 @@ export const ResumenPage = () => {
 
   const cloudContent = () => {
     if (loading) {
-      return <div className="resumen-cloud-loading">Cargando nube de palabras...</div>;
+      return <div className="resumen-cloud-loading">{t("resumen.loading")}</div>;
     }
     if (fetchError) {
-      return <div className="resumen-cloud-loading">No se pudo cargar los datos del servidor.</div>;
+      return <div className="resumen-cloud-loading">{t("resumen.error")}</div>;
     }
     if (!hasData) {
       return (
         <div className="resumen-cloud-loading">
-          Sin descriptores todavía. Crea alertas para ver la nube de palabras.
+          {t("resumen.empty")}
         </div>
       );
     }
@@ -204,19 +206,16 @@ export const ResumenPage = () => {
   return (
     <section className="main-content resumen-page">
       <header className="page-heading">
-        <p className="resumen-label">Resumen</p>
-        <h1 className="section-title">Analítica y Nube de Palabras</h1>
-        <p className="section-subtitle">
-          Visualiza los temas más candentes y descubre cómo se distribuyen los
-          descriptores por categoría.
-        </p>
+        <p className="resumen-label">{t("resumen.label")}</p>
+        <h1 className="section-title">{t("resumen.title")}</h1>
+        <p className="section-subtitle">{t("resumen.subtitle")}</p>
       </header>
 
       <div className="resumen-hero-card">
         <div className="resumen-hero-copy">
-          <span className="resumen-chip">Nube de Descriptores Global</span>
+          <span className="resumen-chip">{t("resumen.globalCloud")}</span>
         </div>
-        <div className="resumen-cloud-frame" aria-label="Nube de palabras global">
+        <div className="resumen-cloud-frame" aria-label={t("resumen.globalCloudAria")}>
           {cloudContent()}
         </div>
       </div>
@@ -224,10 +223,8 @@ export const ResumenPage = () => {
       {categories.length > 0 && (
         <div className="resumen-category-section">
           <div className="resumen-category-header">
-            <p className="resumen-category-title">Nube de palabras por categoría</p>
-            <p className="resumen-category-description">
-              Explora los términos más frecuentes agrupados en las principales áreas temáticas.
-            </p>
+            <p className="resumen-category-title">{t("resumen.categoryCloud")}</p>
+            <p className="resumen-category-description">{t("resumen.categoryCloudDesc")}</p>
           </div>
           <div className="resumen-category-grid">
             {categories.map((category) => (
