@@ -19,7 +19,11 @@ from sqlalchemy.orm import Session
 
 from app.models.alert_monitoring import AlertRule
 from app.models.rss import RSSChannel
-from app.services.alert_monitoring_service import build_notification_payload
+from app.models.user import User
+from app.services.alert_monitoring_service import (
+    build_notification_payload,
+    dispatch_alert_emails_with_cap,
+)
 from app.services.workflows.classification_workflow import classify_article
 from app.models.notification import Notification as NotificationModel
 from app.database.database import engine, Base
@@ -335,6 +339,7 @@ def _handle_match(
     alert: AlertRule,
     entry: ParsedEntry,
     pending_notifications: list[NotificationModel],
+    pending_email_payloads: dict[int, list[dict]] | None = None,
 ) -> int:
     """Procesa un match (entry, alert): encola notificación e indexa. Devuelve 1 si encoló."""
     logger.info(
@@ -345,33 +350,43 @@ def _handle_match(
     )
 
     created = 0
-    if getattr(alert, "notify_inbox", False):
-        payload = _build_notification_payload_safe(alert, channel, entry)
-        if payload is not None:
-            if _notification_already_exists(db, alert, entry):
-                logger.debug(
-                    "Notificación duplicada omitida: alert_id=%s url=%s",
-                    alert.id,
-                    entry.link,
-                )
-                # Dedupe por BD: omitimos también la indexación en ES.
-                return 0
-
-            pending_notifications.append(
-                NotificationModel(
-                    user_id=alert.user_id,
-                    alert_id=alert.id,
-                    article_url=entry.link,
-                    title=payload.get("title"),
-                    message=payload.get("message"),
-                )
-            )
-            created = 1
+    payload = _build_notification_payload_safe(alert, channel, entry)
+    is_new = False
+    if getattr(alert, "notify_inbox", False) and payload is not None:
+        if _notification_already_exists(db, alert, entry):
             logger.debug(
-                "Notification queued for DB persist: alert_id=%s url=%s",
+                "Notificación duplicada omitida: alert_id=%s url=%s",
                 alert.id,
                 entry.link,
             )
+            # Dedupe por BD: omitimos también la indexación en ES y el email.
+            return 0
+
+        pending_notifications.append(
+            NotificationModel(
+                user_id=alert.user_id,
+                alert_id=alert.id,
+                article_url=entry.link,
+                title=payload.get("title"),
+                message=payload.get("message"),
+            )
+        )
+        created = 1
+        is_new = True
+        logger.debug(
+            "Notification queued for DB persist: alert_id=%s url=%s",
+            alert.id,
+            entry.link,
+        )
+
+    # Solo encolamos email para notificaciones nuevas (dedup por BD ya aplicado).
+    if (
+        is_new
+        and payload is not None
+        and getattr(alert, "notify_email", False)
+        and pending_email_payloads is not None
+    ):
+        pending_email_payloads.setdefault(alert.id, []).append(payload)
 
     _index_and_classify(es_client, alert, channel, entry)
     return created
@@ -405,6 +420,7 @@ def _process_channel_entries(
     alerts: list[AlertRule],
     es_client: Elasticsearch,
     db: Session,
+    pending_email_payloads: dict[int, list[dict]] | None = None,
 ) -> int:
     feed = _parse_feed(channel.url)
     logger.info(
@@ -425,11 +441,55 @@ def _process_channel_entries(
             if not _descriptor_matches(entry, descriptors):
                 continue
             created_articles += _handle_match(
-                db, es_client, channel, alert, entry, pending_notifications
+                db,
+                es_client,
+                channel,
+                alert,
+                entry,
+                pending_notifications,
+                pending_email_payloads,
             )
 
     _persist_pending_notifications(db, channel, pending_notifications)
     return created_articles
+
+
+def _dispatch_cycle_emails(
+    db: Session,
+    alerts: list[AlertRule],
+    pending_email_payloads: dict[int, list[dict]],
+) -> None:
+    """Envía los correos acumulados durante el ciclo aplicando el cap anti-spam."""
+    if not pending_email_payloads:
+        return
+
+    alerts_by_id = {alert.id: alert for alert in alerts}
+    for alert_id, payloads in pending_email_payloads.items():
+        alert = alerts_by_id.get(alert_id)
+        if alert is None or not payloads:
+            continue
+        user = db.query(User).filter(User.id == alert.user_id).first()
+        if not user or not user.email:
+            logger.warning(
+                "Email no enviado: alert_id=%s sin usuario/email", alert_id
+            )
+            continue
+        try:
+            sent = dispatch_alert_emails_with_cap(
+                to_email=user.email,
+                alert_name=alert.name,
+                payloads=payloads,
+            )
+            logger.info(
+                "Emails despachados alert_id=%s matches=%s enviados=%s (cap anti-spam)",
+                alert_id,
+                len(payloads),
+                sent,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Error despachando emails para alert_id=%s: %s", alert_id, exc
+            )
 
 
 def run_alert_monitoring_cycle(db: Session) -> int:
@@ -456,19 +516,25 @@ def run_alert_monitoring_cycle(db: Session) -> int:
         logger.debug("No se pudieron crear tablas automáticamente en este contexto")
 
     es_client = _create_elasticsearch_client()
+    pending_email_payloads: dict[int, list[dict]] = {}
 
     try:
         for i, channel in enumerate(channels, 1):
             logger.info("Processing channel %s/%s: id=%s media=%s url=%s",
                        i, len(channels), channel.id, channel.media_name, channel.url)
             try:
-                channel_created = _process_channel_entries(channel, alerts, es_client, db)
+                channel_created = _process_channel_entries(
+                    channel, alerts, es_client, db, pending_email_payloads
+                )
                 created_articles += channel_created
                 logger.info("Channel %s/%s completed: created_articles=%s",
                            i, len(channels), channel_created)
             except Exception as exc:
                 logger.error("Error processing channel %s/%s id=%s: %s",
                            i, len(channels), channel.id, exc)
+
+        # Despacho de emails al final del ciclo: aplica el cap anti-spam por alerta.
+        _dispatch_cycle_emails(db, alerts, pending_email_payloads)
 
         check_time = datetime.now(timezone.utc)
         for alert in alerts:

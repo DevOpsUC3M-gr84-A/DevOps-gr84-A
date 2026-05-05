@@ -17,9 +17,14 @@ services:
       # para arranque en desarrollo aunque el .env esté incompleto.
       - ENVIRONMENT=development
       - ELASTICSEARCH_URL=http://elasticsearch:9200
+      # DATABASE_URL must be provided at deploy time to avoid embedding secrets in the compose file.
+      # Injected at runtime via environment; do NOT hardcode passwords here (Sonar rule).
+      - DATABASE_URL=${DATABASE_URL}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
-      - NEWSRADAR_ADMIN_PASSWORD=${NEWSRADAR_ADMIN_PASSWORD:-admin123}
-      - NEWSRADAR_LECTOR_PASSWORD=${NEWSRADAR_LECTOR_PASSWORD:-lector123}
+      # Admin/lector passwords are injected via environment in CI/CD or orchestrator.
+      # Avoid defaults with secrets so Sonar does not flag plaintext secrets.
+      - NEWSRADAR_ADMIN_PASSWORD=${NEWSRADAR_ADMIN_PASSWORD}
+      - NEWSRADAR_LECTOR_PASSWORD=${NEWSRADAR_LECTOR_PASSWORD}
     volumes:
       # Persistencia de la base de datos SQLite en el host. La carpeta debe
       # pertenecer al UID 1001 (appuser) o ser escribible por él.
@@ -43,6 +48,22 @@ services:
     restart: unless-stopped
     depends_on:
       - elasticsearch
+      - postgres
+
+  # Base de datos relacional PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: newsradar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-newsradar_user}
+      # Password injected at runtime (no plaintext in compose). Add ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-newsradar_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   # Motor documental para noticias y artículos
   elasticsearch:
@@ -60,3 +81,4 @@ services:
 
 volumes:
   elasticsearch_data:
+  postgres_data:

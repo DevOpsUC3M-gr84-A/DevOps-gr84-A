@@ -237,7 +237,7 @@ const NotificationsPage = () => {
       return;
     }
 
-    const controller = new AbortController();
+    let cancelled = false;
 
     const loadNotifications = async () => {
       try {
@@ -245,7 +245,6 @@ const NotificationsPage = () => {
           `${API_BASE_URL}/api/v1/users/${userId}/notifications?limit=30`,
           {
             headers: { Authorization: `Bearer ${token}` },
-            signal: controller.signal,
           },
         );
 
@@ -254,6 +253,7 @@ const NotificationsPage = () => {
         }
 
         const data = await response.json();
+        if (cancelled) return;
         const items: NotificationItem[] = Array.isArray(data)
           ? data.map((raw: any) => ({
               id: Number(raw?.id),
@@ -267,19 +267,21 @@ const NotificationsPage = () => {
         setNotifications(items);
         setError(null);
       } catch (err) {
-        if ((err as Error)?.name === "AbortError") return;
+        if (cancelled) return;
         setError(
           err instanceof Error
             ? err.message
             : "No se pudieron cargar las notificaciones.",
         );
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     void loadNotifications();
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const markAsRead = async (notificationId: number) => {
@@ -510,7 +512,7 @@ const ProtectedLayout = ({
       return "Lector";
     };
 
-    const controller = new AbortController();
+    let cancelled = false;
 
     const fetchCurrentUser = async () => {
       try {
@@ -521,10 +523,9 @@ const ProtectedLayout = ({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          signal: controller.signal,
         });
 
-        if (!response.ok) {
+        if (!response.ok || cancelled) {
           return;
         }
 
@@ -534,6 +535,7 @@ const ProtectedLayout = ({
           role_ids?: unknown;
           avatar?: string;
         };
+        if (cancelled) return;
 
         const firstName = (data.first_name ?? "Usuario").trim();
         const lastName = (data.last_name ?? "").trim();
@@ -557,7 +559,7 @@ const ProtectedLayout = ({
     fetchCurrentUser();
 
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, []);
 

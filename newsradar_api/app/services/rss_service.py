@@ -1,12 +1,18 @@
 """Este módulo define los servicios relacionados con la gestión de canales RSS."""
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.models.rss import RSSChannel
 from app.schemas.rss import RSSChannelCreate
 
 
 def create_rss_channel(db: Session, rss_in: RSSChannelCreate) -> RSSChannel:
-    """Crea un nuevo canal RSS en la base de datos."""
+    """Crea un nuevo canal RSS en la base de datos.
+
+    Hace rollback explícito en caso de IntegrityError para no dejar la sesión
+    en estado roto (lo que provocaba 500 en cascada y logout en el frontend).
+    Re-lanza la excepción para que el router la traduzca a 409.
+    """
     db_rss = RSSChannel(
         media_name=rss_in.media_name,
         url=str(rss_in.url),
@@ -16,9 +22,13 @@ def create_rss_channel(db: Session, rss_in: RSSChannelCreate) -> RSSChannel:
     )
 
     db.add(db_rss)
-    db.commit()
-    db.refresh(db_rss)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
 
+    db.refresh(db_rss)
     return db_rss
 
 

@@ -40,19 +40,10 @@ Guía completa en [docs/quickstart.md](docs/quickstart.md).
 ```bash
 git clone https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A.git
 cd DevOps-gr84-A
-docker compose up -d postgres mailhog
+docker compose up -d --build
 ```
 
-**Backend (FastAPI, puerto 8000):**
-
-```bash
-cd newsradar_api
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Linux/macOS
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
+Esto levanta el **backend FastAPI**, **PostgreSQL 15** y **Elasticsearch** de forma autocontenida.
 
 **Frontend (React + Vite, puerto 5173):**
 
@@ -67,7 +58,8 @@ npm run dev
 | Frontend (Vite)   | http://localhost:5173                      |
 | API Backend       | http://localhost:8000                      |
 | Swagger / OpenAPI | http://localhost:8000/docs                 |
-| MailHog UI        | http://localhost:8025                      |
+| Elasticsearch     | http://localhost:9200                      |
+| PostgreSQL        | localhost:5432                             |
 
 **Credenciales por defecto:** `admin@newsradar.com` / `admin123456`.
 
