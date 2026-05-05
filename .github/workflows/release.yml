@@ -1,0 +1,79 @@
+name: Release
+
+# RNF05/RNF09 — Empaquetado y publicación automática en GitHub Releases.
+# Se dispara únicamente al subir un tag con prefijo "v" (ej. v1.0.0).
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código fuente
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Empaquetar código fuente (.tar.gz)
+        run: |
+          ARCHIVE="newsradar-release-${{ github.ref_name }}.tar.gz"
+          echo "Generando $ARCHIVE ..."
+          tar --exclude-vcs \
+              --exclude='.git' \
+              --exclude='.venv' \
+              --exclude='**/__pycache__' \
+              --exclude='**/node_modules' \
+              --exclude='**/.pytest_cache' \
+              --exclude='**/htmlcov' \
+              --exclude='**/dist' \
+              --exclude='**/build' \
+              --exclude='**/*.pyc' \
+              --exclude="$ARCHIVE" \
+              -czf "$ARCHIVE" .
+          ls -lh "$ARCHIVE"
+          echo "ARCHIVE_NAME=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Generar notas de la release (RELEASE_NOTES.txt)
+        run: |
+          cat > RELEASE_NOTES.txt <<EOF
+          ============================================================
+           NewsRadar — Release ${{ github.ref_name }}
+          ============================================================
+
+          Proyecto: NewsRadar (DevOps Grupo 84-A — UC3M, 2025/2026)
+          Versión:  ${{ github.ref_name }}
+          Commit:   ${{ github.sha }}
+          Fecha:    $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Autor:    ${{ github.actor }}
+
+          Contenido del paquete:
+            - Código fuente del backend (newsradar_api/) y frontend (newsradar_ui/)
+            - docker-compose.yml, evaluate.sh y Makefile (RNF10)
+            - Documentación en docs/ y ADRs
+
+          Despliegue reproducible (RNF10):
+            chmod +x evaluate.sh
+            make evaluate
+
+          Para más información consulta el README.md y docs/deployment.md.
+          ============================================================
+          EOF
+          cat RELEASE_NOTES.txt
+
+      - name: Publicar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NewsRadar ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.txt
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.ARCHIVE_NAME }}
+            RELEASE_NOTES.txt

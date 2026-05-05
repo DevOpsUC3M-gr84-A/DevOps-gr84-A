@@ -37,9 +37,20 @@ El sistema cumple los requisitos arquitectónicos exigidos: 5 capas (RNF01), API
 
 Guía completa en [docs/quickstart.md](docs/quickstart.md).
 
+### Evaluación con un único comando (RNF10)
+
 ```bash
 git clone https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A.git
 cd DevOps-gr84-A
+chmod +x evaluate.sh
+make evaluate          # equivalente a: bash evaluate.sh
+```
+
+El script [evaluate.sh](evaluate.sh) limpia contenedores previos, construye las imágenes, arranca los servicios (con los **100 canales RSS semilla**), espera a que la API esté lista, ejecuta `pytest` con cobertura HTML dentro del contenedor del backend e imprime las URLs de la aplicación y de Swagger.
+
+### Arranque manual (desarrollo)
+
+```bash
 docker compose up -d --build
 ```
 
@@ -145,12 +156,12 @@ Tabla cruzada entre los requisitos de [docs/requirements/requirements.csv](docs/
 | #2 | **RNF02** | Comunicación íntegra vía API REST. | [newsradar_api/app/api/router.py](newsradar_api/app/api/router.py), routers en [routes/](newsradar_api/app/api/routes/) | [ADR-024](docs/ADRs/ADR-024-fastapi.md) |
 | #3 | **RNF03** | OpenAPI 3.1 generado automáticamente. | FastAPI `/docs`, `/redoc` | Inspección manual + [tests/integration](newsradar_api/tests/integration/) |
 | #4 | **RNF04** | Configuración con Docker. | [docker-compose.yml](docker-compose.yml), Dockerfiles backend/frontend | [ADR-002](docs/ADRs/ADR-002-docker.md), [ADR-017](docs/ADRs/ADR-017-estrategia-empaquetado-docker.md) |
-| #5 | **RNF05** | Automatización de la configuración. | [.github/workflows/](.github/workflows/), seed de DB | Pipelines verdes |
+| #5 | **RNF05** | Automatización de la configuración. | [.github/workflows/](.github/workflows/), seed de DB, [release.yml](.github/workflows/release.yml) (publicación automática de GitHub Releases al subir tags `v*`) | Pipelines verdes + Releases publicadas |
 | #6 | **RNF06** | Integración Continua. | [.github/workflows/ci.yml](.github/workflows/ci.yml), [test.yml](.github/workflows/test.yml) | Ejecución por PR |
 | #7 | **RNF07** | Cobertura de pruebas (unit + integration + perf). | [newsradar_api/tests/unit](newsradar_api/tests/unit/), [tests/integration](newsradar_api/tests/integration/), [tests/performance](newsradar_api/tests/performance/) | `pytest --cov`, [htmlcov/](htmlcov/) |
 | #8 | **RNF08** | Métricas de calidad de código. | [sonar-project.properties](sonar-project.properties) | SonarCloud Quality Gate, [ADR-007](docs/ADRs/ADR-007-sonarcloud.md) |
-| #9 | **RNF09** | Empaquetado y distribución (CD). | [.github/workflows/backend-package.yml](.github/workflows/backend-package.yml), [cd-frontend.yml](.github/workflows/cd-frontend.yml) | Imagen publicada por release |
-| #10 | **RNF10** | Pipeline reproducible con un único comando. | `docker compose up --build` + seed automático | [docs/deployment.md](docs/deployment.md) |
+| #9 | **RNF09** | Empaquetado y distribución (CD). | [.github/workflows/backend-package.yml](.github/workflows/backend-package.yml), [cd-frontend.yml](.github/workflows/cd-frontend.yml), [release.yml](.github/workflows/release.yml) | Imagen publicada + GitHub Release con `.tar.gz` y notas auto-generadas |
+| #10 | **RNF10** | Pipeline reproducible con un único comando. | [evaluate.sh](evaluate.sh) + [Makefile](Makefile) (`make evaluate`) — build, seed (100 canales), tests, cobertura HTML y despliegue | [docs/deployment.md](docs/deployment.md) |
 | #11 | **RNF11** | Documentación versionada y trazabilidad de prompts. | [docs/](docs/), [docs/prompts.md](docs/prompts.md), [mkdocs.yml](mkdocs.yml) | Esta tabla + ADRs |
 
 ---

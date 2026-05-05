@@ -12,6 +12,7 @@ El pipeline de CI/CD está implementado sobre **GitHub Actions**. Los workflows 
 | `test.yml`              | push / pull_request              | Ejecución de pruebas unitarias e integración + cobertura. |
 | `backend-package.yml`   | push a `main` / release          | Construcción de la imagen Docker del backend FastAPI.|
 | `cd-frontend.yml`       | push a `main` / release          | Build y publicación del bundle estático del frontend.|
+| `release.yml`           | push de tag `v*`                 | Empaqueta el código (`.tar.gz`), genera `RELEASE_NOTES.txt` y publica una **GitHub Release** con ambos como assets. |
 
 Estos workflows cubren los requisitos **RNF06 (CI)**, **RNF09 (CD)** y **RNF10 (pipeline reproducible)**.
 
@@ -36,19 +37,38 @@ Tras la fase de pruebas se ejecuta el análisis estático con **SonarCloud** usa
 
 - **Backend**: `backend-package.yml` construye una imagen Docker multistage a partir del `Dockerfile` de `newsradar_api/` y la publica en el registry configurado.
 - **Frontend**: `cd-frontend.yml` ejecuta `npm run build` y publica el bundle estático.
+- **GitHub Releases**: [`release.yml`](../.github/workflows/release.yml) se dispara al hacer push de un tag `v*` (p. ej. `v1.0.0`), empaqueta el código en `newsradar-release-<tag>.tar.gz` (excluyendo `.git`, `.venv`, `__pycache__`, `node_modules`, etc.), genera `RELEASE_NOTES.txt` automáticamente y publica la Release usando `softprops/action-gh-release@v2`.
 - Toda la pila puede levantarse con [docker-compose.yml](../docker-compose.yml), cubriendo **RNF04** y **RNF05**.
+
+#### Cómo crear una nueva Release
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+El workflow `release.yml` adjuntará automáticamente el `.tar.gz` del código fuente y `RELEASE_NOTES.txt` como assets de la Release en GitHub.
 
 ### 2.4 Despliegue reproducible (RNF10)
 
-El evaluador puede reproducir el sistema con un único comando:
+El evaluador puede reproducir el sistema **con un único comando** mediante el script [evaluate.sh](../evaluate.sh) y el [Makefile](../Makefile) de la raíz:
 
 ```bash
-docker compose up --build
+chmod +x evaluate.sh
+make evaluate
+# equivalente a: bash evaluate.sh
 ```
 
-Esto construye, siembra los datos (100 canales / 10 medios) y arranca todos los servicios (FastAPI, **PostgreSQL 15** y Elasticsearch).
+`evaluate.sh` ejecuta de forma encadenada:
 
-Para desarrollo local con hot-reload se utiliza el modo *detached*:
+1. `docker compose down -v --remove-orphans` — limpieza de contenedores y volúmenes previos.
+2. `docker compose build` — construcción de las imágenes.
+3. `docker compose up -d` — arranque en segundo plano de **api-backend**, **postgres** y **elasticsearch** (con seed de 100 canales / 10 medios).
+4. Espera activa (`curl http://localhost:8000/docs`) hasta que FastAPI responde.
+5. `docker compose exec -T api-backend pytest --cov=app --cov-report=html` — pruebas y cobertura HTML dentro del contenedor.
+6. Impresión en verde de las URLs: Frontend (`:5173`), API (`:8000`) y **Swagger /docs** (`:8000/docs`).
+
+Para desarrollo local con hot-reload se utiliza el modo *detached* directo:
 
 ```bash
 docker compose up -d --build

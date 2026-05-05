@@ -13,6 +13,17 @@ Con la nueva integración de Docker, el backend ahora vive en una caja autosufic
 - **Para EJECUTAR el backend: NO.** La imagen Docker ya lleva Python 3.11 y todas las dependencias.
 - **Para PROGRAMAR (Opcional): Sí**, conviene crear un `.venv` con `pip install -r requirements.txt` para que VS Code / Pylance den autocompletado y type-checking sobre las librerías.
 
+## ⚡ 3a. Atajo de evaluación (RNF10) — un único comando
+
+Para reproducir todo el flujo (build + seed de 100 canales + arranque + tests + cobertura) sin pasos manuales:
+
+```bash
+chmod +x evaluate.sh
+make evaluate          # o: bash evaluate.sh
+```
+
+El script imprime al final, en verde, las URLs del Frontend (`http://localhost:5173`), API (`http://localhost:8000`) y Swagger (`http://localhost:8000/docs`). El informe HTML de cobertura queda en `newsradar_api/htmlcov/index.html`.
+
 ## 🏃‍♂️ 3. Pasos para levantar el proyecto
 
 ### 3.1 Configurar variables de entorno
