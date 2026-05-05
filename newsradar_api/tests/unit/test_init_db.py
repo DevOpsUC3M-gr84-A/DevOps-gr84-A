@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.database import init_db
 from app.models.rss import CategoriaIPTC
 from app.models.user import UserRole
+from app.database.init_db import _SEQUENCE_SYNC_TABLES, sync_postgres_sequences
 
 
 @pytest.mark.unit
@@ -249,4 +250,114 @@ def test_load_rss_seed_if_empty_skips_incomplete_records_and_sets_unknown_media_
     assert inserted_sources[0].name == "Fuente Sin ID"
     assert len(inserted_channels) == 1
     assert inserted_channels[0].media_name == "Unknown"
+    db.commit.assert_called_once()
+
+
+# -----------------------------------------------------------------------------
+# Tests para sync_postgres_sequences (RF post-migración a PostgreSQL).
+#
+# La función sólo debe actuar cuando el backend es PostgreSQL y debe ejecutar
+# un setval por cada tabla declarada en _SEQUENCE_SYNC_TABLES. Los tests usan
+# MagicMock para sustituir el engine y la sesión, evitando la necesidad de un
+# servidor PG real.
+# -----------------------------------------------------------------------------
+
+
+def _make_engine_mock(backend_name: str) -> MagicMock:
+    engine_mock = MagicMock()
+    engine_mock.url.get_backend_name.return_value = backend_name
+    return engine_mock
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_noop_on_sqlite():
+    db = MagicMock()
+    with patch.object(init_db, "engine", _make_engine_mock("sqlite")):
+        sync_postgres_sequences(db)
+
+    db.execute.assert_not_called()
+    db.commit.assert_not_called()
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_noop_on_other_backends():
+    db = MagicMock()
+    with patch.object(init_db, "engine", _make_engine_mock("mysql")):
+        sync_postgres_sequences(db)
+
+    db.execute.assert_not_called()
+    db.commit.assert_not_called()
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_runs_setval_for_every_table_on_postgres():
+    db = MagicMock()
+    with patch.object(init_db, "engine", _make_engine_mock("postgresql")):
+        sync_postgres_sequences(db)
+
+    # Un execute por tabla + un commit final.
+    assert db.execute.call_count == len(_SEQUENCE_SYNC_TABLES)
+    db.commit.assert_called_once()
+    db.rollback.assert_not_called()
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_includes_critical_tables():
+    """Las tablas con seed manual deben sincronizarse obligatoriamente."""
+    for required in ("information_sources", "rss_channels", "usuarios"):
+        assert required in _SEQUENCE_SYNC_TABLES
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_uses_setval_with_pg_get_serial_sequence():
+    db = MagicMock()
+    with patch.object(init_db, "engine", _make_engine_mock("postgresql")):
+        sync_postgres_sequences(db)
+
+    sql_strings = [str(call.args[0]) for call in db.execute.call_args_list]
+    joined = "\n".join(sql_strings)
+    assert "setval" in joined
+    assert "pg_get_serial_sequence" in joined
+    # Debe referenciar las tablas críticas.
+    assert "information_sources" in joined
+    assert "rss_channels" in joined
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_continues_after_table_failure():
+    """Si una tabla falla, debe hacer rollback y seguir con las siguientes."""
+    db = MagicMock()
+    # La primera tabla lanza error; el resto sigue.
+    db.execute.side_effect = [SQLAlchemyError("missing seq")] + [
+        MagicMock() for _ in range(len(_SEQUENCE_SYNC_TABLES) - 1)
+    ]
+
+    with patch.object(init_db, "engine", _make_engine_mock("postgresql")):
+        sync_postgres_sequences(db)
+
+    assert db.execute.call_count == len(_SEQUENCE_SYNC_TABLES)
+    db.rollback.assert_called_once()
+    db.commit.assert_called_once()
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_is_idempotent():
+    """Re-ejecutar la sincronización no debe romper nada (no hay estado)."""
+    db = MagicMock()
+    with patch.object(init_db, "engine", _make_engine_mock("postgresql")):
+        sync_postgres_sequences(db)
+        sync_postgres_sequences(db)
+
+    assert db.execute.call_count == 2 * len(_SEQUENCE_SYNC_TABLES)
+    assert db.commit.call_count == 2
+
+
+@pytest.mark.unit
+def test_sync_postgres_sequences_detects_postgresql_dialect_variant():
+    """get_backend_name puede devolver 'postgresql' o variantes; ambas valen."""
+    db = MagicMock()
+    with patch.object(init_db, "engine", _make_engine_mock("postgresql+psycopg2")):
+        sync_postgres_sequences(db)
+
+    db.execute.assert_called()
     db.commit.assert_called_once()

@@ -13,7 +13,16 @@
   },
   "notifications": {
     "title": "Buzón de Notificaciones",
-    "subtitle": "Buzon de avisos y alertas detectadas."
+    "subtitle": "Buzón de avisos y alertas detectadas.",
+    "clearMailbox": "Limpiar Buzón",
+    "loading": "Cargando notificaciones...",
+    "empty": "No tienes notificaciones todavía.",
+    "markAsRead": "Marcar como leída",
+    "read": "Leída",
+    "invalidSession": "Sesión no válida.",
+    "loadError": "No se pudieron cargar las notificaciones.",
+    "markReadError": "No se pudo marcar como leída la notificación.",
+    "clearError": "No se pudo limpiar el buzón."
   },
   "roles": {
     "admin": "Administrador",
@@ -140,7 +149,8 @@
     "all": "Todas",
     "filterBySource": "Filtrar por fuente RSS",
     "filterPlaceholder": "Ej: https://www.rtve.es/rss/",
-    "clearFilter": "Limpiar filtro"
+    "clearFilter": "Limpiar filtro",
+    "notifications": "Notificaciones"
   },
   "alertForm": {
     "createTitle": "CREAR NUEVA ALERTA",
@@ -162,7 +172,11 @@
     "cancel": "CANCELAR",
     "save": "GUARDAR ALERTA",
     "saving": "GUARDANDO...",
-    "selectPrefix": "Seleccionar"
+    "selectPrefix": "Seleccionar",
+    "notificationsLabel": "Notificaciones",
+    "notifyInbox": "Buzón de la aplicación",
+    "notifyEmail": "Correo electrónico",
+    "notificationsHint": "Elige dónde quieres recibir los avisos cuando esta alerta detecte coincidencias."
   },
   "profile": {
     "loading": "Cargando perfil...",

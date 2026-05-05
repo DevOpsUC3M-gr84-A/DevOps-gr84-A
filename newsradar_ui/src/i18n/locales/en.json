@@ -12,8 +12,17 @@
     "openSidebar": "Open sidebar"
   },
   "notifications": {
-    "title": "Notifications Inbox",
-    "subtitle": "System alerts and detected news notifications."
+    "title": "Notifications",
+    "subtitle": "Inbox of alerts and detected notices.",
+    "clearMailbox": "Clear Inbox",
+    "loading": "Loading notifications...",
+    "empty": "You have no notifications yet.",
+    "markAsRead": "Mark as read",
+    "read": "Read",
+    "invalidSession": "Invalid session.",
+    "loadError": "Could not load notifications.",
+    "markReadError": "Could not mark notification as read.",
+    "clearError": "Could not clear the inbox."
   },
   "roles": {
     "admin": "Administrator",
@@ -140,7 +149,8 @@
     "all": "All",
     "filterBySource": "Filter by RSS source",
     "filterPlaceholder": "E.g.: https://www.rtve.es/rss/",
-    "clearFilter": "Clear filter"
+    "clearFilter": "Clear filter",
+    "notifications": "Notifications"
   },
   "alertForm": {
     "createTitle": "CREATE NEW ALERT",
@@ -162,7 +172,11 @@
     "cancel": "CANCEL",
     "save": "SAVE ALERT",
     "saving": "SAVING...",
-    "selectPrefix": "Select"
+    "selectPrefix": "Select",
+    "notificationsLabel": "Notifications",
+    "notifyInbox": "Application inbox",
+    "notifyEmail": "Email",
+    "notificationsHint": "Choose where you want to receive alerts when this alert detects matches."
   },
   "profile": {
     "loading": "Loading profile...",

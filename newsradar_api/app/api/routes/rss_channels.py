@@ -50,6 +50,13 @@ def crear_canal_rss(
     try:
         nuevo_canal = create_rss_channel(db, rss_in)
         return nuevo_canal
+    except IntegrityError as exc:
+        # Rollback ya hecho por el servicio. Devolvemos 409 (no 500) para no
+        # invalidar el contexto del cliente y evitar el logout en cascada.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=ERROR_CHANNEL_CONFLICT,
+        ) from exc
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

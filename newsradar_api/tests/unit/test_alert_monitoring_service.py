@@ -4,7 +4,10 @@ from collections.abc import Generator
 
 import pytest
 
-from app.schemas.alert import Alert
+from unittest.mock import Mock, patch
+
+from app.schemas.alert import Alert, AlertCategoryItem
+from app.schemas.user import UserInDB
 from app.services import alert_monitoring_service
 from app.services.alert_monitoring_service import (
     _as_text,
@@ -46,9 +49,11 @@ def sample_news() -> dict[str, str]:
 def clean_stores() -> Generator[None, None, None]:
     alert_monitoring_service.alerts_store.clear()
     alert_monitoring_service.notifications_store.clear()
+    alert_monitoring_service.users_store.clear()
     yield
     alert_monitoring_service.alerts_store.clear()
     alert_monitoring_service.notifications_store.clear()
+    alert_monitoring_service.users_store.clear()
 
 
 @pytest.mark.unit
@@ -146,3 +151,151 @@ def test_generar_notificacion_si_coincide_no_match(sample_alert: Alert) -> None:
 
     assert created == 0
     assert len(alert_monitoring_service.notifications_store) == 0
+
+
+@pytest.mark.unit
+def test_rf10_notificacion_solo_inbox(sample_news: dict[str, str]) -> None:
+    """RF10: Alerta configurada solo para inbox (notify_inbox=True, notify_email=False)."""
+    alerta = Alert(
+        id=1,
+        user_id=1,
+        name="Alerta IA",
+        descriptors=["inteligencia artificial"],
+        categories=[],
+        cron_expression="* * * * *",
+        notify_inbox=True,
+        notify_email=False,
+    )
+    alert_monitoring_service.alerts_store[alerta.id] = alerta
+
+    with patch("app.services.alert_monitoring_service.send_alert_notification_email") as mock_email:
+        created = alert_monitoring_service.generar_notificacion_si_coincide(sample_news)
+
+    assert created == 1
+    assert len(alert_monitoring_service.notifications_store) == 1
+    mock_email.assert_not_called()
+
+
+@pytest.mark.unit
+def test_rf10_notificacion_solo_email(sample_news: dict[str, str]) -> None:
+    """RF10: Alerta configurada solo para email (notify_inbox=False, notify_email=True)."""
+    alerta = Alert(
+        id=1,
+        user_id=1,
+        name="Alerta IA",
+        descriptors=["inteligencia artificial"],
+        categories=[],
+        cron_expression="* * * * *",
+        notify_inbox=False,
+        notify_email=True,
+    )
+    user = UserInDB(
+        id=1,
+        email="usuario@test.com",
+        first_name="Test",
+        last_name="User",
+        organization="Test Org",
+        password="hash",
+        role_ids=[],
+    )
+    alert_monitoring_service.alerts_store[alerta.id] = alerta
+    alert_monitoring_service.users_store[user.id] = user
+
+    with patch("app.services.alert_monitoring_service.send_alert_notification_email") as mock_email:
+        created = alert_monitoring_service.generar_notificacion_si_coincide(sample_news)
+
+    assert created == 0  # No se crea en inbox
+    assert len(alert_monitoring_service.notifications_store) == 0
+    mock_email.assert_called_once()
+    assert mock_email.call_args[1]["to_email"] == "usuario@test.com"
+    assert mock_email.call_args[1]["alert_name"] == "Alerta IA"
+
+
+@pytest.mark.unit
+def test_rf10_notificacion_inbox_y_email(sample_news: dict[str, str]) -> None:
+    """RF10: Alerta configurada para inbox y email (ambos True)."""
+    alerta = Alert(
+        id=1,
+        user_id=1,
+        name="Alerta IA",
+        descriptors=["inteligencia artificial"],
+        categories=[],
+        cron_expression="* * * * *",
+        notify_inbox=True,
+        notify_email=True,
+    )
+    user = UserInDB(
+        id=1,
+        email="usuario@test.com",
+        first_name="Test",
+        last_name="User",
+        organization="Test Org",
+        password="hash",
+        role_ids=[],
+    )
+    alert_monitoring_service.alerts_store[alerta.id] = alerta
+    alert_monitoring_service.users_store[user.id] = user
+
+    with patch("app.services.alert_monitoring_service.send_alert_notification_email") as mock_email:
+        created = alert_monitoring_service.generar_notificacion_si_coincide(sample_news)
+
+    assert created == 1  # Se crea en inbox
+    assert len(alert_monitoring_service.notifications_store) == 1
+    mock_email.assert_called_once()  # Y se envía por email
+
+
+@pytest.mark.unit
+def test_rf10_notificacion_sin_usuario() -> None:
+    """RF10: Email no se envía si el usuario no existe."""
+    alerta = Alert(
+        id=1,
+        user_id=999,  # Usuario inexistente
+        name="Alerta IA",
+        descriptors=["inteligencia artificial"],
+        categories=[],
+        cron_expression="* * * * *",
+        notify_inbox=False,
+        notify_email=True,
+    )
+    noticia = {
+        "title": "Avances en inteligencia artificial",
+        "description": "Nuevos modelos de machine learning.",
+    }
+    alert_monitoring_service.alerts_store[alerta.id] = alerta
+
+    with patch("app.services.alert_monitoring_service.send_alert_notification_email") as mock_email:
+        created = alert_monitoring_service.generar_notificacion_si_coincide(noticia)
+
+    assert created == 0
+    mock_email.assert_not_called()
+
+
+@pytest.mark.unit
+def test_rf10_notificacion_incluye_title_y_message() -> None:
+    """RF10: Las notificaciones en inbox incluyen title y message."""
+    alerta = Alert(
+        id=1,
+        user_id=1,
+        name="Alerta IA",
+        descriptors=["inteligencia artificial"],
+        categories=[],
+        cron_expression="* * * * *",
+        notify_inbox=True,
+        notify_email=False,
+    )
+    noticia = {
+        "title": "Avances en inteligencia artificial",
+        "description": "Nuevos modelos de machine learning.",
+        "source": "El Diario",
+        "published": "2026-04-14T18:30:00",
+    }
+    alert_monitoring_service.alerts_store[alerta.id] = alerta
+
+    created = alert_monitoring_service.generar_notificacion_si_coincide(noticia)
+
+    assert created == 1
+    notif = list(alert_monitoring_service.notifications_store.values())[0]
+    assert notif.title is not None
+    assert "Actualización de Alerta IA" in notif.title
+    assert notif.message is not None
+    assert "Origen: El Diario" in notif.message

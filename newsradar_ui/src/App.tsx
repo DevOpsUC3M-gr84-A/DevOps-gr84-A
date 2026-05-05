@@ -4,6 +4,7 @@ import React, { useState, useEffect, lazy, Suspense } from "react";
 import "./App.css";
 import {
   Bell,
+  CheckCheck,
   Menu,
   Rss,
   LayoutDashboard,
@@ -163,15 +164,234 @@ const getStoredUserRoles = (): number[] => {
 
 const canAccessManagementSections = (roles: number[]): boolean =>
   roles.includes(1) || roles.includes(3);
+interface NotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+const NOTIFICATION_PREVIEW_MAX_LENGTH = 250;
+
+const stripHtmlTagsLinear = (input: string): string => {
+  let result = "";
+  let insideTag = false;
+  for (const ch of input) {
+    if (insideTag) {
+      if (ch === ">") insideTag = false;
+    } else if (ch === "<") {
+      insideTag = true;
+    } else {
+      result += ch;
+    }
+  }
+  return result;
+};
+
+const stripHtmlAndTruncate = (
+  html: string,
+  maxLength: number = NOTIFICATION_PREVIEW_MAX_LENGTH,
+): string => {
+  if (!html) return "";
+
+  let plainText = "";
+  if (typeof DOMParser === "undefined") {
+    plainText = stripHtmlTagsLinear(html);
+  } else {
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      plainText = doc.body?.textContent ?? "";
+    } catch {
+      plainText = stripHtmlTagsLinear(html);
+    }
+  }
+
+  plainText = plainText.replaceAll(/\s+/g, " ").trim();
+
+  if (plainText.length > maxLength) {
+    return `${plainText.slice(0, maxLength)}...`;
+  }
+  return plainText;
+};
 
 const NotificationsPage = () => {
   const { t } = useI18n();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const userId = globalThis.localStorage.getItem("userId");
+    const token = globalThis.localStorage.getItem("token");
+
+    if (!userId || !token) {
+      setIsLoading(false);
+      setError(t("notifications.invalidSession"));
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/users/${userId}/notifications?limit=30`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+
+        if (!response.ok) throw new Error(`Error ${response.status}`);
+
+        const data = await response.json();
+        if (cancelled) return;
+
+        const items: NotificationItem[] = Array.isArray(data)
+          ? data.map((raw: any) => ({
+              id: Number(raw?.id),
+              title: String(raw?.title ?? ""),
+              message: String(raw?.message ?? ""),
+              created_at: String(raw?.created_at ?? ""),
+              is_read: Boolean(raw?.is_read),
+            }))
+          : [];
+
+        setNotifications(items);
+        setError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : t("notifications.loadError"),
+        );
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void loadNotifications();
+    return () => { cancelled = true; };
+  }, []);
+
+  const markAsRead = async (notificationId: number) => {
+    const userId = globalThis.localStorage.getItem("userId");
+    const token = globalThis.localStorage.getItem("token");
+
+    if (!userId || !token) { setError(t("notifications.invalidSession")); return; }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/users/${userId}/notifications/${notificationId}/read`,
+        { method: "PUT", headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notificationId ? { ...item, is_read: true } : item,
+        ),
+      );
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("notifications.markReadError"));
+    }
+  };
+
+  const clearMailbox = async () => {
+    const userId = globalThis.localStorage.getItem("userId");
+    const token = globalThis.localStorage.getItem("token");
+
+    if (!userId || !token) { setError(t("notifications.invalidSession")); return; }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/users/${userId}/notifications`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (!response.ok && response.status !== 204) {
+        throw new Error(`Error ${response.status}`);
+      }
+
+      setNotifications([]);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("notifications.clearError"));
+    }
+  };
+
+  const formatDate = (iso: string): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  };
+
   return (
     <section className="main-content">
       <header className="page-heading">
-        <h1 className="section-title">{t("notifications.title")}</h1>
-        <p className="section-subtitle">{t("notifications.subtitle")}</p>
+        <div className="notifications-toolbar">
+          <div>
+            <h1 className="section-title">{t("notifications.title")}</h1>
+            <p className="section-subtitle">{t("notifications.subtitle")}</p>
+          </div>
+          <button
+            type="button"
+            className="notifications-clear-button"
+            aria-label="Limpiar Buzon"
+            onClick={() => void clearMailbox()}
+            disabled={isLoading || notifications.length === 0}
+          >
+            {t("notifications.clearMailbox")}
+          </button>
+        </div>
       </header>
+
+      {isLoading && <p className="form-hint-text">{t("notifications.loading")}</p>}
+
+      {error && (
+        <div className="alert-feedback alert-feedback-error" role="alert" aria-live="assertive">
+          {error}
+        </div>
+      )}
+
+      {!isLoading && !error && notifications.length === 0 && (
+        <p className="form-hint-text">{t("notifications.empty")}</p>
+      )}
+
+      {!isLoading && !error && notifications.length > 0 && (
+        <ul className="notifications-list">
+          {notifications.map((n) => (
+            <li
+              key={n.id}
+              className={`notification-item ${n.is_read ? "notification-read" : "notification-unread"}`}
+            >
+              <div className="notification-item-header">
+                <h3 className="notification-title">{n.title}</h3>
+                <span className="notification-date">{formatDate(n.created_at)}</span>
+              </div>
+              <p className="notification-message">{stripHtmlAndTruncate(n.message)}</p>
+              <div className="notification-actions">
+                {!n.is_read && (
+                  <button
+                    type="button"
+                    className="notification-read-button"
+                    aria-label="Marcar como leida"
+                    onClick={() => void markAsRead(n.id)}
+                  >
+                    <CheckCheck size={16} />
+                    {t("notifications.markAsRead")}
+                  </button>
+                )}
+                {n.is_read && (
+                  <span className="notification-read-label">{t("notifications.read")}</span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 };
@@ -219,7 +439,7 @@ const ProtectedLayout = ({
       return t("roles.lector");
     };
 
-    const controller = new AbortController();
+    let cancelled = false;
 
     const fetchCurrentUser = async () => {
       try {
@@ -230,10 +450,9 @@ const ProtectedLayout = ({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          signal: controller.signal,
         });
 
-        if (!response.ok) {
+        if (!response.ok || cancelled) {
           return;
         }
 
@@ -243,6 +462,7 @@ const ProtectedLayout = ({
           role_ids?: unknown;
           avatar?: string;
         };
+        if (cancelled) return;
 
         const firstName = (data.first_name ?? "Usuario").trim();
         const lastName = (data.last_name ?? "").trim();
@@ -266,7 +486,7 @@ const ProtectedLayout = ({
     fetchCurrentUser();
 
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, []);
 
@@ -330,7 +550,7 @@ const ProtectedLayout = ({
 
           <div className="nav-footer">
             <button onClick={handleLogout} className="logout-button">
-              <LogOut size={20} />
+              <LogOut size={20} aria-hidden="true" />
               <span>{t("nav.logout")}</span>
             </button>
           </div>
