@@ -877,6 +877,49 @@ select {
     max-width: calc(100vw - 2rem);
   }
 }
+/* Language Toggle */
+
+.nav-language {
+  margin-bottom: 0.75rem;
+  padding: 0 0.25rem;
+}
+
+.language-toggle {
+  display: flex;
+  gap: 0.25rem;
+  background-color: var(--border-light);
+  border-radius: var(--border-radius-md);
+  padding: 3px;
+}
+
+.lang-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--border-radius-md) - 2px);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-gray);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.lang-btn:hover {
+  background-color: rgba(255, 255, 255, 0.6);
+  color: var(--text-dark);
+}
+
+.lang-btn--active {
+  background-color: var(--background-white);
+  color: var(--primary-blue);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
 
 /* --- RF10: Checkboxes de notificaciones del formulario --- */
 .checkbox-label {
@@ -944,7 +987,7 @@ select {
   font-size: 0.875rem;
 }
 
-/* --- RF10: Lista del Buzon de Notificaciones --- */
+/* --- RF10: Lista del Buzón de Notificaciones --- */
 .notifications-list {
   list-style: none;
   margin: 1.25rem 0 0;

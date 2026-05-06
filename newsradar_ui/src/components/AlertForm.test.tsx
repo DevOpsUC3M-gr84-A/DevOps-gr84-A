@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "../test-utils";
 import { vi } from "vitest";
 import { AlertForm, type AlertTableItem } from "./AlertForm";
 
@@ -98,7 +98,7 @@ describe("AlertForm Component", () => {
     // pero ninguna categoría IPTC debe estar preseleccionada.
     expect(checkedBoxes).toHaveLength(1);
     expect(
-      screen.getByRole("checkbox", { name: /Buzon de la aplicacion/i }),
+      screen.getByRole("checkbox", { name: /de la aplicaci/i }),
     ).toBeChecked();
     expect(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters")).toHaveValue(
       "",

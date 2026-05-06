@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "./test-utils";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import App from "./App";
 import { useAuth } from "./hooks/useAuth";
+import React from 'react';
 
 const { mockedNavigate } = vi.hoisted(() => ({
   mockedNavigate: vi.fn(),
@@ -18,6 +19,46 @@ vi.mock("react-router-dom", async () => {
     useNavigate: () => mockedNavigate,
   };
 });
+
+// Mock i18n so App tests don't depend on localStorage language detection.
+// The t() function returns real Spanish strings for keys checked in assertions.
+const esTranslations: Record<string, string> = {
+  'roles.admin': 'Admin',
+  'roles.gestor': 'Gestor',
+  'roles.lector': 'Lector',
+  'nav.dashboard': 'Dashboard',
+  'nav.resumen': 'Resumen',
+  'nav.alerts': 'Mis Alertas',
+  'nav.sourcesRss': 'Fuentes y RSS',
+  'nav.notifications': 'Notificaciones',
+  'nav.profile': 'Perfil',
+  'nav.logout': 'Cerrar Sesión',
+  'nav.closeSidebar': 'Cerrar menú lateral',
+  'nav.openSidebar': 'Abrir menú lateral',
+  'common.loading': 'Cargando...',
+  'notifications.title': 'Buzón de Notificaciones',
+  'notifications.subtitle': 'Buzon de avisos y alertas detectadas.',
+  'resumen.title': 'Analítica y Nube de Palabras',
+  'notifications.empty': 'No tienes notificaciones todavia',
+  'notifications.loading': 'Cargando notificaciones...',
+  'notifications.clearMailbox': 'Limpiar Buzon',
+  'notifications.markAsRead': 'Marcar como leida',
+  'notifications.read': 'Leida',
+  'notifications.invalidSession': 'Sesion no valida.',
+  'notifications.loadError': 'No se pudieron cargar las notificaciones.',
+  'notifications.markReadError': 'No se pudo marcar como leida la notificacion.',
+  'notifications.clearError': 'No se pudo limpiar el buzon.',
+};
+vi.mock('./i18n/i18n', () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => children,
+  LanguageToggle: () => null,
+  useI18n: () => ({
+    t: (key: string) => esTranslations[key] ?? key,
+    language: 'es',
+    setLanguage: vi.fn(),
+  }),
+}));
+
 
 vi.mock("./pages/Auth", () => ({ Auth: () => <div>AUTH_VIEW</div> }));
 vi.mock("./pages/AlertsManagement", () => ({
@@ -855,7 +896,7 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByText(/Cerrar Sesion/i));
+    fireEvent.click(screen.getByRole("button", { name: /Cerrar Sesión/i }))
 
     expect(logoutSpy).toHaveBeenCalled();
     expect(mockedNavigate).toHaveBeenCalledWith("/login", { replace: true });
@@ -876,23 +917,14 @@ describe("Componente Raíz App", () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByRole("link", { name: /Dashboard/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Dashboard/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Resumen/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Mis Alertas/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Fuentes y RSS/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Notificaciones/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Alertas/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Fuentes y RSS/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Notificaciones/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Perfil" }),
-    ).toBeInTheDocument();
-  });
+            screen.getByRole("link", { name: /^Perfil$/i })
+          ).toBeInTheDocument();  });
 
   test("renderiza selector de idioma con botones accesibles", () => {
     localStorage.setItem("userRoles", JSON.stringify([1]));
@@ -1402,14 +1434,12 @@ describe("Componente Raíz App", () => {
         </MemoryRouter>,
       );
 
-      const readButton = await screen.findByRole("button", {
-        name: /Marcar como leida/i,
-      });
+      const readButton = await screen.findByRole("button", { name: /marcar como/i });
       fireEvent.click(readButton);
 
       await waitFor(() => {
         expect(
-          screen.queryByRole("button", { name: /Marcar como leida/i }),
+          screen.queryByRole("button", { name: /Marcar como le/i }),
         ).not.toBeInTheDocument();
         expect(screen.getByText("Leida")).toBeInTheDocument();
       });
@@ -1518,7 +1548,7 @@ describe("Componente Raíz App", () => {
       );
 
       const readBtn = await screen.findByRole("button", {
-        name: /Marcar como leida/i,
+        name: /Marcar como le/i,
       });
       fireEvent.click(readBtn);
 

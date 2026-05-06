@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useI18n } from "../i18n/i18n";
 import { Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import "./SourcesRss.css";
@@ -443,6 +444,7 @@ const CategoryFilterCheckbox = ({
 
 export const SourcesRss = () => {
   const { token, logout } = useAuth();
+  const { t } = useI18n();
   const [sources, setSources] = useState<InformationSourceApiItem[]>([]);
   const [channels, setChannels] = useState<RssChannelApiItem[]>([]);
   const [categories, setCategories] = useState<CategoryApiItem[]>([]);
@@ -986,8 +988,8 @@ export const SourcesRss = () => {
               type="button"
               className="sources-rss-inline-button"
               onClick={() => openEditSourceModal(source)}
-              aria-label={`Editar fuente ${source.name}`}
-              title="Editar"
+              aria-label={`${t("sourcesRss.editSourceBtn")} ${source.name}`}
+              title={t("common.edit")}
             >
               <Pencil size={14} />
             </button>
@@ -996,7 +998,7 @@ export const SourcesRss = () => {
               className="sources-rss-inline-button sources-rss-danger-button"
               onClick={() => void handleSourceDelete(source.id)}
               aria-label={`Borrar fuente ${source.name}`}
-              title="Borrar"
+              title={t("common.delete")}
             >
               <Trash2 size={14} />
             </button>
@@ -1023,7 +1025,7 @@ export const SourcesRss = () => {
             className="sources-rss-inline-button"
             onClick={() => openEditChannelModal(channel)}
             aria-label={`Editar canal ${channel.url}`}
-            title="Editar"
+            title={t("common.edit")}
           >
             <Pencil size={14} />
           </button>
@@ -1032,7 +1034,7 @@ export const SourcesRss = () => {
             className="sources-rss-inline-button sources-rss-danger-button"
             onClick={() => void handleChannelDelete(channel)}
             aria-label={`Borrar canal ${channel.url}`}
-            title="Borrar"
+            title={t("common.delete")}
           >
             <Trash2 size={14} />
           </button>
@@ -1045,7 +1047,7 @@ export const SourcesRss = () => {
     if (sources.length === 0) {
       return (
         <div className="sources-rss-empty-state">
-          <p>No hay fuentes registradas todavía.</p>
+          <p>{t("sourcesRss.noSources")}</p>
         </div>
       );
     }
@@ -1053,7 +1055,7 @@ export const SourcesRss = () => {
     if (filteredSources.length === 0) {
       return (
         <div className="sources-rss-empty-state">
-          <p>No se encontraron fuentes que coincidan con tu búsqueda.</p>
+          <p>{t("sourcesRss.noSearchResults")}</p>
         </div>
       );
     }
@@ -1062,9 +1064,9 @@ export const SourcesRss = () => {
       <table className="sources-rss-table" aria-label="Listado de fuentes de información">
         <thead>
           <tr>
-            <th>Nombre</th>
-            <th>URL web</th>
-            <th>Acciones</th>
+            <th>{t("common.name")}</th>
+            <th>{t("sourcesRss.webUrl")}</th>
+            <th>{t("common.actions")}</th>
           </tr>
         </thead>
         <tbody>{filteredSources.map(renderSourceRow)}</tbody>
@@ -1075,12 +1077,12 @@ export const SourcesRss = () => {
   const renderChannelsPanelContent = () => {
     if (selectedSource && selectedSourceChannels.length > 0) {
       return (
-        <table className="sources-rss-table" aria-label="Canales RSS asociados">
+        <table className="sources-rss-table" aria-label={t("sourcesRss.channelsPanel")}>
           <thead>
             <tr>
-              <th>URL del feed</th>
-              <th>Categoría IPTC</th>
-              <th>Acciones</th>
+              <th>{t("sourcesRss.feedUrl")}</th>
+              <th>{t("sourcesRss.iptcCategory")}</th>
+              <th>{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>{filteredChannels.map(renderChannelRow)}</tbody>
@@ -1089,8 +1091,8 @@ export const SourcesRss = () => {
     }
 
     const emptyMessage = selectedSource
-      ? "Esta fuente todavía no tiene canales RSS asociados."
-      : "Selecciona una fuente para administrar sus canales RSS.";
+      ? t("sourcesRss.noChannels")
+      : t("sourcesRss.selectSourceFirst");
 
     return (
       <div className="sources-rss-empty-state">
@@ -1110,16 +1112,16 @@ export const SourcesRss = () => {
           <div>
             <h2 id="sources-rss-source-title">
               {sourceBeingEdited
-                ? "Editar fuente de información"
-                : "Crear fuente de información"}
+                ? t("sourcesRss.editSource")
+                : t("sourcesRss.createSource")}
             </h2>
-            <p>Define el medio principal y su web pública.</p>
+            <p>{t("sourcesRss.sourceModalDesc")}</p>
           </div>
           <button
             type="button"
             className="sources-rss-icon-button"
             onClick={closeModal}
-            aria-label="Cerrar modal de fuente"
+            aria-label={t("sourcesRss.closeSourceModal")}
           >
             <X size={18} />
           </button>
@@ -1133,7 +1135,7 @@ export const SourcesRss = () => {
           }}
         >
           <div className="form-group">
-            <label htmlFor="source-name">NOMBRE DE LA FUENTE</label>
+            <label htmlFor="source-name">{t("sourcesRss.sourceName")}</label>
             <input
               id="source-name"
               type="text"
@@ -1149,7 +1151,7 @@ export const SourcesRss = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="source-url">URL WEB</label>
+            <label htmlFor="source-url">{t("sourcesRss.sourceUrl")}</label>
             <input
               id="source-url"
               type="url"
@@ -1169,10 +1171,10 @@ export const SourcesRss = () => {
               className="btn-secondary sources-rss-secondary-button"
               onClick={closeModal}
             >
-              Cancelar
+              {t("common.cancel")}
             </button>
             <button type="submit" className="btn-primary">
-              {sourceBeingEdited ? "Guardar cambios" : "Crear fuente"}
+              {sourceBeingEdited ? t("common.saveChanges") : t("sourcesRss.createSourceBtn")}
             </button>
           </div>
         </form>
@@ -1195,15 +1197,15 @@ export const SourcesRss = () => {
           <div className="sources-rss-dialog-header">
             <div>
               <h2 id="sources-rss-channel-title">
-                {channelBeingEdited ? "Editar canal RSS" : "Crear canal RSS"}
+                {channelBeingEdited ? t("sourcesRss.editChannel") : t("sourcesRss.createChannel")}
               </h2>
-              <p>Vincula el feed al medio y clasifícalo con una categoría IPTC.</p>
+              <p>{t("sourcesRss.channelModalDesc")}</p>
             </div>
             <button
               type="button"
               className="sources-rss-icon-button"
               onClick={closeModal}
-              aria-label="Cerrar modal de canal"
+              aria-label={t("sourcesRss.closeChannelModal")}
             >
               <X size={18} />
             </button>
@@ -1217,7 +1219,7 @@ export const SourcesRss = () => {
             }}
           >
             <div className="form-group">
-              <label htmlFor="channel-source">FUENTE DE INFORMACIÓN</label>
+              <label htmlFor="channel-source">{t("sourcesRss.channelSource")}</label>
               <select
                 id="channel-source"
                 className="form-input"
@@ -1228,7 +1230,7 @@ export const SourcesRss = () => {
                   setChannelForm((current) => ({ ...current, sourceId: event.target.value }))
                 }
               >
-                <option value="">Selecciona una fuente</option>
+                <option value="">{t("sourcesRss.selectSource")}</option>
                 {sources.map((source) => (
                   <option key={source.id} value={source.id}>
                     {source.name}
@@ -1237,13 +1239,13 @@ export const SourcesRss = () => {
               </select>
               {channelBeingEdited && (
                 <p className="sources-rss-hint">
-                  El canal se mantiene asociado a la fuente original.
+                  {t("sourcesRss.channelSourceHint")}
                 </p>
               )}
             </div>
 
             <div className="form-group">
-              <label htmlFor="channel-url">URL DEL FEED RSS</label>
+              <label htmlFor="channel-url">{t("sourcesRss.channelFeedUrl")}</label>
               <input
                 id="channel-url"
                 type="url"
@@ -1258,7 +1260,7 @@ export const SourcesRss = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="channel-category">CATEGORÍA IPTC</label>
+              <label htmlFor="channel-category">{t("sourcesRss.channelCategory")}</label>
               <select
                 id="channel-category"
                 className="form-input"
@@ -1275,7 +1277,7 @@ export const SourcesRss = () => {
                   setChannelForm((current) => ({ ...current, categoryId: value }));
                 }}
               >
-                <option value="">Selecciona una categoría</option>
+                <option value="">{t("sourcesRss.selectCategory")}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {getCategoryLabel(category)}
@@ -1290,14 +1292,14 @@ export const SourcesRss = () => {
                 className="btn-secondary sources-rss-secondary-button"
                 onClick={closeModal}
               >
-                Cancelar
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 className="btn-primary"
                 disabled={!currentSourceId && !channelBeingEdited}
               >
-                {channelBeingEdited ? "Guardar cambios" : "Crear canal"}
+                {channelBeingEdited ? t("common.saveChanges") : t("sourcesRss.createChannelBtn")}
               </button>
             </div>
           </form>
@@ -1311,10 +1313,10 @@ export const SourcesRss = () => {
       <header className="page-heading sources-rss-header">
         <div>
           <h1 id="sources-rss-title" className="section-title">
-            Fuentes RSS
+            {t("sourcesRss.title")}
           </h1>
           <p className="section-subtitle">
-            Administra las fuentes de información y sus canales RSS asociados.
+            {t("sourcesRss.subtitle")}
           </p>
         </div>
 
@@ -1325,7 +1327,7 @@ export const SourcesRss = () => {
               className="btn-secondary"
               onClick={clearFilters}
             >
-              Limpiar Filtros
+              {t("sourcesRss.clearFilters")}
             </button>
           )}
 
@@ -1335,12 +1337,12 @@ export const SourcesRss = () => {
             onClick={() => void loadSourcesAndChannels()}
           >
             <RefreshCw size={16} />
-            Recargar
+            {t("sourcesRss.reload")}
           </button>
           
           <button type="button" className="btn-primary" onClick={openCreateSourceModal}>
             <Plus size={18} />
-            Nueva fuente
+            {t("sourcesRss.newSource")}
           </button>
         </div>
       </header>
@@ -1366,27 +1368,27 @@ export const SourcesRss = () => {
 
       {isLoading ? (
         <output className="sources-rss-loading" aria-live="polite">
-          <p>Cargando fuentes y canales RSS...</p>
+          <p>{t("sourcesRss.loading")}</p>
         </output>
       ) : (
         <section className="sources-rss-grid" aria-label="Gestión de fuentes y canales RSS">
           <article className="sources-rss-panel">
             <div className="sources-rss-panel-header">
               <div>
-                <h2>Fuentes de información</h2>
-                <p>Selecciona una fuente para ver sus canales asociados.</p>
+                <h2>{t("sourcesRss.sourcesPanel")}</h2>
+                <p>{t("sourcesRss.sourcesPanelHint")}</p>
               </div>
-              <span className="sources-rss-badge">{filteredSources.length} fuentes</span>
+              <span className="sources-rss-badge">{filteredSources.length} {t("sourcesRss.sourcesCount")}</span>
             </div>
 
             <div className="sources-rss-search-row">
               <input
                 type="search"
                 className="sources-rss-search-input"
-                placeholder="Buscar por nombre o URL..."
+                placeholder={t("sourcesRss.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                aria-label="Buscar fuentes de información"
+                aria-label={t("sourcesRss.searchAria")}
               />
             </div>
 
@@ -1396,15 +1398,15 @@ export const SourcesRss = () => {
           <article className="sources-rss-panel sources-rss-panel-highlight">
             <div className="sources-rss-panel-header">
               <div>
-                <h2>Canales RSS asociados</h2>
+                <h2>{t("sourcesRss.channelsPanel")}</h2>
                 <p>
                   {selectedSource
-                    ? `Canales vinculados a ${selectedSource.name}.`
-                    : "Selecciona una fuente para ver sus canales."}
+                    ? `${t("sourcesRss.channelsPanelHint")} ${selectedSource.name}.`
+                    : t("sourcesRss.channelsPanelHint")}
                 </p>
               </div>
               <div className="sources-rss-panel-header-actions">
-                <span className="sources-rss-badge">{filteredChannels.length} canales</span>
+                <span className="sources-rss-badge">{filteredChannels.length} {t("sourcesRss.channelsCount")}</span>
                 <button
                   type="button"
                   className="btn-primary"
@@ -1412,7 +1414,7 @@ export const SourcesRss = () => {
                   disabled={!selectedSource}
                 >
                   <Plus size={18} />
-                  Nuevo canal
+                  {t("sourcesRss.newChannel")}
                 </button>
               </div>
             </div>

@@ -12,6 +12,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
+import { useI18n } from "../i18n/i18n";
 import "./Dashboard.css";
 
 ChartJS.register(
@@ -92,43 +93,6 @@ const setDashboardCache = (cache: unknown) => {
   }
 };
 
-const statLookup: Array<{
-  title: string;
-  metricKey: keyof DashboardMetrics;
-  description: string;
-  icon: ComponentType<{ size?: number }>;
-  accentClass: string;
-}> = [
-  {
-    title: "Fuentes activas",
-    metricKey: "activeSources",
-    description: "Orígenes RSS y fuentes monitorizadas",
-    icon: Globe2,
-    accentClass: "accent-sky",
-  },
-  {
-    title: "Noticias capturadas",
-    metricKey: "capturedNews",
-    description: "Historico de noticias extraídas",
-    icon: Activity,
-    accentClass: "accent-blue",
-  },
-  {
-    title: "Alertas configuradas",
-    metricKey: "alertsConfigured",
-    description: "Reglas activas para detección automática",
-    icon: Bell,
-    accentClass: "accent-indigo",
-  },
-  {
-    title: "Canales RSS",
-    metricKey: "rssChannels",
-    description: "Canales RSS importados en el sistema",
-    icon: Rss,
-    accentClass: "accent-teal",
-  },
-];
-
 const buildAxisLabel = (dateString: string, range: "7d" | "30d") => {
   const date = new Date(dateString);
   return date.toLocaleDateString("es-ES", {
@@ -138,6 +102,7 @@ const buildAxisLabel = (dateString: string, range: "7d" | "30d") => {
 };
 
 export const Dashboard = () => {
+  const { t } = useI18n();
   const cache = getDashboardCache();
 
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics>(
@@ -164,6 +129,44 @@ export const Dashboard = () => {
   const [selectedRange, setSelectedRange] = useState<"7d" | "30d">("7d");
   const [isLoading, setIsLoading] = useState<boolean>(!cache);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // statLookup inside component to be reactive to t()
+  const statLookup = useMemo<Array<{
+    title: string;
+    metricKey: keyof DashboardMetrics;
+    description: string;
+    icon: ComponentType<{ size?: number }>;
+    accentClass: string;
+  }>>(() => [
+    {
+      title: t("dashboard.activeSources"),
+      metricKey: "activeSources",
+      description: t("dashboard.activeSourcesDesc"),
+      icon: Globe2,
+      accentClass: "accent-sky",
+    },
+    {
+      title: t("dashboard.capturedNews"),
+      metricKey: "capturedNews",
+      description: t("dashboard.capturedNewsDesc"),
+      icon: Activity,
+      accentClass: "accent-blue",
+    },
+    {
+      title: t("dashboard.alertsConfigured"),
+      metricKey: "alertsConfigured",
+      description: t("dashboard.alertsConfiguredDesc"),
+      icon: Bell,
+      accentClass: "accent-indigo",
+    },
+    {
+      title: t("dashboard.rssChannels"),
+      metricKey: "rssChannels",
+      description: t("dashboard.rssChannelsDesc"),
+      icon: Rss,
+      accentClass: "accent-teal",
+    },
+  ], [t]);
 
   useEffect(() => {
     const token = globalThis.localStorage.getItem("token");
@@ -266,7 +269,7 @@ export const Dashboard = () => {
           </article>
         );
       }),
-    [dashboardMetrics],
+    [dashboardMetrics, statLookup],
   );
 
   const activeTrend = (selectedRange === "7d" ? trendData.last_7_days : trendData.last_30_days) ?? [];
@@ -277,7 +280,7 @@ export const Dashboard = () => {
     labels,
     datasets: [
       {
-        label: "Noticias capturadas",
+        label: t("dashboard.capturedNews"),
         data: dataValues,
         borderColor: "#0f172a",
         backgroundColor: "rgba(15, 23, 42, 0.05)",
@@ -296,9 +299,7 @@ export const Dashboard = () => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: "rgba(15, 23, 42, 0.8)",
         padding: 8,
@@ -306,57 +307,34 @@ export const Dashboard = () => {
         titleFont: { size: 12, weight: 600 },
         bodyFont: { size: 12 },
       },
-      filler: {
-        propagate: true,
-      },
+      filler: { propagate: true },
     },
     scales: {
       y: {
         beginAtZero: true,
         min: 0,
         max: Math.max(...dataValues, 10) * 1.1,
-        grid: {
-          color: "rgba(226, 232, 240, 0.5)",
-          drawBorder: false,
-        },
-        ticks: {
-          color: "#64748b",
-          font: { size: 11 },
-          stepSize: Math.max(1, Math.ceil(Math.max(...dataValues, 10) / 4)),
-        },
+        grid: { color: "rgba(226, 232, 240, 0.5)", drawBorder: false },
+        ticks: { color: "#64748b", font: { size: 11 }, stepSize: Math.max(1, Math.ceil(Math.max(...dataValues, 10) / 4)) },
         padding: 20,
       },
       x: {
-        grid: {
-          display: false,
-          drawBorder: false,
-        },
-        ticks: {
-          color: "#64748b",
-          font: { size: 11 },
-        },
+        grid: { display: false, drawBorder: false },
+        ticks: { color: "#64748b", font: { size: 11 } },
       },
     },
-    layout: {
-      padding: {
-        top: 10,
-        bottom: 10,
-        left: 0,
-        right: 0,
-      },
-    },
+    layout: { padding: { top: 10, bottom: 10, left: 0, right: 0 } },
   };
+
   return (
     <section className="main-content dashboard-page">
       <header className="page-heading">
-        <h1 className="section-title">Dashboard</h1>
-        <p className="section-subtitle">
-          Visión general de actividad, cumplimiento y datos clave de NewsRadar.
-        </p>
+        <h1 className="section-title">{t("dashboard.title")}</h1>
+        <p className="section-subtitle">{t("dashboard.subtitle")}</p>
       </header>
 
       {isLoading ? (
-        <div className="dashboard-loading">Cargando estadísticas...</div>
+        <div className="dashboard-loading">{t("dashboard.loading")}</div>
       ) : null}
 
       {fetchError ? (
@@ -369,9 +347,9 @@ export const Dashboard = () => {
         <section className="dashboard-panel">
           <div className="dashboard-panel-header">
             <div>
-              <p className="dashboard-panel-label">Tendencia de noticias capturadas</p>
+              <p className="dashboard-panel-label">{t("dashboard.trendLabel")}</p>
               <h2 className="dashboard-panel-title">
-                Últimos {selectedRange === "7d" ? "7 días" : "30 días"}
+                {selectedRange === "7d" ? t("dashboard.last7days") : t("dashboard.last30days")}
               </h2>
             </div>
             <div className="dashboard-range-switcher">
@@ -380,14 +358,14 @@ export const Dashboard = () => {
                 className={`dashboard-range-button ${selectedRange === "7d" ? "is-active" : ""}`}
                 onClick={() => setSelectedRange("7d")}
               >
-                7 días
+                {t("dashboard.7d")}
               </button>
               <button
                 type="button"
                 className={`dashboard-range-button ${selectedRange === "30d" ? "is-active" : ""}`}
                 onClick={() => setSelectedRange("30d")}
               >
-                30 días
+                {t("dashboard.30d")}
               </button>
             </div>
           </div>
@@ -400,7 +378,7 @@ export const Dashboard = () => {
         <section className="dashboard-panel">
           <div className="dashboard-panel-header">
             <div>
-              <p className="dashboard-panel-label">Noticias por categoría</p>
+              <p className="dashboard-panel-label">{t("dashboard.byCategory")}</p>
             </div>
           </div>
 

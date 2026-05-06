@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Inbox, Mail } from "lucide-react";
+import { useI18n } from "../i18n/i18n";
 import { AlertForm } from "../components/AlertForm";
 import type {
   AlertCategoryOption,
@@ -72,6 +73,8 @@ const API_BASE_URL =
   };
 
 export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
+  const { t } = useI18n();
+
   const [isAlertFormOpen, setIsAlertFormOpen] = useState(false);
   const [alertas, setAlertas] = useState<AlertTableItem[]>([]);
   const [categories, setCategories] = useState<AlertCategoryOption[]>([]);
@@ -414,14 +417,14 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       <main className="main-content">
         <div className="alerts-header">
           <div className="page-heading">
-            <h1 className="section-title">Gestión de Alertas</h1>
+            <h1 className="section-title">{t("alerts.title")}</h1>
             <p className="section-subtitle">
-              Configura tus radares de información personalizados.
+              {t("alerts.subtitle")}
             </p>
           </div>
           {canManageAlerts && (
             <button className="btn-primary" onClick={handleOpenCreateModal}>
-              <Plus size={18} /> Crear Nueva Alerta
+              <Plus size={18} /> {t("alerts.newAlert")}
             </button>
           )}
         </div>
@@ -443,14 +446,14 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
         <section className="table-container">
           <div className="header-actions" aria-label="Filtros de alertas">
             <div className="form-group">
-              <label htmlFor="alertsIptcFilter">Filtrar por categoria IPTC</label>
+              <label htmlFor="alertsIptcFilter">{t("alerts.filterByCategory")}</label>
               <select
                 id="alertsIptcFilter"
                 className="form-input alerts-filter-select"
                 value={selectedIptcCategory}
                 onChange={(e) => setSelectedIptcCategory(e.target.value)}
               >
-                <option value="">Todas las categorias</option>
+                <option value="">{t("alerts.allCategories")}</option>
                 {availableIptcCategories.map((opt) => (
                   <option key={opt.code} value={opt.code}>
                     {opt.label}
@@ -460,7 +463,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="alertsSearch">Buscar por Nombre o Descriptor</label>
+              <label htmlFor="alertsSearch">{t("alerts.searchLabel")}</label>
               <input
                 id="alertsSearch"
                 type="text"
@@ -475,11 +478,11 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
           <table className="management-table">
             <thead>
               <tr>
-                <th>Nombre de la Alerta</th>
-                <th>Categoria IPTC</th>
-                <th>Descriptores</th>
-                <th>Notificaciones</th>
-                {canManageAlerts && <th>Acciones</th>}
+                <th>{t("alerts.name")}</th>
+                <th>{t("alerts.category")}</th>
+                <th>{t("alerts.descriptors")}</th>
+                <th>{t("alerts.notifications")}</th>
+                {canManageAlerts && <th>{t("alerts.actions")}</th>}
               </tr>
             </thead>
             <tbody>
@@ -489,7 +492,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                     colSpan={canManageAlerts ? 5 : 4}
                     className="empty-state-cell"
                   >
-                    No hay alertas todavía.
+                    {t("alerts.noAlerts")}
                   </td>
                 </tr>
               ) : (
@@ -515,7 +518,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                             })
                             .filter(Boolean)
                             .join(", ")
-                        : "Todas"}
+                        : t("alerts.all")}
                     </td>
                     <td>{alerta.descriptores}</td>
                     <td>
@@ -550,16 +553,16 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
                         <div className="action-buttons">
                           <button
                             className="btn-icon edit"
-                            title="Editar"
-                            aria-label={`Editar alerta ${alerta.nombre}`}
+                            title={t("common.edit")}
+                            aria-label={`${t("common.edit")} ${alerta.nombre}`}
                             onClick={() => handleEditAlert(alerta)}
                           >
                             <Pencil size={18} />
                           </button>
                           <button
                             className="btn-icon delete"
-                            title="Eliminar"
-                            aria-label={`Eliminar alerta ${alerta.nombre}`}
+                            title={t("common.delete")}
+                            aria-label={`${t("common.delete")} ${alerta.nombre}`}
                             onClick={() => void handleDeleteAlert(alerta.id)}
                           >
                             <Trash2 size={16} />

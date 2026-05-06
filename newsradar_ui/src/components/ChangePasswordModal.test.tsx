@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, test, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "../test-utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 
 const mockFetch = vi.fn();

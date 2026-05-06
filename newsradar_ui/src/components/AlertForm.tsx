@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useI18n } from "../i18n/i18n";
 import { Check, X, Inbox, Mail } from "lucide-react";
 import { CategoryCheckboxList } from "./CategoryCheckboxList";
 
@@ -62,6 +63,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
   categories = [],
   onSubmit,
 }) => {
+  const { t } = useI18n();
   const IPTC_MAP = useMemo(() => ({
     "01000000": "Artes, cultura, entretenimiento y medios",
     "03000000": "Catástrofes y accidentes",
@@ -404,7 +406,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
     <div className="modal-overlay">
       <div className="modal-content modal-content-wide">
         <div className="modal-header">
-          <h2>{initialData ? "EDITAR ALERTA" : "CREAR NUEVA ALERTA"}</h2>
+          <h2>{initialData ? t("alertForm.editTitle") : t("alertForm.createTitle")}</h2>
           <button onClick={onClose} className="modal-close-btn" title="Cerrar">
             <X size={24} />
           </button>
@@ -424,13 +426,13 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           {/* Columna Izquierda: Nombre, Descriptores, Cron */}
           <div className="form-column form-column-left">
             <div className="form-group">
-              <label htmlFor="alertName">NOMBRE DE LA ALERTA</label>
+              <label htmlFor="alertName">{t("alertForm.nameLabel")}</label>
               <input
                 id="alertName"
                 type="text"
                 className="form-input"
                 required
-                placeholder="Ej: TENDENCIAS TECH 2026"
+                placeholder={t("alertForm.namePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -440,26 +442,26 @@ export const AlertForm: React.FC<AlertFormProps> = ({
                 onClick={fetchRecommendations}
                 disabled={isSubmitting}
               >
-                Sugerir Descriptores
+                {t("alertForm.recommendButton")}
               </button>
             </div>
 
             <div className="form-group">
               <label htmlFor="alertDescriptors">
-                DESCRIPTORES (SEPARADOS POR COMA)
+                {t("alertForm.descriptorsLabel")}
               </label>
               <input
                 id="alertDescriptors"
                 type="text"
                 className="form-input"
                 required
-                placeholder="Ej: IA, ROBÓTICA, CHIPS"
+                placeholder={t("alertForm.descriptorsPlaceholder")}
                 value={descriptors}
                 onChange={(e) => setDescriptors(e.target.value)}
               />
               {(recommendations.length > 0 || hasFetchedRecommendations) && (
                 <div className="recommendations-block">
-                  <p>Sugerencias:</p>
+                  <p>{t("alertForm.recommendationsLabel")}</p>
                   {recommendations.length > 0 ? (
                     <div className="recommendations-list">
                       {recommendations.map((word) => (
@@ -485,14 +487,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <p className="form-hint-text">No hay sugerencias nuevas.</p>
+                    <p className="form-hint-text">{t("alertForm.noSuggestions")}</p>
                   )}
                 </div>
               )}
             </div>
 
             <div className="form-group">
-              <label htmlFor="alertCronExpression">EXPRESION CRON</label>
+              <label htmlFor="alertCronExpression">{t("alertForm.cronLabel")}</label>
               <input
                 id="alertCronExpression"
                 type="text"
@@ -508,18 +510,18 @@ export const AlertForm: React.FC<AlertFormProps> = ({
           {/* Columna Derecha: Categorías e Información de Fuentes/RSS */}
           <div className="form-column form-column-right">
             <div className="form-group">
-              <span className="form-group-label">CATEGORIA IPTC (NIVEL 1)</span>
+              <span className="form-group-label">{t("alertForm.categoryLabel")}</span>
               <CategoryCheckboxList
                 categories={categoryOptions}
                 selectedCategoriesIds={selectedCategoriesIds}
                 onToggle={handleCategoryToggle}
               />
-              <p className="form-hint-text">Selecciona una o varias categorias.</p>
+              <p className="form-hint-text">{t("alertForm.categoryHint")}</p>
             </div>
 
             <div className="form-group">
               <label htmlFor="alertRssSources">
-                FUENTES / CANALES RSS (OPCIONAL)
+                {t("alertForm.sourcesLabel")}
               </label>
               <input
                 id="alertRssSources"
@@ -537,13 +539,12 @@ export const AlertForm: React.FC<AlertFormProps> = ({
                 }
               />
               <p className="form-hint-text">
-                Si lo dejas vacio, se aplicaran todas las fuentes de la categoria
-                seleccionada.
+                {t("alertForm.sourcesHint")}
               </p>
             </div>
 
             <div className="form-group">
-              <span className="form-group-label">NOTIFICACIONES</span>
+              <span className="form-group-label">{t("alertForm.notificationsLabel")}</span>
               <label className="checkbox-label">
                 <input
                   type="checkbox"
@@ -551,7 +552,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
                   onChange={(e) => setNotifyInbox(e.target.checked)}
                 />
                 <Inbox size={16} aria-hidden="true" />
-                <span>Buzon de la aplicacion</span>
+                <span>{t("alertForm.notifyInbox")}</span>
               </label>
               <label className="checkbox-label">
                 <input
@@ -560,12 +561,8 @@ export const AlertForm: React.FC<AlertFormProps> = ({
                   onChange={(e) => setNotifyEmail(e.target.checked)}
                 />
                 <Mail size={16} aria-hidden="true" />
-                <span>Correo electronico</span>
-              </label>
-              <p className="form-hint-text">
-                Elige donde quieres recibir los avisos cuando esta alerta detecte
-                coincidencias.
-              </p>
+                <span>{t("alertForm.notifyEmail")}</span>              </label>
+              <p className="form-hint-text">{t("alertForm.notificationsHint")}</p>
             </div>
           </div>
 
@@ -576,7 +573,7 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               onClick={onClose}
               disabled={isSubmitting}
             >
-              CANCELAR
+              {t("alertForm.cancel")}
             </button>
             <button
               type="submit"
@@ -586,10 +583,10 @@ export const AlertForm: React.FC<AlertFormProps> = ({
               {isSubmitting ? (
                 <span className="btn-submit-loading">
                   <span className="btn-spinner" aria-hidden="true" />
-                  <span> GUARDANDO...</span>
+                  <span>{t("alertForm.saving")}</span>
                 </span>
               ) : (
-                "GUARDAR ALERTA"
+                t("alertForm.save")
               )}
             </button>
           </div>

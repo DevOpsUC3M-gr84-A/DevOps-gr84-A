@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useI18n } from "../i18n/i18n";
 import { Eye, EyeOff } from "lucide-react";
 import "../pages/ProfilePage.css"; 
 
@@ -19,6 +20,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   token,
   onSuccess,
 }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({ current: "", new: "", confirm: "" });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,16 +42,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
   const handleSubmit = async () => {
     if (formData.new !== formData.confirm) {
-      setError("Las contraseñas no coinciden.");
+      setError(t("changePassword.mismatch"));
       return;
     }
     if (!STRONG_PASSWORD_REGEX.test(formData.new)) {
-      setError("La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.");
+      setError(t("changePassword.weakPassword"));
       return;
     }
 
     if (!formData.current) {
-      setError("Debes introducir tu contraseña actual.");
+      setError(t("changePassword.currentRequired"));
       return;
     }
 
@@ -75,7 +77,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         throw new Error(errorData.detail || "Error al cambiar la contraseña.");
       }
 
-      onSuccess("Tu contraseña se ha actualizado correctamente.");
+      onSuccess(t("changePassword.success"));
       resetStates(); // Limpiamos inputs y ocultamos contraseñas
       onClose(); // Cerramos el modal
     } catch (err) {
@@ -109,10 +111,10 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   return (
     <div className="delete-account-modal-overlay">
       <dialog open className="delete-account-modal-card">
-        <h2>Cambiar Contraseña</h2>
+        <h2>{t("changePassword.title")}</h2>
 
         <label className="delete-account-label" style={{ display: "block" }}>
-          Contraseña actual
+          {t("changePassword.current")}
           <div style={{ position: "relative", marginTop: "4px" }}>
             <input
               type={showCurrent ? "text" : "password"}
@@ -122,14 +124,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               placeholder="••••••••"
               style={{ paddingRight: "40px" }}
             />
-            <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={eyeButtonStyle} aria-label="Mostrar/Ocultar contraseña">
+            <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={eyeButtonStyle} aria-label={t("changePassword.toggleVisibility")}>
               {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </label>
 
         <label className="delete-account-label" style={{ display: "block", marginTop: "10px" }}>
-          Nueva contraseña
+          {t("changePassword.new")}
           <div style={{ position: "relative", marginTop: "4px" }}>
             <input
               type={showNew ? "text" : "password"}
@@ -139,17 +141,17 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               placeholder="••••••••"
               style={{ paddingRight: "40px" }}
             />
-            <button type="button" onClick={() => setShowNew(!showNew)} style={eyeButtonStyle} aria-label="Mostrar/Ocultar contraseña">
+            <button type="button" onClick={() => setShowNew(!showNew)} style={eyeButtonStyle} aria-label={t("changePassword.toggleVisibility")}>
               {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </label>
         <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "4px 0 0 0", lineHeight: "1.4" }}>
-          Debe tener al menos 8 caracteres, incluir una mayúscula, un número y un carácter especial.
+          {t("changePassword.hint")}
         </p>
 
         <label className="delete-account-label" style={{ display: "block", marginTop: "10px" }}>
-          Confirmar nueva contraseña
+          {t("changePassword.confirm")}
           <div style={{ position: "relative", marginTop: "4px" }}>
             <input
               type={showConfirm ? "text" : "password"}
@@ -159,7 +161,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               placeholder="••••••••"
               style={{ paddingRight: "40px" }}
             />
-            <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeButtonStyle} aria-label="Mostrar/Ocultar contraseña">
+            <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeButtonStyle} aria-label={t("changePassword.toggleVisibility")}>
               {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
@@ -169,7 +171,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         <div className="delete-account-actions" style={{ marginTop: "20px" }}>
           <button type="button" className="delete-account-cancel" onClick={handleCancel}>
-            Cancelar
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -177,7 +179,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Actualizando..." : "Actualizar Contraseña"}
+            {isSubmitting ? t("changePassword.updating") : t("changePassword.submit")}
           </button>
         </div>
       </dialog>

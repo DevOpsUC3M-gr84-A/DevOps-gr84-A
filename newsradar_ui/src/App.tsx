@@ -26,6 +26,8 @@ import {
 import { Auth } from "./pages/Auth";
 import { useAuth } from "./hooks/useAuth";
 import { normalizeRoleToId } from "./utils/roleUtils";
+import { useI18n } from "./i18n/i18n";
+import { LanguageToggle } from "./components/LanguageToggle";
 
 const AlertsManagement = lazy(
   () =>
@@ -58,7 +60,6 @@ const ResetPassword = lazy(
 interface ProtectedLayoutProps {
   handleLogout: () => void;
   canManageSections: boolean;
-  onLanguageChange: (language: "es" | "en") => void;
 }
 
 const parseStoredRoles = (rawRoles: string | null): number[] => {
@@ -153,7 +154,6 @@ const getStoredUserRoles = (): number[] => {
     return primaryRoles;
   }
 
-  // Fallback for older localStorage keys.
   const legacyRoles = parseStoredRoles(globalThis.localStorage.getItem("role_ids"));
   if (legacyRoles.length > 0) {
     return legacyRoles;
@@ -164,7 +164,6 @@ const getStoredUserRoles = (): number[] => {
 
 const canAccessManagementSections = (roles: number[]): boolean =>
   roles.includes(1) || roles.includes(3);
-
 interface NotificationItem {
   id: number;
   title: string;
@@ -178,9 +177,6 @@ const API_BASE_URL =
 
 const NOTIFICATION_PREVIEW_MAX_LENGTH = 250;
 
-// Linear, non-regex tag stripper. Safe against ReDoS because it scans each
-// character exactly once and never backtracks. Used only as a fallback when
-// DOMParser is not available or fails.
 const stripHtmlTagsLinear = (input: string): string => {
   let result = "";
   let insideTag = false;
@@ -223,6 +219,7 @@ const stripHtmlAndTruncate = (
 };
 
 const NotificationsPage = () => {
+  const { t } = useI18n();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -233,7 +230,7 @@ const NotificationsPage = () => {
 
     if (!userId || !token) {
       setIsLoading(false);
-      setError("Sesion no valida.");
+      setError(t("notifications.invalidSession"));
       return;
     }
 
@@ -243,17 +240,14 @@ const NotificationsPage = () => {
       try {
         const response = await fetch(
           `${API_BASE_URL}/api/v1/users/${userId}/notifications?limit=30`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+          { headers: { Authorization: `Bearer ${token}` } },
         );
 
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Error ${response.status}`);
 
         const data = await response.json();
         if (cancelled) return;
+
         const items: NotificationItem[] = Array.isArray(data)
           ? data.map((raw: any) => ({
               id: Number(raw?.id),
@@ -269,9 +263,7 @@ const NotificationsPage = () => {
       } catch (err) {
         if (cancelled) return;
         setError(
-          err instanceof Error
-            ? err.message
-            : "No se pudieron cargar las notificaciones.",
+          err instanceof Error ? err.message : t("notifications.loadError"),
         );
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -279,32 +271,22 @@ const NotificationsPage = () => {
     };
 
     void loadNotifications();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const markAsRead = async (notificationId: number) => {
     const userId = globalThis.localStorage.getItem("userId");
     const token = globalThis.localStorage.getItem("token");
 
-    if (!userId || !token) {
-      setError("Sesion no valida.");
-      return;
-    }
+    if (!userId || !token) { setError(t("notifications.invalidSession")); return; }
 
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/v1/users/${userId}/notifications/${notificationId}/read`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { method: "PUT", headers: { Authorization: `Bearer ${token}` } },
       );
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Error ${response.status}`);
 
       setNotifications((current) =>
         current.map((item) =>
@@ -313,11 +295,7 @@ const NotificationsPage = () => {
       );
       setError(null);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudo marcar como leida la notificacion.",
-      );
+      setError(err instanceof Error ? err.message : t("notifications.markReadError"));
     }
   };
 
@@ -325,18 +303,12 @@ const NotificationsPage = () => {
     const userId = globalThis.localStorage.getItem("userId");
     const token = globalThis.localStorage.getItem("token");
 
-    if (!userId || !token) {
-      setError("Sesion no valida.");
-      return;
-    }
+    if (!userId || !token) { setError(t("notifications.invalidSession")); return; }
 
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/v1/users/${userId}/notifications`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
       );
 
       if (!response.ok && response.status !== 204) {
@@ -346,9 +318,7 @@ const NotificationsPage = () => {
       setNotifications([]);
       setError(null);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "No se pudo limpiar el buzon.",
-      );
+      setError(err instanceof Error ? err.message : t("notifications.clearError"));
     }
   };
 
@@ -363,38 +333,31 @@ const NotificationsPage = () => {
       <header className="page-heading">
         <div className="notifications-toolbar">
           <div>
-            <h1 className="section-title">Buzon de Notificaciones</h1>
-            <p className="section-subtitle">
-              Buzon de avisos y alertas detectadas.
-            </p>
+            <h1 className="section-title">{t("notifications.title")}</h1>
+            <p className="section-subtitle">{t("notifications.subtitle")}</p>
           </div>
           <button
             type="button"
             className="notifications-clear-button"
+            aria-label="Limpiar Buzon"
             onClick={() => void clearMailbox()}
             disabled={isLoading || notifications.length === 0}
           >
-            Limpiar Buzon
+            {t("notifications.clearMailbox")}
           </button>
         </div>
       </header>
 
-      {isLoading && (
-        <p className="form-hint-text">Cargando notificaciones...</p>
-      )}
+      {isLoading && <p className="form-hint-text">{t("notifications.loading")}</p>}
 
       {error && (
-        <div
-          className="alert-feedback alert-feedback-error"
-          role="alert"
-          aria-live="assertive"
-        >
+        <div className="alert-feedback alert-feedback-error" role="alert" aria-live="assertive">
           {error}
         </div>
       )}
 
       {!isLoading && !error && notifications.length === 0 && (
-        <p className="form-hint-text">No tienes notificaciones todavia.</p>
+        <p className="form-hint-text">{t("notifications.empty")}</p>
       )}
 
       {!isLoading && !error && notifications.length > 0 && (
@@ -402,32 +365,27 @@ const NotificationsPage = () => {
           {notifications.map((n) => (
             <li
               key={n.id}
-              className={`notification-item ${
-                n.is_read ? "notification-read" : "notification-unread"
-              }`}
+              className={`notification-item ${n.is_read ? "notification-read" : "notification-unread"}`}
             >
               <div className="notification-item-header">
                 <h3 className="notification-title">{n.title}</h3>
-                <span className="notification-date">
-                  {formatDate(n.created_at)}
-                </span>
+                <span className="notification-date">{formatDate(n.created_at)}</span>
               </div>
-              <p className="notification-message">
-                {stripHtmlAndTruncate(n.message)}
-              </p>
+              <p className="notification-message">{stripHtmlAndTruncate(n.message)}</p>
               <div className="notification-actions">
                 {!n.is_read && (
                   <button
                     type="button"
                     className="notification-read-button"
+                    aria-label="Marcar como leida"
                     onClick={() => void markAsRead(n.id)}
                   >
                     <CheckCheck size={16} />
-                    Marcar como leida
+                    {t("notifications.markAsRead")}
                   </button>
                 )}
                 {n.is_read && (
-                  <span className="notification-read-label">Leida</span>
+                  <span className="notification-read-label">{t("notifications.read")}</span>
                 )}
               </div>
             </li>
@@ -438,56 +396,25 @@ const NotificationsPage = () => {
   );
 };
 
-const LanguageSwitcher = ({
-  activeLanguage,
-  onLanguageChange,
-}: {
-  activeLanguage: "es" | "en";
-  onLanguageChange: (language: "es" | "en") => void;
-}) => (
-  <div className="language-switcher">
-    <button
-      type="button"
-      className={`language-switcher-item ${
-        activeLanguage === "es" ? "is-active" : ""
-      }`}
-      onClick={() => onLanguageChange("es")}
-    >
-      ES
-    </button>
-    <span className="language-switcher-separator"> / </span>
-    <button
-      type="button"
-      className={`language-switcher-item ${
-        activeLanguage === "en" ? "is-active" : ""
-      }`}
-      onClick={() => onLanguageChange("en")}
-    >
-      EN
-    </button>
-  </div>
-);
-
 const ProtectedLayout = ({
   handleLogout,
   canManageSections,
-  onLanguageChange,
 }: ProtectedLayoutProps) => {
   const location = useLocation();
+  const { t } = useI18n();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeLanguage, setActiveLanguage] = useState<"es" | "en">("es");
   const [userName, setUserName] = useState("Usuario");
-  const [userRole, setUserRole] = useState("Lector");
+  const [userRole, setUserRole] = useState(() => t("roles.lector"));
   const [userInitials, setUserInitials] = useState("US");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   const sectionTitleByPath: Record<string, string> = {
-    "/dashboard": "DASHBOARD",
-    "/resumen": "RESUMEN",
-    "/alertas": "ALERTAS",
-    "/fuentes-rss": "FUENTES Y RSS",
-    "/notificaciones": "NOTIFICACIONES",
-    "/perfil": "PERFIL",
+    "/dashboard": t("nav.dashboard").toUpperCase(),
+    "/resumen": t("nav.resumen").toUpperCase(),
+    "/alertas": t("nav.alerts").toUpperCase(),
+    "/fuentes-rss": t("nav.sourcesRss").toUpperCase(),
+    "/notificaciones": t("nav.notifications").toUpperCase(),
+    "/perfil": t("nav.profile").toUpperCase(),
   };
 
   const currentSectionTitle = sectionTitleByPath[location.pathname] ?? "DASHBOARD";
@@ -502,14 +429,14 @@ const ProtectedLayout = ({
 
     const roleIdToLabel = (roleIds: number[]): string => {
       if (roleIds.includes(3)) {
-        return "Admin";
+        return t("roles.admin");
       }
 
       if (roleIds.includes(1)) {
-        return "Gestor";
+        return t("roles.gestor");
       }
 
-      return "Lector";
+      return t("roles.lector");
     };
 
     let cancelled = false;
@@ -563,11 +490,6 @@ const ProtectedLayout = ({
     };
   }, []);
 
-  const handleLanguageChange = (language: "es" | "en") => {
-    setActiveLanguage(language);
-    onLanguageChange(language);
-  };
-
   return (
     <div className="app-container">
       <aside className={`sidebar ${isSidebarOpen ? "" : "closed"}`}>
@@ -580,23 +502,20 @@ const ProtectedLayout = ({
           <span>NewsRadar</span>
         </div>
 
-        <LanguageSwitcher
-          activeLanguage={activeLanguage}
-          onLanguageChange={handleLanguageChange}
-        />
+        <LanguageToggle />
 
         <nav className="nav-container">
           <ul className="nav-links">
             <li>
               <NavLink to="/dashboard" className="nav-item">
                 <LayoutDashboard size={20} />
-                <span>Dashboard</span>
+                <span>{t("nav.dashboard")}</span>
               </NavLink>
             </li>
             <li>
               <NavLink to="/resumen" className="nav-item">
                 <Cloud size={20} />
-                <span>Resumen</span>
+                <span>{t("nav.resumen")}</span>
               </NavLink>
             </li>
             {canManageSections && (
@@ -604,13 +523,13 @@ const ProtectedLayout = ({
                 <li>
                   <NavLink to="/alertas" className="nav-item">
                     <Bell size={20} />
-                    <span>Alertas</span>
+                    <span>{t("nav.alerts")}</span>
                   </NavLink>
                 </li>
                 <li>
                   <NavLink to="/fuentes-rss" className="nav-item">
                     <Rss size={20} />
-                    <span>Fuentes y RSS</span>
+                    <span>{t("nav.sourcesRss")}</span>
                   </NavLink>
                 </li>
               </>
@@ -618,21 +537,21 @@ const ProtectedLayout = ({
             <li>
               <NavLink to="/notificaciones" className="nav-item">
                 <Inbox size={20} />
-                <span>Notificaciones</span>
+                <span>{t("nav.notifications")}</span>
               </NavLink>
             </li>
             <li>
               <NavLink to="/perfil" className="nav-item">
                 <UserCog size={20} />
-                <span>Perfil</span>
+                <span>{t("nav.profile")}</span>
               </NavLink>
             </li>
           </ul>
 
           <div className="nav-footer">
             <button onClick={handleLogout} className="logout-button">
-              <LogOut size={20} />
-              <span>Cerrar Sesion</span>
+              <LogOut size={20} aria-hidden="true" />
+              <span>{t("nav.logout")}</span>
             </button>
           </div>
         </nav>
@@ -645,7 +564,7 @@ const ProtectedLayout = ({
               type="button"
               className="sidebar-toggle-button"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              aria-label={isSidebarOpen ? "Cerrar menú lateral" : "Abrir menú lateral"}
+              aria-label={isSidebarOpen ? t("nav.closeSidebar") : t("nav.openSidebar")}
             >
               <Menu size={20} />
             </button>
@@ -660,10 +579,10 @@ const ProtectedLayout = ({
             <div className="user-badge" aria-label="Usuario logueado">
               <div className="user-badge-avatar" aria-hidden="true" style={{ padding: userAvatar ? 0 : undefined, overflow: 'hidden' }}>
                 {userAvatar ? (
-                  <img 
-                    src={userAvatar} 
-                    alt="Avatar" 
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} 
+                  <img
+                    src={userAvatar}
+                    alt="Avatar"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                   />
                 ) : (
                   userInitials
@@ -697,6 +616,8 @@ function App() {
     hasStoredToken,
   );
 
+  const { t } = useI18n();
+
   useEffect(() => {
     const validateSession = async () => {
       const token = globalThis.localStorage.getItem("token");
@@ -704,9 +625,6 @@ function App() {
 
       if (!token || !userId) {
         if (isAuthenticated) {
-          // When the auth hook reports the session as authenticated (e.g. in tests
-          // or alternative auth flows), skip forcing a logout due to missing
-          // localStorage tokens and preserve computed `canManageSections`.
           setIsCheckingAuth(false);
           return;
         }
@@ -765,70 +683,69 @@ function App() {
     return (
       <div className="auth-checking" role="status" aria-live="polite">
         <span className="auth-checking-spinner" aria-hidden="true" />
-        <span>Cargando…</span>
+        <span>{t("common.loading")}</span>
       </div>
     );
   }
 
   return (
-    <Suspense fallback={<div className="app-loading">Cargando…</div>}>
+    <Suspense fallback={<div className="app-loading">{t("common.loading")}</div>}>
       <Routes>
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route
-        path="/"
-        element={
-          isSessionAuthenticated ? (
-            <ProtectedLayout
-              handleLogout={handleLogout}
-              canManageSections={canManageSections}
-              onLanguageChange={() => {}}
-            />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="resumen" element={<ResumenPage />} />
-        <Route
-          path="alertas"
+          path="/"
           element={
-            canManageSections ? (
-              <AlertsManagement onLogout={handleLogout} />
+            isSessionAuthenticated ? (
+              <ProtectedLayout
+                handleLogout={handleLogout}
+                canManageSections={canManageSections}
+              />
             ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="resumen" element={<ResumenPage />} />
+          <Route
+            path="alertas"
+            element={
+              canManageSections ? (
+                <AlertsManagement onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="fuentes-rss"
+            element={
+              canManageSections ? (
+                <SourcesRss />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route path="notificaciones" element={<NotificationsPage />} />
+          <Route path="perfil" element={<ProfilePage />} />
+        </Route>
+        <Route path="/login" element={<Auth />} />
+        <Route
+          path="*"
+          element={
+            isSessionAuthenticated ? (
               <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
             )
           }
         />
-        <Route
-          path="fuentes-rss"
-          element={
-            canManageSections ? (
-              <SourcesRss />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          }
-        />
-        <Route path="notificaciones" element={<NotificationsPage />} />
-        <Route path="perfil" element={<ProfilePage />} />
-      </Route>
-      <Route path="/login" element={<Auth />} />
-      <Route
-        path="*"
-        element={
-          isSessionAuthenticated ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-    </Routes>
-  </Suspense>
+      </Routes>
+    </Suspense>
   );
 }
 
