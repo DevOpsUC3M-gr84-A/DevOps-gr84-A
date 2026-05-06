@@ -9,10 +9,59 @@ Sistema avanzado de **monitorización de noticias** sobre canales RSS, con clasi
 
 ---
 
+## 👨‍🏫 Para el Evaluador: Ejecución en 1 Clic (RNF10)
+
+> **Único requisito previo:** tener **Docker Desktop** en marcha. No hace falta instalar Python, Node ni PostgreSQL.
+
+### Pasos desde cero
+
+**1.** Obtener el código (cualquiera de las dos opciones):
+
+```bash
+# Opción A — descomprimir la release
+tar -xzf DevOps-gr84-A-v*.tar.gz && cd DevOps-gr84-A-*
+
+# Opción B — clonar el repositorio
+git clone https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A.git
+cd DevOps-gr84-A
+```
+
+**2.** Lanzar la evaluación con **un único comando**:
+
+```bash
+make evaluate            # Linux / macOS / WSL
+# Windows con Git Bash:
+bash evaluate.sh
+```
+
+**Qué hace este comando:** levanta los 4 contenedores Docker (frontend + backend + PostgreSQL + Elasticsearch). El backend, al arrancar, **autoinyecta los 100 canales RSS semilla** (RF14) si la base está vacía.
+A continuación ejecuta `pytest` con cobertura HTML dentro del contenedor del backend y, al finalizar, imprime en verde las URLs de la aplicación (Frontend, API y Swagger).
+
+**3.** Al terminar, apagar el entorno limpiamente:
+
+```bash
+make down                # equivale a: docker compose down -v
+```
+
+### URLs que verás impresas al finalizar
+
+| Servicio | URL |
+|----------|-----|
+| Frontend (React + Vite) | http://localhost:5173 |
+| API Backend (FastAPI)   | http://localhost:8000 |
+| Swagger / OpenAPI       | http://localhost:8000/docs |
+
+> Todos los servicios — incluido el **frontend** — están dockerizados. El evaluador **no** necesita instalar Node.js ni Python: basta con Docker Desktop.
+
+**Credenciales por defecto:** `admin@newsradar.com` / `admin123456`.
+**Informe de cobertura:** `newsradar_api/htmlcov/index.html` (montado desde el contenedor al host vía bind-mount; se abre directamente en el navegador del evaluador).
+
+---
+
 ## Índice
 
 - [Descripción](#descripción)
-- [Inicio Rápido](#inicio-rápido)
+- [Para el Desarrollador: Ejecución Manual](#-para-el-desarrollador-ejecución-manual-hot-reload)
 - [APIs disponibles](#apis-disponibles)
 - [Arquitectura](#arquitectura)
 - [Documentación](#documentación)
@@ -33,19 +82,40 @@ El sistema cumple los requisitos arquitectónicos exigidos: 5 capas (RNF01), API
 
 ---
 
-## Inicio Rápido
+## 🧑‍💻 Para el Desarrollador: Ejecución Manual (hot-reload)
 
-Guía completa en [docs/quickstart.md](docs/quickstart.md).
+> Esta sección es para **desarrollo iterativo** con hot-reload sobre Python y Vite. Si lo que buscas es **corregir** el proyecto, usa la sección [👨‍🏫 Para el Evaluador](#-para-el-evaluador-ejecución-en-1-clic-rnf10). Guía detallada en [docs/quickstart.md](docs/quickstart.md).
+
+Aquí los servicios **no van todos en Docker**: solo PostgreSQL (y Elasticsearch) corren en contenedor. El backend Python se ejecuta sobre un `.venv` local con `uvicorn --reload`, y el frontend con `npm run dev`. Así obtienes recarga instantánea al editar código.
+
+### 1. Levantar solo la base de datos (Postgres + Elasticsearch)
 
 ```bash
-git clone https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A.git
-cd DevOps-gr84-A
-docker compose up -d --build
+docker compose up -d postgres elasticsearch
 ```
 
-Esto levanta el **backend FastAPI**, **PostgreSQL 15** y **Elasticsearch** de forma autocontenida.
+### 2. Backend FastAPI en local con `.venv`
 
-**Frontend (React + Vite, puerto 5173):**
+```bash
+cd newsradar_api
+python -m venv .venv
+# Linux / macOS / WSL:
+source .venv/bin/activate
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt   # opcional: pytest, linters
+
+# Apuntar a la DB del contenedor (puerto host expuesto):
+export DATABASE_URL="postgresql://newsradar_user:newsradar_password@localhost:5432/newsradar_db"
+
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 3. Frontend React + Vite en local
+
+En otra terminal:
 
 ```bash
 cd newsradar_ui
@@ -145,12 +215,12 @@ Tabla cruzada entre los requisitos de [docs/requirements/requirements.csv](docs/
 | #2 | **RNF02** | Comunicación íntegra vía API REST. | [newsradar_api/app/api/router.py](newsradar_api/app/api/router.py), routers en [routes/](newsradar_api/app/api/routes/) | [ADR-024](docs/ADRs/ADR-024-fastapi.md) |
 | #3 | **RNF03** | OpenAPI 3.1 generado automáticamente. | FastAPI `/docs`, `/redoc` | Inspección manual + [tests/integration](newsradar_api/tests/integration/) |
 | #4 | **RNF04** | Configuración con Docker. | [docker-compose.yml](docker-compose.yml), Dockerfiles backend/frontend | [ADR-002](docs/ADRs/ADR-002-docker.md), [ADR-017](docs/ADRs/ADR-017-estrategia-empaquetado-docker.md) |
-| #5 | **RNF05** | Automatización de la configuración. | [.github/workflows/](.github/workflows/), seed de DB | Pipelines verdes |
+| #5 | **RNF05** | Automatización de la configuración. | [.github/workflows/](.github/workflows/), seed de DB, [release.yml](.github/workflows/release.yml) (publicación automática de GitHub Releases al subir tags `v*`) | Pipelines verdes + Releases publicadas |
 | #6 | **RNF06** | Integración Continua. | [.github/workflows/ci.yml](.github/workflows/ci.yml), [test.yml](.github/workflows/test.yml) | Ejecución por PR |
 | #7 | **RNF07** | Cobertura de pruebas (unit + integration + perf). | [newsradar_api/tests/unit](newsradar_api/tests/unit/), [tests/integration](newsradar_api/tests/integration/), [tests/performance](newsradar_api/tests/performance/) | `pytest --cov`, [htmlcov/](htmlcov/) |
 | #8 | **RNF08** | Métricas de calidad de código. | [sonar-project.properties](sonar-project.properties) | SonarCloud Quality Gate, [ADR-007](docs/ADRs/ADR-007-sonarcloud.md) |
-| #9 | **RNF09** | Empaquetado y distribución (CD). | [.github/workflows/backend-package.yml](.github/workflows/backend-package.yml), [cd-frontend.yml](.github/workflows/cd-frontend.yml) | Imagen publicada por release |
-| #10 | **RNF10** | Pipeline reproducible con un único comando. | `docker compose up --build` + seed automático | [docs/deployment.md](docs/deployment.md) |
+| #9 | **RNF09** | Empaquetado y distribución (CD). | [.github/workflows/backend-package.yml](.github/workflows/backend-package.yml), [cd-frontend.yml](.github/workflows/cd-frontend.yml), [release.yml](.github/workflows/release.yml) | Imagen publicada + GitHub Release con `.tar.gz` y notas auto-generadas |
+| #10 | **RNF10** | Pipeline reproducible con un único comando. | [evaluate.sh](evaluate.sh) + [Makefile](Makefile) (`make evaluate`) — build, seed (100 canales), tests, cobertura HTML y despliegue | [docs/deployment.md](docs/deployment.md) |
 | #11 | **RNF11** | Documentación versionada y trazabilidad de prompts. | [docs/](docs/), [docs/prompts.md](docs/prompts.md), [mkdocs.yml](mkdocs.yml) | Esta tabla + ADRs |
 
 ---

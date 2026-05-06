@@ -33,6 +33,10 @@ services:
       # uvicorn solo necesita leer ficheros para detectar cambios; así
       # appuser nunca intentará escribir __pycache__ en el host.
       - ./newsradar_api/app:/app/app:ro
+      # Tests montados en :ro para que pytest los ejecute sin reconstruir la imagen.
+      - ./newsradar_api/tests:/app/tests:ro
+      # htmlcov en bind-mount: el evaluador abre el informe directamente desde su host.
+      - ./newsradar_api/htmlcov:/app/htmlcov
     # Override del CMD del Dockerfile para activar el reloader en local.
     # En producción la imagen se ejecuta con el CMD por defecto (sin --reload).
     command:
@@ -49,6 +53,25 @@ services:
     depends_on:
       - elasticsearch
       - postgres
+
+  # Servicio del Frontend (React + Vite, dev server en contenedor)
+  # RNF10: el evaluador NO necesita Node.js instalado; `docker compose up`
+  # levanta también la UI en http://localhost:5173.
+  frontend:
+    build:
+      context: ./newsradar_ui
+      dockerfile: Dockerfile
+    image: newsradar_frontend_image
+    container_name: newsradar_frontend_container
+    ports:
+      - "5173:5173"
+    environment:
+      # Las llamadas del navegador salen del host del evaluador, no del contenedor,
+      # por lo que la API debe resolverse vía el puerto publicado (localhost:8000).
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - api-backend
+    restart: unless-stopped
 
   # Base de datos relacional PostgreSQL
   postgres:
