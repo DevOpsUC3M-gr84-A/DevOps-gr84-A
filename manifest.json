@@ -1,0 +1,20 @@
+{
+  "short_name": "NewsRadar",
+  "name": "NewsRadar - Gestión de Alertas",
+  "icons": [
+    {
+      "src": "newsradar-logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "newsradar-logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2563eb",
+  "background_color": "#f8fafc"
+}
