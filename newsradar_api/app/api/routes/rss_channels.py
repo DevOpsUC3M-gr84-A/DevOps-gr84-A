@@ -48,8 +48,32 @@ def _to_response(channel: DBRSSChannel) -> RSSChannel:
     )
 
 
+def _get_category_key_universal(cat_id: int | str | None) -> int | str | None:
+    """Búsqueda universal: encuentra la clave con todas las variantes (int, str, padded)."""
+    if cat_id is None:
+        return None
+    
+    try:
+        cat_id_int = int(cat_id)
+    except (TypeError, ValueError):
+        return None
+    
+    # Variantes a buscar
+    variants = [
+        cat_id_int,                          # 1000000 (int)
+        str(cat_id_int),                     # "1000000" (str)
+        f"{cat_id_int:08d}",                # "01000000" (str padded)
+    ]
+    
+    for variant in variants:
+        if variant in categories_store:
+            return variant
+    
+    return None
+
+
 def _validate_category_or_422(category_id_raw: int | str | None) -> int:
-    """Valida que la categoría existe como entero puro en el store. Devuelve el ID validado."""
+    """Valida que la categoría existe (con búsqueda universal). Devuelve el ID entero."""
     if category_id_raw is None:
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
     
@@ -58,7 +82,12 @@ def _validate_category_or_422(category_id_raw: int | str | None) -> int:
     except (TypeError, ValueError):
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
 
-    if cat_id <= 0 or cat_id not in categories_store:
+    if cat_id <= 0:
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
+    
+    # Búsqueda universal de la categoría
+    key = _get_category_key_universal(cat_id)
+    if key is None:
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
 
     return cat_id
