@@ -108,10 +108,15 @@ def delete_user_notifications(
 
 
 def ensure_alert_for_user(user_id: int, alert_id: int):
+    """Búsqueda robusta de alerta con cast a int."""
     u_id = _to_int(user_id)
     a_id = _to_int(alert_id)
     alert = alerts_store.get(a_id)
-    if not alert or int(alert.user_id) != u_id:
+    if not alert:
+        raise HTTPException(
+            status_code=404, detail="Alerta no encontrada para el usuario"
+        )
+    if int(alert.user_id) != u_id:
         raise HTTPException(
             status_code=404, detail="Alerta no encontrada para el usuario"
         )
