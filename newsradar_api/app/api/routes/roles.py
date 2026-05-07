@@ -143,6 +143,6 @@ def delete_role(
           f"memoria={memory_count}, db={db_count}, total={total}")
 
     if total > 0:
-        raise HTTPException(status_code=400, detail=ERROR_ROLE_IN_USE)
+        raise HTTPException(status_code=409, detail=ERROR_ROLE_IN_USE)
 
     roles_store.pop(role_id, None)

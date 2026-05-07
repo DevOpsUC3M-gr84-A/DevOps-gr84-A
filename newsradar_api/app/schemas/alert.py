@@ -11,6 +11,18 @@ _CRON_RE = re.compile(rf"^\s*{_CRON_FIELD}(\s+{_CRON_FIELD}){{4,5}}\s*$")
 _GENERIC_DESCRIPTORS = ["keyword1", "keyword2", "keyword3"]
 _MIN_DESCRIPTORS = 3
 _MAX_DESCRIPTORS = 10
+_MAX_DESCRIPTOR_LENGTH = 100
+
+
+def _validate_descriptor_lengths(value):
+    if value is None:
+        return value
+    for item in value:
+        if isinstance(item, str) and len(item) > _MAX_DESCRIPTOR_LENGTH:
+            raise ValueError(
+                f"descriptor demasiado largo (max {_MAX_DESCRIPTOR_LENGTH} chars)"
+            )
+    return value
 
 
 def _normalize_categories(value):
@@ -100,6 +112,11 @@ class AlertCreate(AlertBase):
     def _check_categories(cls, value):
         return _normalize_categories(value)
 
+    @field_validator("descriptors")
+    @classmethod
+    def _check_descriptor_lengths(cls, value):
+        return _validate_descriptor_lengths(value)
+
 
 class AlertUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -131,6 +148,11 @@ class AlertUpdate(BaseModel):
     @classmethod
     def _check_categories(cls, value):
         return _normalize_categories(value)
+
+    @field_validator("descriptors")
+    @classmethod
+    def _check_descriptor_lengths(cls, value):
+        return _validate_descriptor_lengths(value)
 
 
 class Alert(AlertBase):

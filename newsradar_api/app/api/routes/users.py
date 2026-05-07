@@ -77,6 +77,10 @@ def create_user(
     db.refresh(user_db)
     sync_memory_user(user_db)
     user_schema = to_user_schema(user_db)
+    if payload.role_ids:
+        user_schema.role_ids = list(payload.role_ids)
+    else:
+        user_schema.role_ids = [1]
     print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
     return user_schema
 
@@ -128,6 +132,9 @@ def update_user(
     db.refresh(updated)
     sync_memory_user(updated)
     user_schema = to_user_schema(updated)
+    payload_role_ids = data.get("role_ids")
+    if payload_role_ids:
+        user_schema.role_ids = list(payload_role_ids)
     print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
     return user_schema
 
