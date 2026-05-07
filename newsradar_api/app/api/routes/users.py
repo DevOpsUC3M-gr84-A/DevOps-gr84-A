@@ -60,22 +60,31 @@ def list_users(
     "/users",
     status_code=201,
     tags=["users"],
+    response_model=User,
     responses={409: {"description": "Conflict"}},
 )
-def create_user(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> User:
+def create_user(
+    payload: UserCreate,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[UserInDB, Depends(get_current_user)] = None,
+) -> User:
     ensure_role_ids_exist(payload.role_ids)
     try:
         user_db = create_db_user(db, payload)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    db.refresh(user_db)
     sync_memory_user(user_db)
-    return to_user_schema(user_db)
+    user_schema = to_user_schema(user_db)
+    print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
+    return user_schema
 
 
 @users_router.get(
     "/users/{user_id}",
     tags=["users"],
+    response_model=User,
     responses={404: {"description": "Usuario no encontrado"}},
 )
 def get_user(
@@ -86,12 +95,15 @@ def get_user(
     user = _get_user_or_404(user_id, db)
 
     sync_memory_user(user)
-    return to_user_schema(user)
+    user_schema = to_user_schema(user)
+    print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
+    return user_schema
 
 
 @users_router.put(
     "/users/{user_id}",
     tags=["users"],
+    response_model=User,
     responses={
         404: {"description": "Usuario no encontrado"},
         409: {"description": "Conflict"},
@@ -113,8 +125,11 @@ def update_user(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    db.refresh(updated)
     sync_memory_user(updated)
-    return to_user_schema(updated)
+    user_schema = to_user_schema(updated)
+    print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
+    return user_schema
 
 
 @users_router.delete(

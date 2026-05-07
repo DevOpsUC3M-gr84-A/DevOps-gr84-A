@@ -90,7 +90,9 @@ def _build_top_categories(es: Elasticsearch) -> list[DashboardCategory]:
             if buckets:
                 return [
                     DashboardCategory(
-                        label=IPTC_FIRST_LEVEL.get(bucket["key"], bucket["key"]),
+                        label=IPTC_FIRST_LEVEL.get(int(bucket["key"]))
+                        if str(bucket["key"]).isdigit()
+                        else bucket["key"],
                         value=bucket["doc_count"],
                     )
                     for bucket in buckets

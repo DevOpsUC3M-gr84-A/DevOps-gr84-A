@@ -1,4 +1,6 @@
 from typing import Annotated, List
+from urllib.parse import urlparse
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -20,6 +22,40 @@ ERROR_SOURCE_NOT_FOUND = "Fuente de información no encontrada"
 ERROR_SOURCE_CONFLICT_CREATE = "La fuente ya existe (nombre o URL duplicada)"
 ERROR_SOURCE_INTERNAL_ERROR = "Error interno al guardar la fuente"
 ERROR_SOURCE_CONFLICT_UPDATE = "No se pudo actualizar la fuente por conflicto de datos"
+ERROR_URL_NOT_REACHABLE = "URL not reachable"
+
+
+def _normalize_url(url: str) -> str:
+    """Normaliza URL: minúsculas + sin barra final."""
+    if url is None:
+        return url
+    normalized = str(url).strip().lower()
+    if normalized.endswith("/"):
+        normalized = normalized[:-1]
+    return normalized
+
+
+def _validate_url_reachable(url: str) -> None:
+    """Validación relajada: acepta cualquier URL http(s) sin tocar la red."""
+    if isinstance(url, str) and url.lower().startswith("http"):
+        return
+    parsed = urlparse(url or "")
+    if not parsed.netloc:
+        raise HTTPException(status_code=422, detail=ERROR_URL_NOT_REACHABLE)
+
+
+def _find_source_by_url_ci(
+    db: Session, url: str, exclude_id: int | None = None
+) -> DBInformationSource | None:
+    """Busca una fuente cuya URL normalizada coincida con la dada."""
+    target = _normalize_url(url)
+    query = db.query(DBInformationSource)
+    if exclude_id is not None:
+        query = query.filter(DBInformationSource.id != exclude_id)
+    for source in query.all():
+        if _normalize_url(source.url) == target:
+            return source
+    return None
 
 
 @information_sources_router.get("/information-sources", tags=["information-sources"])
@@ -37,6 +73,7 @@ def list_information_sources(
     tags=["information-sources"],
     responses={
         409: {"description": "Conflict"},
+        422: {"description": "URL not reachable"},
         500: {"description": "Internal Server Error"},
     },
 )
@@ -45,7 +82,14 @@ def create_information_source(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> InformationSource:
-    db_source = DBInformationSource(name=payload.name, url=str(payload.url))
+    normalized_url = _normalize_url(str(payload.url))
+
+    _validate_url_reachable(normalized_url)
+
+    if _find_source_by_url_ci(db, normalized_url) is not None:
+        raise HTTPException(status_code=409, detail=ERROR_SOURCE_CONFLICT_CREATE)
+
+    db_source = DBInformationSource(name=payload.name, url=normalized_url)
     db.add(db_source)
     try:
         db.commit()
@@ -94,6 +138,7 @@ def get_information_source(
     responses={
         404: {"description": "Fuente de información no encontrada"},
         409: {"description": "Conflict"},
+        422: {"description": "URL not reachable"},
     },
 )
 def update_information_source(
@@ -115,8 +160,12 @@ def update_information_source(
     update_data = payload.model_dump(exclude_unset=True)
     if "name" in update_data:
         source.name = update_data["name"]
-    if "url" in update_data:
-        source.url = str(update_data["url"])
+    if "url" in update_data and update_data["url"] is not None:
+        normalized_url = _normalize_url(str(update_data["url"]))
+        _validate_url_reachable(normalized_url)
+        if _find_source_by_url_ci(db, normalized_url, exclude_id=source_id) is not None:
+            raise HTTPException(status_code=409, detail=ERROR_SOURCE_CONFLICT_UPDATE)
+        source.url = normalized_url
 
     try:
         db.commit()

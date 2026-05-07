@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import init_db
+from app.database.init_db import _IPTC_TOPLEVEL_SEED
 from app.models.rss import CategoriaIPTC
 from app.models.user import UserRole
 from app.database.init_db import _SEQUENCE_SYNC_TABLES, sync_postgres_sequences
@@ -21,6 +22,31 @@ def test_get_password_hash_uses_pwd_context_hash():
 @pytest.mark.unit
 def test_map_seed_category_to_iptc_returns_otros_when_empty_value():
     assert init_db._map_seed_category_to_iptc(None) == CategoriaIPTC.OTROS
+
+
+@pytest.mark.unit
+def test_iptc_top_level_seed_contains_the_17_required_categories():
+    expected_codes = [
+        "01000000",
+        "02000000",
+        "03000000",
+        "04000000",
+        "05000000",
+        "06000000",
+        "07000000",
+        "08000000",
+        "09000000",
+        "10000000",
+        "11000000",
+        "12000000",
+        "13000000",
+        "14000000",
+        "15000000",
+        "16000000",
+        "17000000",
+    ]
+
+    assert [code for code, _, _ in _IPTC_TOPLEVEL_SEED] == expected_codes
 
 
 @pytest.mark.unit

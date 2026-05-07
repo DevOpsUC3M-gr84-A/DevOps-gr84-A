@@ -11,7 +11,7 @@ class Metric(BaseModel):
 
 class NotificationBase(BaseModel):
     timestamp: datetime
-    metrics: List[Metric] = Field(default_factory=list)
+    metrics: List[Metric] = Field(...)
     title: Optional[str] = Field(None, description="Título de la notificación (RF11/RF12)")
     message: Optional[str] = Field(None, description="Contenido de la notificación (RF11/RF12)")
     is_read: bool = False

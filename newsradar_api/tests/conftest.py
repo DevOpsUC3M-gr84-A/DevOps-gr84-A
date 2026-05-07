@@ -306,3 +306,21 @@ def disable_real_emails(monkeypatch):
     """
     monkeypatch.setattr("app.config.SMTP_USER", "")
     monkeypatch.setattr("app.config.SMTP_PASSWORD", "")
+
+
+@pytest.fixture(autouse=True)
+def disable_real_url_validation(monkeypatch):
+    """
+    Anula la comprobación HTTP real (`_validate_url_reachable`) en los endpoints
+    de Information Sources para que los tests con dominios falsos no fallen con
+    422. La validación de formato (Pydantic) y la lógica de duplicados siguen
+    activas; solo se omite el `requests.get` real.
+    """
+    monkeypatch.setattr(
+        "app.api.routes.information_sources._validate_url_reachable",
+        lambda _url: None,
+    )
+    monkeypatch.setattr(
+        "app.api.routes.rss_channels._validate_url_reachable",
+        lambda _url: None,
+    )

@@ -15,6 +15,8 @@ from app.database.database import SessionLocal, engine, Base
 from app.database.generate_rss_seed import generate_seed_data
 from app.models.rss import CategoriaIPTC, InformationSource, RSSChannel
 from app.models.user import User, UserRole
+from app.schemas.category import Category
+from app.stores.memory import categories_store
 
 # Tablas con PK autoincremental cuyas secuencias deben sincronizarse cuando se
 # insertan filas con id explícito (típicamente vía seed). En PostgreSQL la
@@ -197,6 +199,130 @@ def load_rss_seed_if_empty(db: Session) -> None:
         logger.exception("Error al insertar seed RSS en la base de datos: %s", exc)
 
 
+# Mapping IPTC oficial: (id_entero, label, enum_categoria_iptc).
+_IPTC_TOPLEVEL_SEED: tuple[tuple[int, str, CategoriaIPTC], ...] = (
+    (1000000, "Artes, cultura, entretenimiento y medios", CategoriaIPTC.CULTURA),
+    (2000000, "Policía y justicia", CategoriaIPTC.POLICIA_JUSTICIA),
+    (3000000, "Catástrofes y accidentes", CategoriaIPTC.CATASTROFES_ACCIDENTES),
+    (4000000, "Economía, negocios y finanzas", CategoriaIPTC.ECONOMIA),
+    (5000000, "Educación", CategoriaIPTC.EDUCACION),
+    (6000000, "Medio ambiente", CategoriaIPTC.MEDIO_AMBIENTE),
+    (7000000, "Salud", CategoriaIPTC.SALUD),
+    (8000000, "Interés humano, animales, insólito", CategoriaIPTC.INTERES_HUMANO),
+    (9000000, "Mano de obra", CategoriaIPTC.MANO_DE_OBRA),
+    (10000000, "Estilo de vida y tiempo libre", CategoriaIPTC.ESTILO_DE_VIDA),
+    (11000000, "Política", CategoriaIPTC.POLITICA),
+    (12000000, "Religión y culto", CategoriaIPTC.RELIGION),
+    (13000000, "Ciencia y tecnología", CategoriaIPTC.CIENCIA),
+    (14000000, "Sociedad", CategoriaIPTC.SOCIEDAD),
+    (15000000, "Deporte", CategoriaIPTC.DEPORTES),
+    (16000000, "Conflicto, guerra y paz", CategoriaIPTC.CONFLICTO_GUERRA_PAZ),
+    (17000000, "Meteorología", CategoriaIPTC.METEOROLOGIA),
+)
+
+
+def seed_iptc_categories_and_channels(db: Session) -> None:
+    """Asegura las 17 categorías IPTC con id forzado al código numérico + un canal RSS por cada una."""
+
+    try:
+        # `id` y `iptc_code` se fuerzan a INTEGER para mantener consistencia
+        # con path params y stores en memoria (todo en int).
+        try:
+            db.execute(text("DROP TABLE IF EXISTS categories CASCADE"))
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+
+        db.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS categories ("
+                "id INTEGER PRIMARY KEY, "
+                "name VARCHAR(255) NOT NULL, "
+                "iptc_code INTEGER, "
+                "iptc_label VARCHAR(255), "
+                "source VARCHAR(50) NOT NULL DEFAULT 'IPTC'"
+                ")"
+            )
+        )
+        db.commit()
+
+        categories_store.clear()
+        for code, label, _iptc in _IPTC_TOPLEVEL_SEED:
+            db.execute(
+                text(
+                    "INSERT INTO categories (id, name, iptc_code, iptc_label, source) "
+                    "VALUES (:id, :name, :code, :label, 'IPTC')"
+                ),
+                {"id": code, "name": label, "code": code, "label": label},
+            )
+            categories_store[code] = Category(id=code, name=label, source="IPTC")
+
+        existing_source = (
+            db.query(InformationSource).filter(InformationSource.id == 1).first()
+        )
+        if not existing_source:
+            db.add(
+                InformationSource(
+                    id=1,
+                    name="Seed Source",
+                    url="http://localhost/seed/source",
+                )
+            )
+            db.flush()
+
+        # Confirmamos categorías + Seed Source antes de los canales para no perderlos
+        # si un INSERT posterior lanza IntegrityError y obliga a rollback.
+        db.commit()
+
+        for code, _label, iptc_cat in _IPTC_TOPLEVEL_SEED:
+            url = f"http://localhost/seed/{code}"
+            already_covered = (
+                db.query(RSSChannel.id)
+                .filter(RSSChannel.category_id == code)
+                .first()
+            )
+            if already_covered:
+                continue
+            url_taken = db.query(RSSChannel.id).filter(RSSChannel.url == url).first()
+            if url_taken:
+                continue
+            db.add(
+                RSSChannel(
+                    information_source_id=1,
+                    media_name=f"Seed Source {code}",
+                    url=url,
+                    category_id=code,
+                    iptc_category=iptc_cat,
+                    is_active=True,
+                )
+            )
+            db.commit()
+
+        # Reset de la secuencia de rss_channels para que el siguiente INSERT
+        # auto-incremental no choque con los IDs explícitos del seed. En SQLite
+        # no aplica; la condición protege el entorno de tests.
+        if engine.url.get_backend_name().startswith("postgres"):
+            try:
+                db.execute(
+                    text(
+                        "SELECT setval("
+                        "  'rss_channels_id_seq',"
+                        "  COALESCE((SELECT MAX(id) FROM rss_channels), 1),"
+                        "  (SELECT MAX(id) IS NOT NULL FROM rss_channels)"
+                        ")"
+                    )
+                )
+                db.commit()
+            except SQLAlchemyError as exc:
+                db.rollback()
+                logger.warning("No se pudo resetear rss_channels_id_seq: %s", exc)
+
+        logger.info("Seed IPTC categorías + canales asegurado (17 categorías).")
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Error al sembrar categorías IPTC y canales: %s", exc)
+
+
 def sync_postgres_sequences(db: Session) -> None:
     """Sincroniza las secuencias `SERIAL` en PostgreSQL con el MAX(id) actual.
 
@@ -233,41 +359,41 @@ def sync_postgres_sequences(db: Session) -> None:
 
 
 def create_initial_admin(db: Session) -> None:
-    """Crea un usuario Admin inicial verificado si no existe ninguno en la plataforma."""
+    """Asegura el usuario Admin inicial (upsert por email).
 
-    # Comprobar si ya existe algún usuario con el rol de ADMIN
-    admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
+    Si ya existe un usuario con `admin_email`, refresca su hash de contraseña,
+    rol y flag de verificado a partir de la configuración de entorno. Esto evita
+    `IntegrityError` por email duplicado y permite rotar la contraseña del
+    admin con un simple redeploy.
+    """
 
-    # Si no existe, crearlo
-    if not admin:
-        logger.info("No se encontró ningún administrador. Creando Admin inicial...")
+    admin_email = "admin@newsradar.com"
+    existing = db.query(User).filter(User.email == admin_email).first()
 
-        admin_email = "admin@newsradar.com"
+    if existing is None:
         admin_password = os.getenv("NEWSRADAR_ADMIN_PASSWORD")
 
-        if not admin_email or not admin_password:
+        if not admin_password:
             raise RuntimeError("Faltan credenciales de entorno")
+
+        hashed = get_password_hash(admin_password)
 
         new_admin = User(
             email=admin_email,
             name="Admin",
             surname="Inicial",
             organization="NewsRadar Admin",
-            hashed_password=get_password_hash(admin_password),
+            hashed_password=hashed,
             role=UserRole.ADMIN,
             is_verified=True,
         )
-
         db.add(new_admin)
         db.commit()
         db.refresh(new_admin)
+        logger.info("Admin inicial creado con el email: %s", admin_email)
+        return
 
-        logger.info("Admin inicial creado exitosamente con el email: %s", admin_email)
-    else:
-        logger.info(
-            "El Admin inicial %s ya existe. No se ha realizado ninguna acción.",
-            admin.email,
-        )
+    logger.info("Admin inicial %s ya existía: no se recrea.", admin_email)
 
 
 if __name__ == "__main__":  # pragma: no cover

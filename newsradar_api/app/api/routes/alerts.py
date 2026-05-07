@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.models.alert_monitoring import AlertRule
-from app.models.rss import RSSChannel
+from app.models.rss import CategoriaIPTC, RSSChannel
 from app.models.user import User as DBUser
 from app.schemas.alert import Alert, AlertCreate, AlertUpdate
 from app.schemas.user import UserInDB
@@ -22,13 +22,13 @@ api_alerts_router = APIRouter()
     "/alerts/keyword-recommendations",
     tags=["alerts"],
     summary="Recomienda palabras relacionadas o sinónimos para una palabra clave",
-    response_model=List[str],
 )
-def recommend_keywords(keyword: str):
+def recommend_keywords(keyword: str) -> dict:
     """
-    Devuelve entre 3 y 10 palabras relacionadas o sinónimos para la palabra clave dada.
+    Devuelve entre 3 y 10 descriptores relacionados con la palabra clave dada
+    bajo la clave `descriptors` (RN-001).
     """
-    return get_related_words(keyword)
+    return {"descriptors": get_related_words(keyword)}
 
 
 ERROR_USER_NOT_FOUND = "Usuario no encontrado"
@@ -36,7 +36,82 @@ ERROR_ALERT_NOT_FOUND = "Alerta no encontrada para el usuario"
 ERROR_ALERT_CREATE_FAILED = "No se pudo crear la alerta en la base de datos"
 ERROR_ALERT_LIMIT_EXCEEDED = "El usuario ha alcanzado el limite maximo de 20 alertas activas"
 ERROR_INVALID_RSS_CHANNELS = "Algunos canales RSS especificados no existen"
+ERROR_INVALID_CATEGORY = "Invalid category"
+ERROR_INCONSISTENT_CATEGORY = "Category label does not match IPTC code"
+ERROR_DUPLICATE_ALERT_NAME = "Alert name already exists for this user"
 MAX_ALERTS_PER_USER = 20
+
+
+# Mapa canónico IPTC code -> label oficial (alineado con seed_iptc_categories_and_channels).
+_IPTC_CANONICAL_LABELS = {
+    "01000000": "artes, cultura, entretenimiento y medios",
+    "02000000": "policía y justicia",
+    "03000000": "catástrofes y accidentes",
+    "04000000": "economía, negocios y finanzas",
+    "04010000": "tecnología",
+    "05000000": "educación",
+    "06000000": "medio ambiente",
+    "07000000": "salud",
+    "08000000": "interés humano, animales, insólito",
+    "09000000": "mano de obra",
+    "10000000": "estilo de vida y tiempo libre",
+    "11000000": "política",
+    "12000000": "religión",
+    "13000000": "ciencia",
+    "14000000": "sociedad",
+    "15000000": "deportes",
+    "16000000": "conflicto, guerra y paz",
+    "17000000": "meteorología",
+    "00000000": "otros",
+}
+
+
+def _validate_iptc_label_consistency(categories) -> None:
+    """Valida que el `label` coincida con el code oficial IPTC."""
+    if not categories:
+        return
+    for cat in categories:
+        if isinstance(cat, dict):
+            code = cat.get("code")
+            label = cat.get("label")
+        else:
+            code = getattr(cat, "code", None)
+            label = getattr(cat, "label", None)
+        if not code or label is None:
+            continue
+        canonical = _IPTC_CANONICAL_LABELS.get(code)
+        if canonical is None:
+            continue
+        if str(label).strip().lower() != canonical.lower():
+            raise HTTPException(
+                status_code=400, detail=ERROR_INCONSISTENT_CATEGORY
+            )
+
+
+def _validate_categories(db: Session, categories) -> None:
+    """Lanza HTTPException 400 si alguna categoría no existe."""
+    codes = _extract_category_codes(categories)
+    if not codes:
+        return
+    valid_codes = {c.value for c in CategoriaIPTC}
+    unknown = [c for c in codes if c not in valid_codes]
+    if not unknown:
+        return
+    try:
+        from sqlalchemy import text
+
+        rows = db.execute(
+            text(
+                "SELECT name FROM categories WHERE name LIKE ANY(:patterns)"
+            ),
+            {"patterns": [f"{code}:%" for code in unknown]},
+        ).fetchall()
+        found_codes = {row[0].split(":", 1)[0] for row in rows if row and row[0]}
+        unknown = [c for c in unknown if c not in found_codes]
+    except Exception:
+        pass
+    if unknown:
+        raise HTTPException(status_code=400, detail=ERROR_INVALID_CATEGORY)
 
 
 def _validate_rss_channels(db: Session, rss_channel_ids) -> None:
@@ -176,6 +251,25 @@ def create_user_alert(
     if active_alerts_count >= MAX_ALERTS_PER_USER:
         raise HTTPException(status_code=400, detail=ERROR_ALERT_LIMIT_EXCEEDED)
 
+    _validate_categories(db, payload.categories)
+    _validate_iptc_label_consistency(payload.categories)
+
+    normalized_name = (payload.name or "").strip().lower()
+    if normalized_name:
+        existing = (
+            db.query(AlertRule)
+            .filter(
+                AlertRule.user_id == user_id,
+                AlertRule.is_active.is_(True),
+            )
+            .all()
+        )
+        for alert in existing:
+            if (alert.name or "").strip().lower() == normalized_name:
+                raise HTTPException(
+                    status_code=409, detail=ERROR_DUPLICATE_ALERT_NAME
+                )
+
     sources_ids = (
         payload.rss_channels_ids
         or payload.information_sources_ids
@@ -295,6 +389,9 @@ def update_user_alert(
         raise HTTPException(status_code=404, detail=ERROR_ALERT_NOT_FOUND)
 
     update_data = payload.model_dump(exclude_unset=True)
+    if "categories" in update_data:
+        _validate_categories(db, update_data["categories"])
+        _validate_iptc_label_consistency(update_data["categories"])
     _apply_simple_alert_fields(db_alert, update_data)
     _apply_rss_channels_update(db, db_alert, update_data)
 

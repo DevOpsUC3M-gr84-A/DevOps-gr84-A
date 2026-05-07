@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from urllib.parse import urlunsplit
 
@@ -14,6 +14,7 @@ import app.models  # noqa: F401
 from app.database.init_db import (
     create_initial_admin,
     load_rss_seed_if_empty,
+    seed_iptc_categories_and_channels,
     sync_postgres_sequences,
 )
 
@@ -23,32 +24,63 @@ scheduler = AlertMonitorScheduler()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Startup FastAPI completado: metadata SQLAlchemy cargada")
+    # El startup NUNCA debe matar el proceso: si init/seed falla, logueamos y
+    # dejamos que la API suba igualmente para poder diagnosticar en caliente.
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Startup FastAPI completado: metadata SQLAlchemy cargada")
+    except Exception as exc:  # noqa: BLE001 - startup defensivo
+        logger.exception("Fallo creando metadata SQLAlchemy: %s", exc)
 
     db = SessionLocal()
     try:
-        create_initial_admin(db)
-        load_rss_seed_if_empty(db)
-        # Tras el seed (y en cada arranque, por si se cargaron datos manualmente),
-        # alinear las secuencias de PG con el MAX(id) para evitar PK collisions.
-        sync_postgres_sequences(db)
+        try:
+            create_initial_admin(db)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("create_initial_admin falló: %s", exc)
+        try:
+            load_rss_seed_if_empty(db)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("load_rss_seed_if_empty falló: %s", exc)
+        try:
+            # CRÍTICO: sincronizar secuencias ANTES del seed IPTC. El seed JSON
+            # inserta canales con IDs explícitos y deja la secuencia en 1, así
+            # que el siguiente INSERT auto-incremental colisiona con `id=1`
+            # (UniqueViolation en rss_channels_pkey).
+            sync_postgres_sequences(db)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("sync_postgres_sequences (pre-seed IPTC) falló: %s", exc)
+        try:
+            seed_iptc_categories_and_channels(db)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("seed_iptc_categories_and_channels falló: %s", exc)
+        try:
+            # Re-sync por si el seed IPTC añadió filas con id auto-generado.
+            sync_postgres_sequences(db)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("sync_postgres_sequences (post-seed) falló: %s", exc)
     finally:
         db.close()
 
-    scheduler.start()
-    logger.info(
-        "Scheduler estado: started=%s, cron='%s', next_run_time='%s'",
-        scheduler.is_started,
-        scheduler.cron_expression,
-        scheduler.get_next_run_time(),
-    )
+    try:
+        scheduler.start()
+        logger.info(
+            "Scheduler estado: started=%s, cron='%s', next_run_time='%s'",
+            scheduler.is_started,
+            scheduler.cron_expression,
+            scheduler.get_next_run_time(),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Scheduler no pudo arrancar: %s", exc)
 
     try:
         yield
     finally:
-        scheduler.shutdown(wait=False)
-        logger.info("Shutdown FastAPI completado: scheduler detenido")
+        try:
+            scheduler.shutdown(wait=False)
+            logger.info("Shutdown FastAPI completado: scheduler detenido")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Scheduler shutdown falló: %s", exc)
 
 app = FastAPI(
     title="NewsRadar API",
@@ -89,4 +121,15 @@ def root():
     return {"message": "Motor API REST de NewsRadar activo. Visita /docs"}
 
 
+@app.get("/health", tags=["system"], status_code=200)
+def health():
+    return {"status": "ok"}
+
+
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.middleware("http")
+async def debug_requests(request: Request, call_next):
+    print(f"DEBUG: Petición entrante: {request.method} {request.url}")
+    return await call_next(request)

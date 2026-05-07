@@ -8,21 +8,23 @@ from app.models.rss import CategoriaIPTC
 
 class RSSChannelBase(BaseModel):
     url: HttpUrl
-    category_id: int
+    category_id: Optional[int] = None
 
 
 class RSSChannelCreate(RSSChannelBase):
     """Esquema de entrada para crear un nuevo canal RSS."""
 
-    media_name: str = Field(
-        ...,
+    media_name: Optional[str] = Field(
+        None,
         description="Nombre del medio de comunicación",
-        min_length=2,
         max_length=150,
     )
     url: HttpUrl = Field(..., description="URL del feed RSS")
-    iptc_category: CategoriaIPTC = Field(
-        ..., description="Categoría IPTC asociada al feed"
+    category_id: Optional[int] = Field(
+        None, description="ID de categoría (opcional)"
+    )
+    iptc_category: Optional[CategoriaIPTC] = Field(
+        None, description="Categoría IPTC asociada al feed"
     )
 
 
@@ -47,8 +49,8 @@ class RSSChannelResponse(RSSChannelCreate):
 class RSSChannel(RSSChannelBase):
     id: int
     information_source_id: int
-    media_name: str
-    iptc_category: CategoriaIPTC
+    media_name: Optional[str] = None
+    iptc_category: Optional[CategoriaIPTC] = None
 
     class Config:
         from_attributes = True
