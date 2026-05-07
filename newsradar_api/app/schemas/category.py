@@ -7,13 +7,12 @@ class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     # Sin default: si el cliente omite `source`, Pydantic emite 422 (GC-003).
     source: str = Field(..., pattern="^IPTC$")
-    id: int = Field(0)
 
 
 class CategoryCreate(CategoryBase):
+    id: Optional[int] = None
     iptc_code: Optional[int] = None
     iptc_label: Optional[str] = None
-
 
 
 class CategoryUpdate(BaseModel):
@@ -24,4 +23,4 @@ class CategoryUpdate(BaseModel):
 
 
 class Category(CategoryBase):
-    id: int = Field(0)
+    id: int

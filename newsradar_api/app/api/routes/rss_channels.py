@@ -49,30 +49,19 @@ def _to_response(channel: DBRSSChannel) -> RSSChannel:
 
 
 def _validate_category_or_422(category_id_raw: int | str | None) -> int:
+    """Valida que la categoría existe como entero puro en el store. Devuelve el ID validado."""
+    if category_id_raw is None:
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
+    
     try:
-        if category_id_raw is None:
-            raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
         cat_id = int(category_id_raw)
     except (TypeError, ValueError):
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
 
-    cat_id_str = str(category_id_raw).zfill(8)
-    category = next(
-        (
-            stored
-            for key, stored in categories_store.items()
-            if int(key) == cat_id or str(key).zfill(8) == cat_id_str
-        ),
-        None,
-    )
-
-    if cat_id <= 0 or category is None:
-        print(
-            f"DEBUG: Category {category_id_raw} not found. Store keys: {list(categories_store.keys())}"
-        )
+    if cat_id <= 0 or cat_id not in categories_store:
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
 
-    return int(category.id) if isinstance(getattr(category, "id", None), (int, str)) else cat_id
+    return cat_id
 
 
 def _normalize_url(url: str) -> str:
