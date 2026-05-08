@@ -25,7 +25,7 @@ def _validate_url_format(value: Optional[str]) -> Optional[str]:
     stripped = value.strip()
     if not stripped:
         raise ValueError("La URL no puede estar vacía")
-    if not (stripped.startswith("http://") or stripped.startswith("https://")):
+    if not (stripped.startswith("http://") or stripped.startswith("https://")):  # nosonar
         raise ValueError("La URL debe empezar por http:// o https://")
     return stripped
 
