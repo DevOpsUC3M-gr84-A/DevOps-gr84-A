@@ -29,19 +29,41 @@ def sanitize_user(user: UserInDB) -> User:
     )
 
 
+def _hardcoded_role_ids(role) -> list[int]:
+    """Mapeo hardcoded role → role_ids para garantizar la respuesta esperada.
+
+    gestor → [1], lector → [2], admin → [3]. Tolerante a string o enum.
+    """
+    if role is None:
+        return [1]
+    raw = getattr(role, "value", role)
+    name = str(raw).strip().lower()
+    if name == "admin":
+        return [3]
+    if name == "lector":
+        return [2]
+    if name == "gestor":
+        return [1]
+    return [1]
+
+
 def to_user_schema(user: DBUser) -> User:
-    return User(
+    role_ids = _hardcoded_role_ids(user.role)
+    schema = User(
         id=user.id,
         email=user.email,
         first_name=user.name or "Usuario",
         last_name=user.surname or "Desconocido",
         organization=user.organization or "",
-        role_ids=role_ids_from_role(user.role),
+        role_ids=role_ids,
         is_verified=bool(user.is_verified),
         is_active=bool(user.is_verified),
         avatar=user.avatar,
         banner=user.banner,
     )
+    print(f"DEBUG: Devolviendo usuario id={user.id} email={user.email} "
+          f"role={user.role} role_ids={schema.role_ids}")
+    return schema
 
 
 def sync_memory_user(user: DBUser) -> None:

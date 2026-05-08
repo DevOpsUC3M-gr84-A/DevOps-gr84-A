@@ -34,6 +34,31 @@ from app.models.user import User, UserRole
 from app.schemas.user import UserInDB
 from app.services.user_service import get_password_hash
 from app.utils import deps as deps_module
+from app.schemas.category import Category
+from app.stores.memory import categories_store
+from app.models.rss import CategoriaIPTC
+
+
+# IPTC categories seed data (same as in init_db.py)
+_IPTC_TOPLEVEL_SEED = (
+    (1000000, "Artes, cultura, entretenimiento y medios", CategoriaIPTC.CULTURA),
+    (2000000, "Policía y justicia", CategoriaIPTC.POLICIA_JUSTICIA),
+    (3000000, "Catástrofes y accidentes", CategoriaIPTC.CATASTROFES_ACCIDENTES),
+    (4000000, "Economía, negocios y finanzas", CategoriaIPTC.ECONOMIA),
+    (5000000, "Educación", CategoriaIPTC.EDUCACION),
+    (6000000, "Medio ambiente", CategoriaIPTC.MEDIO_AMBIENTE),
+    (7000000, "Salud", CategoriaIPTC.SALUD),
+    (8000000, "Interés humano, animales, insólito", CategoriaIPTC.INTERES_HUMANO),
+    (9000000, "Mano de obra", CategoriaIPTC.MANO_DE_OBRA),
+    (10000000, "Estilo de vida y tiempo libre", CategoriaIPTC.ESTILO_DE_VIDA),
+    (11000000, "Política", CategoriaIPTC.POLITICA),
+    (12000000, "Religión y culto", CategoriaIPTC.RELIGION),
+    (13000000, "Ciencia y tecnología", CategoriaIPTC.CIENCIA),
+    (14000000, "Sociedad", CategoriaIPTC.SOCIEDAD),
+    (15000000, "Deporte", CategoriaIPTC.DEPORTES),
+    (16000000, "Conflicto, guerra y paz", CategoriaIPTC.CONFLICTO_GUERRA_PAZ),
+    (17000000, "Meteorología", CategoriaIPTC.METEOROLOGIA),
+)
 
 
 # 3. Shared Test Fixtures
@@ -97,6 +122,16 @@ def test_engine():
 @pytest.fixture
 def test_session_factory(test_engine):
     return sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+
+@pytest.fixture(autouse=True)
+def seed_iptc_categories():
+    """Seed IPTC categories into categories_store for integration tests."""
+    categories_store.clear()
+    for code, label, _iptc in _IPTC_TOPLEVEL_SEED:
+        categories_store[code] = Category(id=code, name=label, source="IPTC")
+    yield
+    categories_store.clear()
 
 
 @pytest.fixture
@@ -306,3 +341,21 @@ def disable_real_emails(monkeypatch):
     """
     monkeypatch.setattr("app.config.SMTP_USER", "")
     monkeypatch.setattr("app.config.SMTP_PASSWORD", "")
+
+
+@pytest.fixture(autouse=True)
+def disable_real_url_validation(monkeypatch):
+    """
+    Anula la comprobación HTTP real (`_validate_url_reachable`) en los endpoints
+    de Information Sources para que los tests con dominios falsos no fallen con
+    422. La validación de formato (Pydantic) y la lógica de duplicados siguen
+    activas; solo se omite el `requests.get` real.
+    """
+    monkeypatch.setattr(
+        "app.api.routes.information_sources._validate_url_reachable",
+        lambda _url: None,
+    )
+    monkeypatch.setattr(
+        "app.api.routes.rss_channels._validate_url_reachable",
+        lambda _url: None,
+    )

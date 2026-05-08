@@ -1,23 +1,25 @@
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
-    source: str = Field(default="IPTC", pattern="^IPTC$")
-    iptc_code: Optional[str] = None
-    iptc_label: Optional[str] = None 
+    # Sin default: si el cliente omite `source`, Pydantic emite 422 (GC-003).
+    source: str = Field(..., pattern="^IPTC$")
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    id: Optional[int] = None
+    iptc_code: Optional[int] = None
+    iptc_label: Optional[str] = None
 
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=120)
     source: Optional[str] = Field(None, pattern="^IPTC$")
-    iptc_code: Optional[str] = None
-    iptc_label: Optional[str] = None 
+    iptc_code: Optional[int] = None
+    iptc_label: Optional[str] = None
 
 
 class Category(CategoryBase):

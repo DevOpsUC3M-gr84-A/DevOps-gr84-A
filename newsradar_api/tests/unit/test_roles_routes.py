@@ -49,7 +49,7 @@ def test_roles_crud_flow(api_client, auth_headers):
 
 
 @pytest.mark.unit
-def test_delete_assigned_role_returns_409(api_client, auth_headers):
+def test_delete_assigned_role_returns_400(api_client, auth_headers):
     roles_store[1] = Role(id=1, name="Gestor")
     users_store[10] = UserInDB(
         id=10,
@@ -64,4 +64,4 @@ def test_delete_assigned_role_returns_409(api_client, auth_headers):
     response = api_client.delete("/api/v1/roles/1", headers=auth_headers)
 
     assert response.status_code == 409
-    assert response.json()["detail"] == "No se puede eliminar un rol asignado a usuarios"
+    assert response.json()["detail"] == "Role in use"

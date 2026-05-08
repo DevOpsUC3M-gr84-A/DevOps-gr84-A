@@ -19,7 +19,7 @@ services:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       # DATABASE_URL must be provided at deploy time to avoid embedding secrets in the compose file.
       # Injected at runtime via environment; do NOT hardcode passwords here (Sonar rule).
-      - DATABASE_URL=${DATABASE_URL}
+      # - DATABASE_URL=${DATABASE_URL}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
       # Admin/lector passwords are injected via environment in CI/CD or orchestrator.
       # Avoid defaults with secrets so Sonar does not flag plaintext secrets.

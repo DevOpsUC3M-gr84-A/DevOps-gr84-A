@@ -18,6 +18,13 @@ from .routes.rss_channels import router as rss_channels_router
 
 
 api_router = APIRouter()
+
+
+@api_router.get("/health", tags=["system"], status_code=200)
+def health_v1():
+    return {"status": "ok"}
+
+
 api_router.include_router(api_auth_router)
 api_router.include_router(users_router)
 api_router.include_router(roles_router)

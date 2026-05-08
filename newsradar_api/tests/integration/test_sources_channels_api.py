@@ -5,7 +5,7 @@ import pytest
 def test_information_source_and_channel_crud_via_api_only(api_client):
     source_response = api_client.post(
         "/api/v1/information-sources",
-        json={"name": "RF01 Source", "url": "https://source-rf01.test"},
+        json={"name": "RF01 Source", "url": "http://testfeed.com"},
     )
     assert source_response.status_code == 201
     source_id = source_response.json()["id"]
@@ -17,9 +17,9 @@ def test_information_source_and_channel_crud_via_api_only(api_client):
         f"/api/v1/information-sources/{source_id}/rss-channels",
         json={
             "media_name": "RF01 Feed",
-            "url": "https://feed-rf01.test/rss.xml",
-            "category_id": 1,
-            "iptc_category": "04010000",
+            "url": "http://testfeed.com/rss",
+            "category_id": 13000000,
+            "iptc_category": "13000000",
         },
     )
     assert channel_response.status_code == 201
@@ -32,7 +32,7 @@ def test_information_source_and_channel_crud_via_api_only(api_client):
 
     update_channel = api_client.put(
         f"/api/v1/information-sources/{source_id}/rss-channels/{channel_id}",
-        json={"url": "https://feed-rf01.test/rss-updated.xml", "category_id": 2},
+        json={"url": "http://testfeed.com/rss-updated", "category_id": 4000000, "iptc_category": "04000000"},
     )
     assert update_channel.status_code == 200
 

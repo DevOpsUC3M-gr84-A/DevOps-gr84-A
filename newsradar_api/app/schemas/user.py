@@ -1,7 +1,26 @@
-import re
 from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def _reject_xss(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return value
+    if "<" in value or ">" in value:
+        raise ValueError("El texto no puede contener los caracteres '<' o '>'")
+    return value
+
+
+def _validate_role_ids(value: Optional[List[int]]) -> Optional[List[int]]:
+    if value is not None and len(value) > 1:
+        raise ValueError("Máximo un rol permitido")
+    return value
+
+
+def _normalize_email(value):
+    if isinstance(value, str):
+        return value.lower()
+    return value
 
 
 class UserBase(BaseModel):
@@ -13,20 +32,24 @@ class UserBase(BaseModel):
     avatar: Optional[str] = None
     banner: Optional[str] = None
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def _lower_email(cls, value):
+        return _normalize_email(value)
+
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=6, max_length=128)
 
-    @field_validator("password")
+    @field_validator("first_name", "last_name", "organization")
     @classmethod
-    def validate_password(cls, value: str) -> str:
-        if (
-            not re.search(r"[A-Z]", value)
-            or not re.search(r"\d", value)
-            or not re.search(r"[^A-Za-z0-9]", value)
-        ):
-            raise ValueError("La contraseña no cumple los requisitos de seguridad")
-        return value
+    def _no_xss(cls, value):
+        return _reject_xss(value)
+
+    @field_validator("role_ids")
+    @classmethod
+    def _max_one_role(cls, value):
+        return _validate_role_ids(value)
 
 class UserResponse(UserBase):
     id: int
@@ -45,6 +68,21 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=6, max_length=128)
     avatar: Optional[str] = None
     banner: Optional[str] = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _lower_email(cls, value):
+        return _normalize_email(value)
+
+    @field_validator("first_name", "last_name", "organization")
+    @classmethod
+    def _no_xss(cls, value):
+        return _reject_xss(value)
+
+    @field_validator("role_ids")
+    @classmethod
+    def _max_one_role(cls, value):
+        return _validate_role_ids(value)
 
 
 class User(UserBase):

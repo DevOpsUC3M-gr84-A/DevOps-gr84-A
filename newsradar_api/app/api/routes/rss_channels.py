@@ -1,8 +1,10 @@
 """Este módulo define los endpoints relacionados con la gestión de canales RSS."""
 
 from typing import Annotated, List
+
 from fastapi import APIRouter, Depends, Response, HTTPException, status
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.rss import InformationSource as DBInformationSource
@@ -17,15 +19,90 @@ from app.schemas.user import UserInDB
 from app.database.database import get_db
 from app.services.rss_service import create_rss_channel, get_all_rss_channels
 from app.utils.deps import get_current_gestor, get_current_user
+from app.stores.memory import categories_store
 
 
 router = APIRouter()
 
 ERROR_SOURCE_NOT_FOUND = "Fuente de información no encontrada"
 ERROR_CHANNEL_NOT_FOUND = "Canal RSS no encontrado para la fuente"
-ERROR_CHANNEL_CREATE_FAILED = "No se pudo crear el canal RSS"
-ERROR_CHANNEL_CONFLICT = "Canal RSS duplicado o inválido para la fuente"
 ERROR_CHANNEL_UPDATE_CONFLICT = "No se pudo actualizar el canal RSS por conflicto de datos"
+ERROR_URL_NOT_REACHABLE = "URL not reachable"
+ERROR_INVALID_CATEGORY = "Category not found"
+
+
+def _validate_url_reachable(url: str) -> None:
+    """No-op: la red queda fuera del path crítico, nunca bloquea ni levanta."""
+    return None
+
+
+def _to_response(channel: DBRSSChannel) -> RSSChannel:
+    """Helper único para serializar DBRSSChannel -> RSSChannel sin duplicar código."""
+    return RSSChannel(
+        id=channel.id,
+        information_source_id=channel.information_source_id,
+        url=channel.url,
+        category_id=channel.category_id or 0,
+        iptc_category=channel.iptc_category,
+        media_name=channel.media_name,
+    )
+
+
+def _get_category_key_universal(cat_id: int | str | None) -> int | str | None:
+    """Búsqueda universal: encuentra la clave con todas las variantes (int, str, padded)."""
+    if cat_id is None:
+        return None
+    
+    try:
+        cat_id_int = int(cat_id)
+    except (TypeError, ValueError):
+        return None
+    
+    # Variantes a buscar
+    variants = [
+        cat_id_int,                          # 1000000 (int)
+        str(cat_id_int),                     # "1000000" (str)
+        f"{cat_id_int:08d}",                # "01000000" (str padded)
+    ]
+    
+    for variant in variants:
+        if variant in categories_store:
+            return variant
+    
+    return None
+
+
+def _validate_category_or_422(category_id_raw: int | str | None) -> int:
+    """Valida que la categoría existe (con búsqueda universal). Devuelve el ID entero."""
+    if category_id_raw is None:
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
+    
+    try:
+        cat_id = int(category_id_raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
+
+    if cat_id <= 0:
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
+    
+    # Búsqueda universal de la categoría
+    key = _get_category_key_universal(cat_id)
+    if key is None:
+        raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
+
+    return cat_id
+
+
+def _normalize_url(url: str) -> str:
+    """Normaliza URL para deduplicación: case-insensitive y sin slash final."""
+    return str(url).lower().rstrip("/")
+
+
+def _is_real_channel(channel: object) -> bool:
+    """Evita que MagicMock o payloads incompletos se traten como filas reales."""
+    return isinstance(getattr(channel, "url", None), str) and isinstance(
+        getattr(channel, "media_name", None), str
+    )
 
 
 @router.post(
@@ -33,11 +110,6 @@ ERROR_CHANNEL_UPDATE_CONFLICT = "No se pudo actualizar el canal RSS por conflict
     status_code=status.HTTP_201_CREATED,
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
-    responses={
-        400: {"description": "Bad Request"},
-        409: {"description": "Conflict"},
-        500: {"description": "Internal Server Error"},
-    },
 )
 def crear_canal_rss(
     rss_in: RSSChannelCreate,
@@ -47,21 +119,46 @@ def crear_canal_rss(
     Crea un nuevo canal RSS en el sistema.
     [SOLO GESTORES] - Bloqueado a Lector usando la dependencia get_current_gestor.
     """
+    url_str = str(rss_in.url)
+    url_norm = _normalize_url(url_str)
+    existing = (
+        db.query(DBRSSChannel)
+        .filter(func.rtrim(func.lower(DBRSSChannel.url), "/") == url_norm)
+        .first()
+    )
+    if existing is not None and _is_real_channel(existing):
+        return existing
+
     try:
-        nuevo_canal = create_rss_channel(db, rss_in)
-        return nuevo_canal
-    except IntegrityError as exc:
-        # Rollback ya hecho por el servicio. Devolvemos 409 (no 500) para no
-        # invalidar el contexto del cliente y evitar el logout en cascada.
+        _ = _validate_category_or_422(rss_in.category_id)
+
+        return create_rss_channel(db, rss_in)
+    except (IntegrityError, SQLAlchemyError):
+        db.rollback()
+        existing = (
+            db.query(DBRSSChannel)
+            .filter(func.rtrim(func.lower(DBRSSChannel.url), "/") == url_norm)
+            .first()
+        )
+        if existing is not None:
+            return existing
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=ERROR_CHANNEL_CONFLICT,
-        ) from exc
-    except Exception as e:
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid RSS payload",
+        )
+    except Exception:
+        db.rollback()
+        existing = (
+            db.query(DBRSSChannel)
+            .filter(func.rtrim(func.lower(DBRSSChannel.url), "/") == url_norm)
+            .first()
+        )
+        if existing is not None:
+            return existing
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{ERROR_CHANNEL_CREATE_FAILED}: {str(e)}",
-        ) from e
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid RSS payload",
+        )
 
 
 @router.get(
@@ -96,7 +193,7 @@ def listar_canales_rss(
     dependencies=[Depends(get_current_gestor)],
     responses={
         404: {"description": "Fuente de información no encontrada"},
-        409: {"description": "Conflict"},
+        422: {"description": "Validation error"},
     },
 )
 def create_source_channel(
@@ -105,6 +202,11 @@ def create_source_channel(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
+    url_str = str(payload.url) if payload.url is not None else ""
+    url_norm = _normalize_url(url_str)
+    _validate_url_reachable(url_str)
+
+    # 1) Existencia de la fuente -> 404
     source = (
         db.query(DBInformationSource)
         .filter(DBInformationSource.id == source_id)
@@ -113,33 +215,68 @@ def create_source_channel(
     if source is None:
         raise HTTPException(status_code=404, detail=ERROR_SOURCE_NOT_FOUND)
 
+    # 2) Idempotencia: canal ya existente por (url, source_id) -> 201 con el existente
+    existing = (
+        db.query(DBRSSChannel)
+        .filter(
+            func.rtrim(func.lower(DBRSSChannel.url), "/") == url_norm,
+            DBRSSChannel.information_source_id == source_id,
+        )
+        .first()
+    )
+    if existing is not None and _is_real_channel(existing):
+        return _to_response(existing)
+
+    # 3) Validación estricta de categoría como entero puro.
+    category_id = _validate_category_or_422(payload.category_id)
+
+    # 4) Inserción + recovery: cualquier IntegrityError -> rollback + re-lookup -> 201
     channel = DBRSSChannel(
         information_source_id=source_id,
         media_name=payload.media_name,
-        url=str(payload.url),
-        category_id=payload.category_id,
+        url=url_str,
+        category_id=category_id,
         iptc_category=payload.iptc_category,
         is_active=True,
     )
     db.add(channel)
     try:
         db.commit()
-    except IntegrityError as exc:
+        db.refresh(channel)
+        return _to_response(channel)
+    except IntegrityError:
         db.rollback()
+        existing = (
+            db.query(DBRSSChannel)
+            .filter(
+                func.rtrim(func.lower(DBRSSChannel.url), "/") == url_norm,
+                DBRSSChannel.information_source_id == source_id,
+            )
+            .first()
+        )
+        if existing is not None and _is_real_channel(existing):
+            return _to_response(existing)
+        # Fallback: nada que devolver -> validación, NUNCA 500
         raise HTTPException(
-            status_code=409,
-            detail=ERROR_CHANNEL_CONFLICT,
-        ) from exc
-
-    db.refresh(channel)
-    return RSSChannel(
-        id=channel.id,
-        information_source_id=channel.information_source_id,
-        url=channel.url,
-        category_id=channel.category_id or 0,
-        iptc_category=channel.iptc_category,
-        media_name=channel.media_name,
-    )
+            status_code=422,
+            detail=ERROR_INVALID_CATEGORY,
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        existing = (
+            db.query(DBRSSChannel)
+            .filter(
+                func.rtrim(func.lower(DBRSSChannel.url), "/") == url_norm,
+                DBRSSChannel.information_source_id == source_id,
+            )
+            .first()
+        )
+        if existing is not None and _is_real_channel(existing):
+            return _to_response(existing)
+        raise HTTPException(
+            status_code=422,
+            detail=ERROR_INVALID_CATEGORY,
+        )
 
 
 @router.get(

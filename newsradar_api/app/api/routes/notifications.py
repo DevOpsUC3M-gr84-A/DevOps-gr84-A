@@ -18,6 +18,10 @@ from app.utils.deps import get_current_user
 notifications_router = APIRouter()
 
 
+def _to_int(value: int | str) -> int:
+    return int(value)
+
+
 @notifications_router.get(
     "/users/{user_id}/notifications",
     tags=["notifications"],
@@ -28,9 +32,10 @@ def list_user_notifications(
     db: Annotated[Session, Depends(get_db)],
     limit: int = 30,
 ) -> List[UserNotification]:
+    u_id = _to_int(user_id)
     items = (
         db.query(NotificationModel)
-        .filter(NotificationModel.user_id == user_id)
+        .filter(NotificationModel.user_id == u_id)
         .order_by(NotificationModel.created_at.desc())
         .limit(limit)
         .all()
@@ -59,11 +64,13 @@ def mark_notification_as_read(
     _: Annotated[UserInDB, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> UserNotification:
+    u_id = _to_int(user_id)
+    n_id = _to_int(notification_id)
     notification = (
         db.query(NotificationModel)
         .filter(
-            NotificationModel.id == notification_id,
-            NotificationModel.user_id == user_id,
+            NotificationModel.id == n_id,
+            NotificationModel.user_id == u_id,
         )
         .first()
     )
@@ -95,22 +102,39 @@ def delete_user_notifications(
     _: Annotated[UserInDB, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> None:
-    db.query(NotificationModel).filter(NotificationModel.user_id == user_id).delete()
+    u_id = _to_int(user_id)
+    db.query(NotificationModel).filter(NotificationModel.user_id == u_id).delete()
     db.commit()
 
 
-def ensure_alert_for_user(user_id: int, alert_id: int):
-    alert = alerts_store.get(alert_id)
-    if not alert or alert.user_id != user_id:
-        raise HTTPException(
-            status_code=404, detail="Alerta no encontrada para el usuario"
+def ensure_alert_for_user(user_id: int, alert_id: int, db: Session | None = None):
+    """Búsqueda robusta de alerta con cast a int. Consulta BD y memoria."""
+    u_id = _to_int(user_id)
+    a_id = _to_int(alert_id)
+
+    if db is not None:
+        db_alert = (
+            db.query(AlertRule)
+            .filter(AlertRule.id == a_id, AlertRule.user_id == u_id)
+            .first()
         )
-    return alert
+        if db_alert is not None:
+            return db_alert
+
+    alert = alerts_store.get(a_id)
+    if alert and int(alert.user_id) == u_id:
+        return alert
+
+    raise HTTPException(
+        status_code=404, detail="Alerta no encontrada para el usuario"
+    )
 
 
 def ensure_notification_for_alert(alert_id: int, notification_id: int):
-    notification = notifications_store.get(notification_id)
-    if not notification or notification.alert_id != alert_id:
+    a_id = _to_int(alert_id)
+    n_id = _to_int(notification_id)
+    notification = notifications_store.get(n_id)
+    if not notification or int(notification.alert_id) != a_id:
         raise HTTPException(
             status_code=404, detail="Notificación no encontrada para la alerta"
         )
@@ -126,9 +150,11 @@ def list_alert_notifications(
     user_id: int,
     alert_id: int,
     _: Annotated[UserInDB, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> List[Notification]:
-    ensure_alert_for_user(user_id, alert_id)
-    return [item for item in notifications_store.values() if item.alert_id == alert_id]
+    ensure_alert_for_user(user_id, alert_id, db)
+    a_id = _to_int(alert_id)
+    return [item for item in notifications_store.values() if int(item.alert_id) == a_id]
 
 
 @notifications_router.post(
@@ -142,12 +168,12 @@ def create_alert_notification(
     alert_id: int,
     payload: NotificationCreate,
     _: Annotated[UserInDB, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> Notification:
-    ensure_alert_for_user(user_id, alert_id)
+    ensure_alert_for_user(user_id, alert_id, db)
+    a_id = _to_int(alert_id)
     notification_id = max(notifications_store.keys(), default=0) + 1
-    notification = Notification(
-        id=notification_id, alert_id=alert_id, **payload.model_dump()
-    )
+    notification = Notification(id=notification_id, alert_id=a_id, **payload.model_dump())
     notifications_store[notification_id] = notification
     return notification
 
@@ -162,8 +188,9 @@ def get_alert_notification(
     alert_id: int,
     notification_id: int,
     _: Annotated[UserInDB, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> Notification:
-    ensure_alert_for_user(user_id, alert_id)
+    ensure_alert_for_user(user_id, alert_id, db)
     return ensure_notification_for_alert(alert_id, notification_id)
 
 
@@ -178,11 +205,12 @@ def update_alert_notification(
     notification_id: int,
     payload: NotificationUpdate,
     _: Annotated[UserInDB, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> Notification:
-    ensure_alert_for_user(user_id, alert_id)
+    ensure_alert_for_user(user_id, alert_id, db)
     notification = ensure_notification_for_alert(alert_id, notification_id)
     updated = notification.model_copy(update=payload.model_dump(exclude_unset=True))
-    notifications_store[notification_id] = updated
+    notifications_store[_to_int(notification_id)] = updated
     return updated
 
 
@@ -198,7 +226,8 @@ def delete_alert_notification(
     alert_id: int,
     notification_id: int,
     _: Annotated[UserInDB, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> None:
-    ensure_alert_for_user(user_id, alert_id)
+    ensure_alert_for_user(user_id, alert_id, db)
     ensure_notification_for_alert(alert_id, notification_id)
-    notifications_store.pop(notification_id, None)
+    notifications_store.pop(_to_int(notification_id), None)

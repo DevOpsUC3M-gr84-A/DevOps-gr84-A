@@ -37,8 +37,8 @@ class TestBuildTopCategories:
             "aggregations": {
                 "top_categories": {
                     "buckets": [
-                        {"key": "01000000", "doc_count": 100},
-                        {"key": "11000000", "doc_count": 50},
+                        {"key": 1000000, "doc_count": 100},
+                        {"key": 11000000, "doc_count": 50},
                     ]
                 }
             }
@@ -47,10 +47,10 @@ class TestBuildTopCategories:
         result = _build_top_categories(mock_es)
 
         labels = [c.label for c in result]
-        assert IPTC_FIRST_LEVEL["01000000"] in labels
-        assert IPTC_FIRST_LEVEL["11000000"] in labels
-        assert "01000000" not in labels
-        assert "11000000" not in labels
+        assert IPTC_FIRST_LEVEL[1000000] in labels
+        assert IPTC_FIRST_LEVEL[11000000] in labels
+        assert 1000000 not in labels
+        assert 11000000 not in labels
 
     def test_preserva_clave_cuando_no_es_codigo_iptc(self):
         mock_es = MagicMock()
@@ -89,7 +89,7 @@ class TestBuildTopCategories:
         mock_es.search.return_value = {
             "aggregations": {
                 "top_categories": {
-                    "buckets": [{"key": "04000000", "doc_count": 77}]
+                    "buckets": [{"key": 4000000, "doc_count": 77}]
                 }
             }
         }
@@ -171,7 +171,7 @@ class TestDashboardSummaryEndpoint:
             "aggregations": {
                 "daily": {"buckets": []},
                 "top_categories": {
-                    "buckets": [{"key": "04000000", "doc_count": 30}]
+                    "buckets": [{"key": 4000000, "doc_count": 30}]
                 },
             }
         }
@@ -181,7 +181,7 @@ class TestDashboardSummaryEndpoint:
 
         categories = response.json()["top_categories"]
         assert len(categories) == 1
-        assert categories[0]["label"] == IPTC_FIRST_LEVEL["04000000"]
+        assert categories[0]["label"] == IPTC_FIRST_LEVEL[4000000]
         assert categories[0]["value"] == 30
 
     def test_noticias_totales_refleja_count_de_elasticsearch(self, api_client, auth_headers):

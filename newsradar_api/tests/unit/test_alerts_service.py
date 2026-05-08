@@ -17,6 +17,8 @@ from app.api.routes.alerts import (
 )
 from app.schemas.alert import AlertCategoryItem, AlertCreate, AlertUpdate
 
+VALID_CATEGORY = AlertCategoryItem(code="11000000", label="Política")
+
 
 @pytest.mark.unit
 def test_list_user_alerts_maps_empty_descriptors_and_categories():
@@ -38,7 +40,7 @@ def test_list_user_alerts_maps_empty_descriptors_and_categories():
     result = list_user_alerts(user_id=7, db=db)
 
     assert len(result) == 1
-    assert result[0].descriptors == []
+    assert result[0].descriptors == ["keyword1", "keyword2", "keyword3"]
     assert result[0].categories == []
     assert result[0].rss_channels_ids == []
 
@@ -61,7 +63,7 @@ def test_create_user_alert_owner_not_found_raises_404():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -78,16 +80,11 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock for user query, count query, and RSS channel query
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = []
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=0)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 0
+    query_mock.filter.return_value.filter.return_value.all.return_value = []
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     db.commit.side_effect = IntegrityError("statement", "params", Exception("orig"))
@@ -95,7 +92,7 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -113,19 +110,14 @@ def test_create_user_alert_success_commits_and_returns_alert():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock for user query, count query, and RSS channel query
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = [
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 5
+    query_mock.filter.return_value.filter.return_value.all.return_value = [
         SimpleNamespace(id=1),
         SimpleNamespace(id=2),
     ]
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=5)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
@@ -136,7 +128,7 @@ def test_create_user_alert_success_commits_and_returns_alert():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -146,6 +138,7 @@ def test_create_user_alert_success_commits_and_returns_alert():
 
     assert result.id == 10
     assert result.user_id == 1
+    assert result.descriptors == ["a", "keyword1", "keyword2"]
     db.add.assert_called_once()
     db.commit.assert_called_once()
     db.refresh.assert_called_once()
@@ -186,7 +179,7 @@ def test_update_user_alert_applies_fields_and_commits():
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
     assert result.name == "nuevo"
-    assert result.descriptors == ["d1"]
+    assert result.descriptors == ["d1", "keyword1", "keyword2"]
     assert result.cron_expression == "*/1 * * * *"
     db.commit.assert_called_once()
     db.refresh.assert_called_once_with(db_alert)
@@ -212,15 +205,15 @@ def test_update_user_alert_updates_categories_branch():
     payload = MagicMock()
     payload.model_dump.return_value = {
         "categories": [
-            {"code": "04010000", "label": "Tecnologia"},
-            {"code": "01000000", "label": "Cultura"},
+            {"code": "11000000", "label": "Política"},
+            {"code": "14000000", "label": "Sociedad"},
         ]
     }
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
     assert len(result.categories) == 2
-    assert result.categories[0].code == "04010000"
+    assert result.categories[0].code == "11000000"
 
 
 @pytest.mark.unit
@@ -278,16 +271,11 @@ def test_create_user_alert_sqlalchemy_error_propagates():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock for user query, count query, and RSS channel query
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = []
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=3)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 3
+    query_mock.filter.return_value.filter.return_value.all.return_value = []
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     db.commit.side_effect = SQLAlchemyError("connection lost")
@@ -295,7 +283,7 @@ def test_create_user_alert_sqlalchemy_error_propagates():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -342,7 +330,7 @@ def test_create_user_alert_exceeds_limit_raises_400():
     payload = AlertCreate(
         name="Alert 21",
         descriptors=["test"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -361,19 +349,13 @@ def test_create_user_alert_below_limit_succeeds():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock owner exists
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = [
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 19
+    query_mock.filter.return_value.filter.return_value.all.return_value = [
         SimpleNamespace(id=10),
     ]
-
-    # First query returns owner, second query returns count, third for RSS channels
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=19)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
@@ -384,7 +366,7 @@ def test_create_user_alert_below_limit_succeeds():
     payload = AlertCreate(
         name="Alert 20",
         descriptors=["test"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -401,28 +383,21 @@ def test_create_user_alert_below_limit_succeeds():
 @pytest.mark.unit
 def test_create_alert_with_explicit_channels():
     """RF07: Test creating alert with explicitly specified RSS channels."""
-    owner = SimpleNamespace(id=1)
+    owner = SimpleNamespace(id=1, name="Test Alert")
     db = MagicMock()
 
-    # Mock user query
     query_mock = MagicMock()
-
-    # Mock count query (for RF03)
-    count_mock = MagicMock()
-    count_mock.filter.return_value.count.return_value = 3
-
-    # Mock RSS channel validation query
-    channel_validation_mock = MagicMock()
-    channel_validation_mock.filter.return_value.all.return_value = [
-        SimpleNamespace(id=7),
-        SimpleNamespace(id=9),
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 3
+    query_mock.filter.return_value.all.return_value = [
+        SimpleNamespace(id=7, name="Existing alert 1"),
+        SimpleNamespace(id=9, name="Existing alert 2"),
     ]
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        count_mock,  # For count query
-        channel_validation_mock,  # For RSS channel validation
+    query_mock.filter.return_value.filter.return_value.all.return_value = [
+        SimpleNamespace(id=7, name="Existing alert 1"),
+        SimpleNamespace(id=9, name="Existing alert 2"),
     ]
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
@@ -433,7 +408,7 @@ def test_create_alert_with_explicit_channels():
     payload = AlertCreate(
         name="Alert with explicit channels",
         descriptors=["tech"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=["7", "9"],  # Explicitly specified
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -635,4 +610,4 @@ def test_recommend_keywords_delegates_to_helper(monkeypatch):
 
     result = recommend_keywords("tecnologia")
 
-    assert result == expected
+    assert result == {'descriptors': expected}

@@ -15,6 +15,9 @@ def create_seed_data() -> None:
     lector_role_id = next_id("roles")
     roles_store[lector_role_id] = Role(id=lector_role_id, name="Lector")
 
+    admin_role_only_id = next_id("roles")
+    roles_store[admin_role_only_id] = Role(id=admin_role_only_id, name="Admin")
+
     admin_user_id = next_id("users")
     users_store[admin_user_id] = UserInDB(
         id=admin_user_id,
