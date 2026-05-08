@@ -38,7 +38,7 @@ def test_create_source_channel_not_found_returns_404():
     with pytest.raises(HTTPException) as exc_info:
         create_source_channel(source_id=999, payload=payload, db=db)
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 404
 
 
 @pytest.mark.unit
@@ -139,7 +139,7 @@ def test_update_source_channel_integrity_conflict_returns_409():
     with pytest.raises(HTTPException) as exc_info:
         update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 409
     db.rollback.assert_called_once()
 
 

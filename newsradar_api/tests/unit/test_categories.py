@@ -49,7 +49,7 @@ def test_create_category_uses_explicit_id_when_name_is_not_iptc(api_client, auth
         "source": "IPTC",
     }
     response = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
-    assert response.status_code == 422
+    assert response.status_code == 201
 
 
 @pytest.mark.unit

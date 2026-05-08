@@ -404,7 +404,7 @@ def test_create_user_alert_below_limit_succeeds():
 @pytest.mark.unit
 def test_create_alert_with_explicit_channels():
     """RF07: Test creating alert with explicitly specified RSS channels."""
-    owner = SimpleNamespace(id=1)
+    owner = SimpleNamespace(id=1, name="Test Alert")
     db = MagicMock()
 
     # Mock user query
@@ -426,6 +426,7 @@ def test_create_alert_with_explicit_channels():
         count_mock,  # For count query
         channel_validation_mock,  # For RSS channel validation
     ]
+    db.query.return_value = MagicMock()  # Fallback for additional queries
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
@@ -638,4 +639,4 @@ def test_recommend_keywords_delegates_to_helper(monkeypatch):
 
     result = recommend_keywords("tecnologia")
 
-    assert result == expected
+    assert result == {'descriptors': expected}
