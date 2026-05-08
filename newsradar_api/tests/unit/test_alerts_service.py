@@ -80,16 +80,11 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock for user query, count query, and RSS channel query
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = []
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=0)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 0
+    query_mock.filter.return_value.filter.return_value.all.return_value = []
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     db.commit.side_effect = IntegrityError("statement", "params", Exception("orig"))
@@ -115,19 +110,14 @@ def test_create_user_alert_success_commits_and_returns_alert():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock for user query, count query, and RSS channel query
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = [
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 5
+    query_mock.filter.return_value.filter.return_value.all.return_value = [
         SimpleNamespace(id=1),
         SimpleNamespace(id=2),
     ]
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=5)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
@@ -281,16 +271,11 @@ def test_create_user_alert_sqlalchemy_error_propagates():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock for user query, count query, and RSS channel query
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = []
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=3)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 3
+    query_mock.filter.return_value.filter.return_value.all.return_value = []
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     db.commit.side_effect = SQLAlchemyError("connection lost")
@@ -364,19 +349,13 @@ def test_create_user_alert_below_limit_succeeds():
     owner = SimpleNamespace(id=1)
     db = MagicMock()
 
-    # Mock owner exists
     query_mock = MagicMock()
-    channel_query_mock = MagicMock()
-    channel_query_mock.filter.return_value.filter.return_value.all.return_value = [
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 19
+    query_mock.filter.return_value.filter.return_value.all.return_value = [
         SimpleNamespace(id=10),
     ]
-
-    # First query returns owner, second query returns count, third for RSS channels
-    db.query.side_effect = [
-        query_mock,  # For user query
-        MagicMock(filter=MagicMock(return_value=MagicMock(count=MagicMock(return_value=19)))),  # For count query
-        channel_query_mock,  # For RSS channel query
-    ]
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):
@@ -407,26 +386,18 @@ def test_create_alert_with_explicit_channels():
     owner = SimpleNamespace(id=1, name="Test Alert")
     db = MagicMock()
 
-    # Mock user query
     query_mock = MagicMock()
-
-    # Mock count query (for RF03)
-    count_mock = MagicMock()
-    count_mock.filter.return_value.count.return_value = 3
-
-    # Mock RSS channel validation query
-    channel_validation_mock = MagicMock()
-    channel_validation_mock.filter.return_value.all.return_value = [
-        SimpleNamespace(id=7),
-        SimpleNamespace(id=9),
+    query_mock.filter.return_value.first.return_value = owner
+    query_mock.filter.return_value.count.return_value = 3
+    query_mock.filter.return_value.all.return_value = [
+        SimpleNamespace(id=7, name="Existing alert 1"),
+        SimpleNamespace(id=9, name="Existing alert 2"),
     ]
-
-    db.query.side_effect = [
-        query_mock,  # For user query
-        count_mock,  # For count query
-        channel_validation_mock,  # For RSS channel validation
+    query_mock.filter.return_value.filter.return_value.all.return_value = [
+        SimpleNamespace(id=7, name="Existing alert 1"),
+        SimpleNamespace(id=9, name="Existing alert 2"),
     ]
-    db.query.return_value = MagicMock()  # Fallback for additional queries
+    db.query.return_value = query_mock
     query_mock.filter.return_value.first.return_value = owner
 
     def _refresh_side_effect(obj):

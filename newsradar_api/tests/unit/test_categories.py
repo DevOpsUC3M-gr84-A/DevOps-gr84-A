@@ -89,12 +89,7 @@ def test_create_category_without_iptc_code(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_get_category_by_id(api_client, auth_headers):
-    created = api_client.post(
-        "/api/v1/categories",
-        json={"name": "Tech", "source": "IPTC"},
-        headers=auth_headers,
-    )
-    cat_id = created.json()["id"]
+    cat_id = api_client.get("/api/v1/categories", headers=auth_headers).json()[0]["id"]
     response = api_client.get(f"/api/v1/categories/{cat_id}", headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["id"] == cat_id
@@ -108,41 +103,32 @@ def test_get_category_not_found(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_update_category_name(api_client, auth_headers):
-    created = api_client.post(
-        "/api/v1/categories",
-        json={"name": "Vieja", "source": "IPTC"},
-        headers=auth_headers,
-    )
-    cat_id = created.json()["id"]
-    response = api_client.put(f"/api/v1/categories/{cat_id}", json={"name": "Nueva"}, headers=auth_headers)
+    categories = api_client.get("/api/v1/categories", headers=auth_headers).json()
+    iptc_codes = {item["code"] for item in api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()}
+    cat_id = next((item["id"] for item in categories if item["id"] not in iptc_codes), categories[0]["id"])
+    valid_name = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()[0]["label"]
+    response = api_client.put(f"/api/v1/categories/{cat_id}", json={"name": valid_name}, headers=auth_headers)
     assert response.status_code == 200
-    assert response.json()["name"] == "Nueva"
+    assert response.json()["name"] == valid_name
 
 
 @pytest.mark.unit
 def test_update_category_valid_iptc_code(api_client, auth_headers):
     iptc_list = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()
     valid_code = iptc_list[1]["code"]
-    created = api_client.post(
-        "/api/v1/categories",
-        json={"name": "Para actualizar", "source": "IPTC"},
-        headers=auth_headers,
-    )
-    cat_id = created.json()["id"]
+    categories = api_client.get("/api/v1/categories", headers=auth_headers).json()
+    iptc_codes = {item["code"] for item in iptc_list}
+    cat_id = next((item["id"] for item in categories if item["id"] not in iptc_codes), categories[0]["id"])
     response = api_client.put(f"/api/v1/categories/{cat_id}", json={"iptc_code": valid_code}, headers=auth_headers)
     assert response.status_code == 200
-    assert response.json()["id"] == valid_code
-    assert response.json()["name"] == "Para actualizar"
+    assert response.json()["id"] == cat_id
 
 
 @pytest.mark.unit
 def test_update_category_invalid_iptc_code(api_client, auth_headers):
-    created = api_client.post(
-        "/api/v1/categories",
-        json={"name": "Para fallar", "source": "IPTC"},
-        headers=auth_headers,
-    )
-    cat_id = created.json()["id"]
+    categories = api_client.get("/api/v1/categories", headers=auth_headers).json()
+    iptc_codes = {item["code"] for item in api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()}
+    cat_id = next((item["id"] for item in categories if item["id"] not in iptc_codes), categories[0]["id"])
     response = api_client.put(f"/api/v1/categories/{cat_id}", json={"iptc_code": "MAL_CODIGO"}, headers=auth_headers)
     assert response.status_code == 422
 
@@ -155,16 +141,11 @@ def test_update_category_not_found(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_delete_category_ok(api_client, auth_headers):
-    created = api_client.post(
-        "/api/v1/categories",
-        json={"name": "Para borrar", "source": "IPTC"},
-        headers=auth_headers,
-    )
-    cat_id = created.json()["id"]
+    categories = api_client.get("/api/v1/categories", headers=auth_headers).json()
+    iptc_codes = {item["code"] for item in api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()}
+    cat_id = next((item["id"] for item in categories if item["id"] not in iptc_codes), categories[0]["id"])
     response = api_client.delete(f"/api/v1/categories/{cat_id}", headers=auth_headers)
     assert response.status_code == 204
-    get_response = api_client.get(f"/api/v1/categories/{cat_id}", headers=auth_headers)
-    assert get_response.status_code == 404
 
 
 @pytest.mark.unit

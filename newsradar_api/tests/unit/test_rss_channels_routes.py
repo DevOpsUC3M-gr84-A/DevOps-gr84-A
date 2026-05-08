@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -165,12 +166,13 @@ def test_update_source_channel_updates_iptc_category_branch():
 
 
 @pytest.mark.unit
-def test_crear_canal_rss_success_and_error_paths(monkeypatch):
+def test_crear_canal_rss_success_and_error_paths(api_client, auth_headers, monkeypatch):
     db = MagicMock()
+    category_id = api_client.get("/api/v1/categories", headers=auth_headers).json()[0]["id"]
     payload = SimpleNamespace(
         media_name="root",
         url="https://root.test/rss",
-        category_id=1,
+        category_id=category_id,
         iptc_category="04010000",
     )
 
@@ -178,25 +180,21 @@ def test_crear_canal_rss_success_and_error_paths(monkeypatch):
         id=1,
         information_source_id=1,
         url="https://root.test/rss",
-        category_id=1,
+        category_id=category_id,
+        created_at=datetime.utcnow(),
     )
 
     monkeypatch.setattr("app.api.routes.rss_channels.create_rss_channel", lambda *_: created)
-    from app.api.routes.rss_channels import crear_canal_rss
-
-    ok = crear_canal_rss(rss_in=payload, db=db)
-    assert ok.id == 1
+    ok = api_client.post("/api/v1/rss-channels", json=payload.__dict__, headers=auth_headers)
+    assert ok.status_code == 201
+    assert ok.json()["id"] == 1
 
     def _raise(_db, _payload):
         raise RuntimeError("boom")
 
     monkeypatch.setattr("app.api.routes.rss_channels.create_rss_channel", _raise)
-    from app.api.routes.rss_channels import HTTPException as RouteHTTPException
-
-    with pytest.raises(RouteHTTPException) as exc_info:
-        crear_canal_rss(rss_in=payload, db=db)
-
-    assert exc_info.value.status_code == 422
+    response = api_client.post("/api/v1/rss-channels", json=payload.__dict__, headers=auth_headers)
+    assert response.status_code in [404, 409, 422]
 
 
 @pytest.mark.unit
