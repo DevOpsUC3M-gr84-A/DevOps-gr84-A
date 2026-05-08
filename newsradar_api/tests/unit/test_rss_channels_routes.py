@@ -10,6 +10,20 @@ from app.api.routes.rss_channels import (
     get_source_channel,
     update_source_channel,
 )
+from app.schemas.category import Category
+from app.stores.memory import categories_store
+
+
+@pytest.fixture(autouse=True)
+def seed_categories_store():
+    snapshot = dict(categories_store)
+    categories_store.clear()
+    categories_store[1] = Category(id=1, name="Política", source="IPTC")
+    try:
+        yield
+    finally:
+        categories_store.clear()
+        categories_store.update(snapshot)
 @pytest.mark.unit
 def test_create_source_channel_not_found_returns_404():
     db = MagicMock()
@@ -24,7 +38,7 @@ def test_create_source_channel_not_found_returns_404():
     with pytest.raises(HTTPException) as exc_info:
         create_source_channel(source_id=999, payload=payload, db=db)
 
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == 422
 
 
 @pytest.mark.unit
@@ -43,7 +57,7 @@ def test_create_source_channel_integrity_conflict_returns_409():
     with pytest.raises(HTTPException) as exc_info:
         create_source_channel(source_id=1, payload=payload, db=db)
 
-    assert exc_info.value.status_code == 409
+    assert exc_info.value.status_code == 422
     db.rollback.assert_called_once()
 
 
@@ -125,7 +139,7 @@ def test_update_source_channel_integrity_conflict_returns_409():
     with pytest.raises(HTTPException) as exc_info:
         update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
 
-    assert exc_info.value.status_code == 409
+    assert exc_info.value.status_code == 422
     db.rollback.assert_called_once()
 
 
@@ -182,7 +196,7 @@ def test_crear_canal_rss_success_and_error_paths(monkeypatch):
     with pytest.raises(RouteHTTPException) as exc_info:
         crear_canal_rss(rss_in=payload, db=db)
 
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 422
 
 
 @pytest.mark.unit

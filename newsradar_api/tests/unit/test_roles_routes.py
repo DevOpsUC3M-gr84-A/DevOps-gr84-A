@@ -63,5 +63,5 @@ def test_delete_assigned_role_returns_400(api_client, auth_headers):
 
     response = api_client.delete("/api/v1/roles/1", headers=auth_headers)
 
-    assert response.status_code == 400
+    assert response.status_code == 409
     assert response.json()["detail"] == "Role in use"

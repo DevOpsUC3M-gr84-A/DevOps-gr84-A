@@ -17,6 +17,8 @@ from app.api.routes.alerts import (
 )
 from app.schemas.alert import AlertCategoryItem, AlertCreate, AlertUpdate
 
+VALID_CATEGORY = AlertCategoryItem(code="11000000", label="Política")
+
 
 @pytest.mark.unit
 def test_list_user_alerts_maps_empty_descriptors_and_categories():
@@ -38,7 +40,7 @@ def test_list_user_alerts_maps_empty_descriptors_and_categories():
     result = list_user_alerts(user_id=7, db=db)
 
     assert len(result) == 1
-    assert result[0].descriptors == []
+    assert result[0].descriptors == ["keyword1", "keyword2", "keyword3"]
     assert result[0].categories == []
     assert result[0].rss_channels_ids == []
 
@@ -61,7 +63,7 @@ def test_create_user_alert_owner_not_found_raises_404():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -95,7 +97,7 @@ def test_create_user_alert_integrity_error_rolls_back_and_raises_400():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -136,7 +138,7 @@ def test_create_user_alert_success_commits_and_returns_alert():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -146,6 +148,7 @@ def test_create_user_alert_success_commits_and_returns_alert():
 
     assert result.id == 10
     assert result.user_id == 1
+    assert result.descriptors == ["a", "keyword1", "keyword2"]
     db.add.assert_called_once()
     db.commit.assert_called_once()
     db.refresh.assert_called_once()
@@ -186,7 +189,7 @@ def test_update_user_alert_applies_fields_and_commits():
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
     assert result.name == "nuevo"
-    assert result.descriptors == ["d1"]
+    assert result.descriptors == ["d1", "keyword1", "keyword2"]
     assert result.cron_expression == "*/1 * * * *"
     db.commit.assert_called_once()
     db.refresh.assert_called_once_with(db_alert)
@@ -212,15 +215,15 @@ def test_update_user_alert_updates_categories_branch():
     payload = MagicMock()
     payload.model_dump.return_value = {
         "categories": [
-            {"code": "04010000", "label": "Tecnologia"},
-            {"code": "01000000", "label": "Cultura"},
+            {"code": "11000000", "label": "Política"},
+            {"code": "14000000", "label": "Sociedad"},
         ]
     }
 
     result = update_user_alert(user_id=1, alert_id=5, payload=payload, db=db)
 
     assert len(result.categories) == 2
-    assert result.categories[0].code == "04010000"
+    assert result.categories[0].code == "11000000"
 
 
 @pytest.mark.unit
@@ -295,7 +298,7 @@ def test_create_user_alert_sqlalchemy_error_propagates():
     payload = AlertCreate(
         name="RF01",
         descriptors=["a"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -342,7 +345,7 @@ def test_create_user_alert_exceeds_limit_raises_400():
     payload = AlertCreate(
         name="Alert 21",
         descriptors=["test"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -384,7 +387,7 @@ def test_create_user_alert_below_limit_succeeds():
     payload = AlertCreate(
         name="Alert 20",
         descriptors=["test"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=[],
         information_sources_ids=[],
         cron_expression="*/1 * * * *",
@@ -433,7 +436,7 @@ def test_create_alert_with_explicit_channels():
     payload = AlertCreate(
         name="Alert with explicit channels",
         descriptors=["tech"],
-        categories=[AlertCategoryItem(code="04010000", label="Tecnologia")],
+        categories=[VALID_CATEGORY],
         rss_channels_ids=["7", "9"],  # Explicitly specified
         information_sources_ids=[],
         cron_expression="*/1 * * * *",

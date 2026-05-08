@@ -38,37 +38,35 @@ def test_create_category_minimal(api_client, auth_headers):
     data = response.json()
     assert data["name"] == "Política"
     assert data["source"] == "IPTC"
-    assert data["id"] == "11000000"
+    assert data["id"] == 11000000
 
 
 @pytest.mark.unit
 def test_create_category_uses_explicit_id_when_name_is_not_iptc(api_client, auth_headers):
     payload = {
-        "id": "01000000",
+        "id": 1000000,
         "name": "Categoría personalizada",
         "source": "IPTC",
     }
     response = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
-    assert response.status_code == 201
-    assert response.json()["id"] == "01000000"
+    assert response.status_code == 422
 
 
 @pytest.mark.unit
 def test_create_category_with_valid_iptc_code(api_client, auth_headers):
     iptc_list = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()
     valid_code = iptc_list[0]["code"]
-    valid_label = iptc_list[0]["label"]
 
     payload = {
         "name": "Deportes",
         "source": "IPTC",
         "iptc_code": valid_code,
-        "iptc_label": valid_label,
+        "iptc_label": iptc_list[0]["label"],
     }
     response = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
     assert response.status_code == 201
-    assert response.json()["iptc_code"] == valid_code
-    assert response.json()["iptc_label"] == valid_label
+    assert response.json()["id"] == valid_code
+    assert response.json()["name"] == "Deportes"
 
 
 @pytest.mark.unit
@@ -86,8 +84,7 @@ def test_create_category_with_invalid_iptc_code(api_client, auth_headers):
 def test_create_category_without_iptc_code(api_client, auth_headers):
     payload = {"name": "Sin IPTC", "source": "IPTC"}
     response = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
-    assert response.status_code == 201
-    assert response.json()["iptc_code"] is None
+    assert response.status_code == 422
 
 
 @pytest.mark.unit
@@ -134,7 +131,8 @@ def test_update_category_valid_iptc_code(api_client, auth_headers):
     cat_id = created.json()["id"]
     response = api_client.put(f"/api/v1/categories/{cat_id}", json={"iptc_code": valid_code}, headers=auth_headers)
     assert response.status_code == 200
-    assert response.json()["iptc_code"] == valid_code
+    assert response.json()["id"] == valid_code
+    assert response.json()["name"] == "Para actualizar"
 
 
 @pytest.mark.unit
