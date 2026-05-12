@@ -59,19 +59,27 @@ make evaluate
 # equivalente a: bash evaluate.sh
 ```
 
-`evaluate.sh` ejecuta de forma encadenada:
+`evaluate.sh` ejecuta de forma encadenada, apoyándose íntegramente en **Docker Compose**:
 
-1. `docker compose down -v --remove-orphans` — limpieza de contenedores y volúmenes previos.
-2. `docker compose build` — construcción de las imágenes.
-3. `docker compose up -d` — arranque en segundo plano de **api-backend**, **postgres** y **elasticsearch** (con seed de 100 canales / 10 medios).
-4. Espera activa (`curl http://localhost:8000/docs`) hasta que FastAPI responde.
-5. `docker compose exec -T api-backend pytest --cov=app --cov-report=html` — pruebas y cobertura HTML dentro del contenedor.
-6. Impresión en verde de las URLs: Frontend (`:5173`), API (`:8000`) y **Swagger /docs** (`:8000/docs`).
+1. Crea `newsradar_api/.env` desde `.env.example` si no existe.
+2. `docker compose down -v --remove-orphans` — limpieza de contenedores y volúmenes previos.
+3. `docker compose build` — construcción de las imágenes (backend FastAPI y frontend React/Vite).
+4. `docker compose up -d` — arranque en segundo plano de los cuatro servicios: **frontend**, **api-backend**, **postgres** y **elasticsearch**, con seed automático de 100 canales / 10 medios cuando la base de datos está vacía (RF14).
+5. Espera activa (`curl http://localhost:8000/docs` y `http://localhost:5173`) hasta que API y frontend responden.
+6. `docker compose exec -T api-backend pytest --cov=app --cov-report=html` — ejecuta la suite de pruebas y genera el informe HTML de cobertura dentro del contenedor (RNF07).
+7. Impresión en verde de las URLs: Frontend (`:5173`), API (`:8000`) y **Swagger /docs** (`:8000/docs`).
 
-Para desarrollo local con hot-reload se utiliza el modo *detached* directo:
+Para iterar en local sin reconstruir imágenes en cada cambio, el flujo de desarrollo combina Docker Compose para los servicios de datos con ejecución nativa de backend y frontend (ver [quickstart.md](quickstart.md), vía B). El entorno completo en modo contenedor se levanta con:
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build       # entorno completo dockerizado
+docker compose down -v             # apagado y limpieza de volúmenes
+```
+
+La suite de pruebas del evaluador puede invocarse de forma independiente sobre un entorno ya levantado mediante:
+
+```bash
+docker compose exec -T api-backend pytest --cov=app --cov-report=html
 ```
 
 ## 3. Estrategia de ramas

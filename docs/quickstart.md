@@ -1,4 +1,4 @@
-# 🚀 Guía de Arranque: NewsRadar
+# Guía de Arranque: NewsRadar
 
 Este proyecto admite **dos vías de ejecución** claramente diferenciadas. Elige la que corresponda a tu rol:
 
@@ -7,9 +7,11 @@ Este proyecto admite **dos vías de ejecución** claramente diferenciadas. Elige
 | **A. Evaluador (1 clic)** | Profesorado, corrección | ~3–5 min | **TODO**: frontend + backend + Postgres + Elasticsearch |
 | **B. Desarrollador (manual)** | Equipo de desarrollo | ~10 min | Solo Postgres + Elasticsearch (back y front en local con hot-reload) |
 
+Ambas vías se apoyan en **Docker Compose** ([docker-compose.yml](../docker-compose.yml)) y en el script de evaluación automatizada `evaluate.sh` (envuelto por el `Makefile`), que orquesta el ciclo completo de construcción, arranque y ejecución de la suite de pruebas.
+
 ---
 
-## 👨‍🏫 A. Para el Evaluador: Ejecución en 1 Clic (RNF10)
+## A. Para el Evaluador: Ejecución en 1 Clic (RNF10)
 
 > **Único requisito previo:** tener **Docker Desktop** arrancado.
 > **No hace falta** instalar Python, Node.js, npm ni PostgreSQL en local. Todo — incluido el **frontend** — está dockerizado.
@@ -67,7 +69,7 @@ make down                # equivale a: docker compose down -v
 
 ---
 
-## 🧑‍💻 B. Para el Desarrollador: Ejecución Manual (hot-reload)
+## B. Para el Desarrollador: Ejecución Manual (hot-reload)
 
 Esta vía está pensada para el **trabajo diario del equipo**: editar código Python o React y ver los cambios al instante sin reconstruir la imagen Docker. La diferencia clave frente a la vía A es que **solo la base de datos corre en Docker**; backend y frontend se ejecutan nativamente sobre tu máquina.
 
