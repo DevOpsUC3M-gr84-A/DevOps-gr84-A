@@ -30,3 +30,9 @@ class Category(CategoryBase):
     def code(self) -> str:
         """Código IPTC de 8 dígitos (zero-padded), requerido por SMOKE-005."""
         return f"{self.id:08d}"
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def iptc_code(self) -> str:
+        """Alias de `code` para consumidores que esperan `iptc_code` en string."""
+        return f"{self.id:08d}"
