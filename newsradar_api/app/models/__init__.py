@@ -2,3 +2,4 @@
 from app.models.user import User, UserRole
 from app.models.rss import RSSChannel, CategoriaIPTC, InformationSource
 from app.models.alert_monitoring import AlertRule
+from app.models.notification import Notification

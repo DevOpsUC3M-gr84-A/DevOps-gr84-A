@@ -93,36 +93,36 @@ def _validate_iptc_name_if_needed(source: str, name: str) -> None:
     responses={422: {"description": "Código IPTC no válido"}},
 )
 def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
-    name = payload.name.strip()
-    normalized_name = _normalize_name(name)
+    name_clean = payload.name.strip()
+    source_clean = payload.source.strip().lower()
 
-    # Validar iptc_code si se proporciona
-    if payload.iptc_code is not None:
-        try:
-            iptc_code = int(payload.iptc_code)
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=422, detail=ERROR_INVALID_IPTC_CODE)
-        if iptc_code not in VALID_IPTC_CODES:
-            raise HTTPException(status_code=422, detail=ERROR_INVALID_IPTC_CODE)
+    # 1. Buscar si el nombre normalizado existe en IPTC
+    correct_code = None
+    for code, c_name in IPTC_FIRST_LEVEL.items():
+        if c_name == name_clean:
+            correct_code = int(code)
+            break
 
-    # Determinar el category_id
-    if payload.id and payload.id > 0:
-        category_id = int(payload.id)
-    elif payload.iptc_code is not None:
-        category_id = int(payload.iptc_code)
-    else:
-        # Si no hay ID explícito ni iptc_code, derivar del nombre (debe ser IPTC válido)
-        _validate_iptc_name_if_needed(payload.source, name)
-        category_id = _IPTC_CODE_BY_NAME[normalized_name]
+    if correct_code is None:
+        raise HTTPException(status_code=422, detail="El nombre no pertenece al catálogo IPTC")
+
+    # 2. Validar consistencia de Source (GC-008)
+    valid_sources = ["iptc", f"medtop:{correct_code:08d}"]
+    if source_clean not in valid_sources:
+        raise HTTPException(status_code=400, detail="Name y source inconsistentes")
+
+    # 3. Asignar valores normalizados
+    payload.name = name_clean
+    payload.source = payload.source.strip()
 
     # Verificar duplicados por nombre (case-insensitive)
-    existing = _find_existing_by_name(name)
+    existing = _find_existing_by_name(name_clean)
     if existing is not None:
         raise HTTPException(status_code=409, detail="Category already exists")
 
-    category = Category(id=category_id, name=name, source="IPTC")
-    categories_store[category_id] = category
-    iptc_deleted_store.discard(category_id)  # ya no está "borrada"
+    category = Category(id=correct_code, name=name_clean, source="IPTC")
+    categories_store[correct_code] = category
+    iptc_deleted_store.discard(correct_code)
     return category
 
 
@@ -157,11 +157,38 @@ def update_category(
     payload: CategoryUpdate,
     _: CurrentUser,
 ) -> Category:
+    # Si se manda name o source, aplicar la validación estricta (GC-008/GC-012)
+    if payload.name is not None or payload.source is not None:
+        if payload.name is None or payload.source is None:
+            raise HTTPException(status_code=400, detail="Name y source inconsistentes")
+
+        name_clean = payload.name.strip()
+        source_clean = payload.source.strip().lower()
+
+        correct_code = None
+        for code, c_name in IPTC_FIRST_LEVEL.items():
+            if c_name == name_clean:
+                correct_code = int(code)
+                break
+
+        if correct_code is None:
+            raise HTTPException(
+                status_code=422,
+                detail="El nombre no pertenece al catálogo IPTC",
+            )
+
+        valid_sources = ["iptc", f"medtop:{correct_code:08d}"]
+        if source_clean not in valid_sources:
+            raise HTTPException(status_code=400, detail="Name y source inconsistentes")
+
+        payload.name = name_clean
+        payload.source = payload.source.strip()
+
     # Buscar con variantes de clave
     key = _get_category_key(category_id)
     if key is None:
         raise HTTPException(status_code=404, detail=ERROR_CATEGORY_NOT_FOUND)
-    
+
     category = categories_store[key]
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -174,18 +201,11 @@ def update_category(
         if iptc_code not in VALID_IPTC_CODES:
             raise HTTPException(status_code=422, detail=ERROR_INVALID_IPTC_CODE)
 
-    if isinstance(update_data.get("name"), str):
-        update_data["name"] = update_data["name"].strip()
-
-    source = update_data.get("source", category.source)
-    if "name" in update_data:
-        _validate_iptc_name_if_needed(source, update_data["name"])
-
     if "source" in update_data:
         update_data["source"] = "IPTC"
 
     updated = category.model_copy(update=update_data)
-    categories_store[key] = updated  # Usar la clave encontrada
+    categories_store[key] = updated
     return updated
 
 

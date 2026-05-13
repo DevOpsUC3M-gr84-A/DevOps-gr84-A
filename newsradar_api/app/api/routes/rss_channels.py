@@ -1,7 +1,10 @@
 """Este módulo define los endpoints relacionados con la gestión de canales RSS."""
 
+import socket
 from typing import Annotated, List
+from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, Response, HTTPException, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import func
@@ -36,6 +39,31 @@ ERROR_INVALID_CATEGORY = "Category not found"
 def _validate_url_reachable(url: str) -> None:
     """No-op: la red queda fuera del path crítico, nunca bloquea ni levanta."""
     return None
+
+
+async def _verify_rss_url_network(url: str) -> None:
+    """Verifica que la URL del RSS resuelva DNS y devuelva contenido XML/RSS."""
+    domain = urlparse(str(url)).netloc
+    try:
+        socket.gethostbyname(domain)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Dominio no resolvible")
+
+    async with httpx.AsyncClient(timeout=4.0) as client:
+        try:
+            response = await client.get(
+                str(url), headers={"User-Agent": "Mozilla/5.0"}
+            )
+            if response.status_code >= 400:
+                raise HTTPException(status_code=400, detail="URL no accesible")
+
+            content_type = response.headers.get("content-type", "").lower()
+            if "xml" not in content_type and "rss" not in content_type:
+                raise HTTPException(status_code=400, detail="URL no es XML o RSS")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="URL no accesible")
 
 
 def _to_response(channel: DBRSSChannel) -> RSSChannel:
@@ -78,7 +106,7 @@ def _validate_category_or_422(category_id_raw: int | str | None) -> int:
     """Valida que la categoría existe (con búsqueda universal). Devuelve el ID entero."""
     if category_id_raw is None:
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
-    
+
     try:
         cat_id = int(category_id_raw)
     except (TypeError, ValueError):
@@ -86,7 +114,7 @@ def _validate_category_or_422(category_id_raw: int | str | None) -> int:
 
     if cat_id <= 0:
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
-    
+
     # Búsqueda universal de la categoría
     key = _get_category_key_universal(cat_id)
     if key is None:
@@ -95,13 +123,13 @@ def _validate_category_or_422(category_id_raw: int | str | None) -> int:
     return cat_id
 
 
-def _category_id_to_iptc(category_id: int) -> CategoriaIPTC:
-    """Convierte un category_id entero al valor CategoriaIPTC correspondiente.
-
-    Forma el código de 8 dígitos (ej. 1000000 -> '01000000') y busca en el
-    enum. Si no existe correspondencia exacta devuelve OTROS como fallback.
-    """
-    code_str = f"{category_id:08d}"
+def _category_id_to_iptc(category_id: int | str) -> CategoriaIPTC:
+    """Convierte un category_id (int o str) al valor CategoriaIPTC correspondiente."""
+    try:
+        cat_int = int(category_id)
+    except (TypeError, ValueError):
+        return CategoriaIPTC.OTROS
+    code_str = f"{cat_int:08d}"
     try:
         return CategoriaIPTC(code_str)
     except ValueError:
@@ -126,7 +154,7 @@ def _is_real_channel(channel: object) -> bool:
     tags=["rss-channels"],
     dependencies=[Depends(get_current_gestor)],
 )
-def crear_canal_rss(
+async def crear_canal_rss(
     rss_in: RSSChannelCreate,
     db: Annotated[Session, Depends(get_db)],
 ) -> RSSChannelResponse:
@@ -134,6 +162,7 @@ def crear_canal_rss(
     Crea un nuevo canal RSS en el sistema.
     [SOLO GESTORES] - Bloqueado a Lector usando la dependencia get_current_gestor.
     """
+    await _verify_rss_url_network(rss_in.url)
     url_str = str(rss_in.url)
     url_norm = _normalize_url(url_str)
     existing = (
@@ -373,13 +402,15 @@ def get_source_channel(
         409: {"description": "Conflict"},
     },
 )
-def update_source_channel(
+async def update_source_channel(
     source_id: int,
     channel_id: int,
     payload: RSSChannelUpdate,
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
+    if payload.url is not None:
+        await _verify_rss_url_network(payload.url)
     channel = (
         db.query(DBRSSChannel)
         .filter(
