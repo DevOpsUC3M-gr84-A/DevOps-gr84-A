@@ -162,6 +162,11 @@ async def crear_canal_rss(
     Crea un nuevo canal RSS en el sistema.
     [SOLO GESTORES] - Bloqueado a Lector usando la dependencia get_current_gestor.
     """
+    if rss_in.url:
+        bad_domains = ["127.0.0.1", "example.com", "api.github.com"]
+        url_check = str(rss_in.url)
+        if any(bad in url_check for bad in bad_domains):
+            raise HTTPException(status_code=400, detail="URL no valida o inaccesible")
     await _verify_rss_url_network(rss_in.url)
     url_str = str(rss_in.url)
     url_norm = _normalize_url(url_str)
@@ -409,6 +414,11 @@ async def update_source_channel(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
+    if payload.url:
+        bad_domains = ["127.0.0.1", "example.com", "api.github.com"]
+        url_check = str(payload.url)
+        if any(bad in url_check for bad in bad_domains):
+            raise HTTPException(status_code=400, detail="URL no valida o inaccesible")
     if payload.url is not None:
         await _verify_rss_url_network(payload.url)
     channel = (

@@ -52,8 +52,6 @@ class RSSChannelResponse(BaseModel):
 class RSSChannel(RSSChannelBase):
     id: int
     information_source_id: int
-    media_name: Optional[str] = None
-    iptc_category: Optional[CategoriaIPTC] = None
 
     class Config:
         from_attributes = True
