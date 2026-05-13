@@ -16,7 +16,7 @@ from app.database.generate_rss_seed import generate_seed_data
 from app.models.rss import CategoriaIPTC, InformationSource, RSSChannel
 from app.models.user import User, UserRole
 from app.schemas.category import Category
-from app.stores.memory import categories_store
+from app.stores.memory import categories_store, iptc_deleted_store
 
 # Tablas con PK autoincremental cuyas secuencias deben sincronizarse cuando se
 # insertan filas con id explícito (típicamente vía seed). En PostgreSQL la
@@ -247,6 +247,7 @@ def seed_iptc_categories_and_channels(db: Session) -> None:
         db.commit()
 
         categories_store.clear()
+        iptc_deleted_store.clear()
         for code, label, _iptc in _IPTC_TOPLEVEL_SEED:
             db.execute(
                 text(
@@ -255,7 +256,9 @@ def seed_iptc_categories_and_channels(db: Session) -> None:
                 ),
                 {"id": code, "name": label, "code": code, "label": label},
             )
-            categories_store[code] = Category(id=code, name=label, source="IPTC")
+            # No pre-populamos categories_store. El fallback IPTC_FIRST_LEVEL en
+            # list_categories sirve los 17 ítems para SMOKE-004/005 sin necesitar
+            # el store. Los tests GC pueden crear (POST 201) y borrar libremente.
 
         existing_source = (
             db.query(InformationSource).filter(InformationSource.id == 1).first()

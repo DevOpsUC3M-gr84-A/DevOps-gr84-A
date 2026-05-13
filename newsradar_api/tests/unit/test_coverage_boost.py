@@ -142,10 +142,10 @@ def test_create_source_channel_with_none_category_returns_422(isolated_categorie
 
 @pytest.mark.unit
 def test_create_source_channel_idempotent_when_existing_channel(isolated_categories_store):
-    """Si ya existe un canal con la misma URL para esa fuente -> 201 con el existente."""
+    """Si ya existe un canal con la misma URL para esa fuente -> 409 conflicto."""
     _populate_categories_store_with(1000000)
     db = MagicMock()
-    source = SimpleNamespace(id=1)
+    source = SimpleNamespace(id=1, name="Test Source")
     existing = SimpleNamespace(
         id=42,
         information_source_id=1,
@@ -163,11 +163,10 @@ def test_create_source_channel_idempotent_when_existing_channel(isolated_categor
         iptc_category="01000000",
     )
 
-    result = rss_channels_module.create_source_channel(source_id=1, payload=payload, db=db)
-
-    assert result.id == 42
-    db.add.assert_not_called()
-    db.commit.assert_not_called()
+    import pytest as _pytest
+    with _pytest.raises(Exception) as exc_info:
+        rss_channels_module.create_source_channel(source_id=1, payload=payload, db=db)
+    assert exc_info.value.status_code == 409
 
 
 @pytest.mark.unit

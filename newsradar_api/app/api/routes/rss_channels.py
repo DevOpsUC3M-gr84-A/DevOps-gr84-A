@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.models.rss import CategoriaIPTC
 from app.models.rss import InformationSource as DBInformationSource
 from app.models.rss import RSSChannel as DBRSSChannel
 from app.schemas.rss import (
@@ -20,6 +21,7 @@ from app.database.database import get_db
 from app.services.rss_service import create_rss_channel, get_all_rss_channels
 from app.utils.deps import get_current_gestor, get_current_user
 from app.stores.memory import categories_store
+from app.core.iptc_categories import IPTC_FIRST_LEVEL
 
 
 router = APIRouter()
@@ -43,8 +45,6 @@ def _to_response(channel: DBRSSChannel) -> RSSChannel:
         information_source_id=channel.information_source_id,
         url=channel.url,
         category_id=channel.category_id or 0,
-        iptc_category=channel.iptc_category,
-        media_name=channel.media_name,
     )
 
 
@@ -68,7 +68,9 @@ def _get_category_key_universal(cat_id: int | str | None) -> int | str | None:
     for variant in variants:
         if variant in categories_store:
             return variant
-    
+    if cat_id_int in IPTC_FIRST_LEVEL:
+        return cat_id_int
+
     return None
 
 
@@ -91,6 +93,19 @@ def _validate_category_or_422(category_id_raw: int | str | None) -> int:
         raise HTTPException(status_code=422, detail=ERROR_INVALID_CATEGORY)
 
     return cat_id
+
+
+def _category_id_to_iptc(category_id: int) -> CategoriaIPTC:
+    """Convierte un category_id entero al valor CategoriaIPTC correspondiente.
+
+    Forma el código de 8 dígitos (ej. 1000000 -> '01000000') y busca en el
+    enum. Si no existe correspondencia exacta devuelve OTROS como fallback.
+    """
+    code_str = f"{category_id:08d}"
+    try:
+        return CategoriaIPTC(code_str)
+    except ValueError:
+        return CategoriaIPTC.OTROS
 
 
 def _normalize_url(url: str) -> str:
@@ -179,8 +194,6 @@ def listar_canales_rss(
             information_source_id=canal.information_source_id,
             url=canal.url,
             category_id=canal.category_id or 0,
-            iptc_category=canal.iptc_category,
-            media_name=canal.media_name,
         )
         for canal in canales
     ]
@@ -225,18 +238,26 @@ def create_source_channel(
         .first()
     )
     if existing is not None and _is_real_channel(existing):
-        return _to_response(existing)
+        raise HTTPException(status_code=409, detail="Canal RSS ya existe para esta fuente con la misma URL")
 
     # 3) Validación estricta de categoría como entero puro.
     category_id = _validate_category_or_422(payload.category_id)
 
-    # 4) Inserción + recovery: cualquier IntegrityError -> rollback + re-lookup -> 201
+    # 4) Defaults para columnas NOT NULL que el test puede omitir
+    media_name: str = payload.media_name or source.name
+    iptc_cat: CategoriaIPTC = (
+        payload.iptc_category
+        if payload.iptc_category is not None
+        else _category_id_to_iptc(category_id)
+    )
+
+    # 5) Inserción + recovery: cualquier IntegrityError -> rollback + re-lookup -> 201
     channel = DBRSSChannel(
         information_source_id=source_id,
-        media_name=payload.media_name,
+        media_name=media_name,
         url=url_str,
         category_id=category_id,
-        iptc_category=payload.iptc_category,
+        iptc_category=iptc_cat,
         is_active=True,
     )
     db.add(channel)
@@ -308,8 +329,6 @@ def list_source_channels(
             information_source_id=channel.information_source_id,
             url=channel.url,
             category_id=channel.category_id or 0,
-            iptc_category=channel.iptc_category,
-            media_name=channel.media_name,
         )
         for channel in channels
     ]
@@ -342,8 +361,6 @@ def get_source_channel(
         information_source_id=channel.information_source_id,
         url=channel.url,
         category_id=channel.category_id or 0,
-        iptc_category=channel.iptc_category,
-        media_name=channel.media_name,
     )
 
 
@@ -375,7 +392,10 @@ def update_source_channel(
         raise HTTPException(status_code=404, detail=ERROR_CHANNEL_NOT_FOUND)
 
     update_data = payload.model_dump(exclude_unset=True)
-    if "category_id" in update_data:
+    if "category_id" in update_data and update_data["category_id"] is not None:
+        _validate_category_or_422(update_data["category_id"])
+        channel.category_id = update_data["category_id"]
+    elif "category_id" in update_data:
         channel.category_id = update_data["category_id"]
     if "iptc_category" in update_data:
         channel.iptc_category = update_data["iptc_category"]
@@ -397,8 +417,6 @@ def update_source_channel(
         information_source_id=channel.information_source_id,
         url=channel.url,
         category_id=channel.category_id or 0,
-        iptc_category=channel.iptc_category,
-        media_name=channel.media_name,
     )
 
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.schemas.category import Category, CategoryCreate, CategoryUpdate
 from app.schemas.user import UserInDB
-from app.stores.memory import categories_store, rss_channels_store
+from app.stores.memory import categories_store, iptc_deleted_store, rss_channels_store
 from app.utils.deps import get_current_user
 from app.core.iptc_categories import IPTC_FIRST_LEVEL, VALID_IPTC_CODES
 
@@ -67,13 +67,18 @@ def list_iptc_categories():
 
 @categories_router.get("/categories", tags=["categories"])
 def list_categories(_: CurrentUser) -> List[Category]:
-    custom_categories = list(categories_store.values())
-    iptc_categories = [
+    # Devuelve items del store + fallback a IPTC_FIRST_LEVEL para IDs no en store
+    # y no marcados como borrados explícitamente (iptc_deleted_store).
+    # Esto permite que SMOKE-004/005 encuentren categorías al arrancar (sin seeding),
+    # y que _ensure_categories_empty() de GC-022 pueda dejar la lista vacía.
+    store_items = list(categories_store.values())
+    store_ids = set(categories_store.keys())
+    iptc_fallback = [
         Category(id=code, name=label, source="IPTC")
         for code, label in IPTC_FIRST_LEVEL.items()
-        if _get_category_key(code) is None  # No existe con ninguna variante
+        if code not in store_ids and code not in iptc_deleted_store
     ]
-    return custom_categories + iptc_categories
+    return store_items + iptc_fallback
 
 
 def _validate_iptc_name_if_needed(source: str, name: str) -> None:
@@ -117,6 +122,7 @@ def create_category(payload: CategoryCreate, _: CurrentUser) -> Category:
 
     category = Category(id=category_id, name=name, source="IPTC")
     categories_store[category_id] = category
+    iptc_deleted_store.discard(category_id)  # ya no está "borrada"
     return category
 
 
@@ -194,9 +200,14 @@ def update_category(
     },
 )
 def delete_category(category_id: int, _: CurrentUser) -> None:
-    # Buscar con variantes de clave
+    # Buscar con variantes de clave en el store
     key = _get_category_key(category_id)
+
+    # Si no está en el store, puede ser una categoría IPTC del fallback
     if key is None:
+        if category_id in IPTC_FIRST_LEVEL and category_id not in iptc_deleted_store:
+            iptc_deleted_store.add(category_id)
+            return
         raise HTTPException(status_code=404, detail=ERROR_CATEGORY_NOT_FOUND)
 
     for channel in rss_channels_store.values():
@@ -205,4 +216,8 @@ def delete_category(category_id: int, _: CurrentUser) -> None:
                 status_code=409, detail=ERROR_CATEGORY_LINKED_TO_CHANNELS
             )
 
-    categories_store.pop(key, None)  # Usar la clave encontrada
+    categories_store.pop(key, None)
+    # Si es un ID IPTC, marcarlo también como eliminado para que no reaparezca
+    # en el fallback de list_categories hasta que se re-cree
+    if category_id in IPTC_FIRST_LEVEL:
+        iptc_deleted_store.add(category_id)

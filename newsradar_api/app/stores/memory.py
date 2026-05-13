@@ -15,7 +15,11 @@ active_tokens: Dict[str, int] = {}
 roles_store: Dict[int, Role] = {}
 alerts_store: Dict[int, Alert] = {}
 categories_store: Dict[int, Category] = {}
+# IDs de categorías IPTC borradas explícitamente vía DELETE.
+# list_categories omite su fallback a IPTC_FIRST_LEVEL para estos IDs.
+iptc_deleted_store: set = set()
 notifications_store: Dict[int, Notification] = {}
 rss_channels_store: Dict[int, RSSChannel] = {}
 information_sources_store: Dict[int, InformationSource] = {}
 stats_store: Dict[int, Stats] = {}
+user_role_ids_store: Dict[int, list] = {}

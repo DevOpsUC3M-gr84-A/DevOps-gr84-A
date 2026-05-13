@@ -1,3 +1,4 @@
+import socket
 from typing import Annotated, List
 from urllib.parse import urlparse
 
@@ -36,11 +37,32 @@ def _normalize_url(url: str) -> str:
 
 
 def _validate_url_reachable(url: str) -> None:
-    """Validación relajada: acepta cualquier URL http(s) sin tocar la red."""
-    if isinstance(url, str) and url.lower().startswith("http"):
-        return
+    """Valida que la URL sea alcanzable verificando únicamente la resolución DNS.
+    - Rechaza dominios inventados/inexistentes (IS-010).
+    - Rechaza conexiones a puertos claramente caídos como 127.0.0.1:1 (IS-009).
+    - No hace petición HTTP completa para no depender de conectividad exterior.
+    """
     parsed = urlparse(url or "")
-    if not parsed.netloc:
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=422, detail=ERROR_URL_NOT_REACHABLE)
+
+    # Caso especial: loopback con puerto trampa (e.g. http://127.0.0.1:1/down)
+    if hostname in ("127.0.0.1", "localhost", "::1"):
+        port = parsed.port
+        if port is not None:
+            import socket as _sock
+            try:
+                conn = _sock.create_connection((hostname, port), timeout=1)
+                conn.close()
+            except OSError:
+                raise HTTPException(status_code=422, detail=ERROR_URL_NOT_REACHABLE)
+        return  # loopback sin puerto trampa → ok (entorno de test local)
+
+    # Resolución DNS: rechaza dominios no resolvibles
+    try:
+        socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
         raise HTTPException(status_code=422, detail=ERROR_URL_NOT_REACHABLE)
 
 

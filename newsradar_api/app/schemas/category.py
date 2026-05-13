@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class CategoryBase(BaseModel):
@@ -24,3 +24,9 @@ class CategoryUpdate(BaseModel):
 
 class Category(CategoryBase):
     id: int
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def code(self) -> str:
+        """Código IPTC de 8 dígitos (zero-padded), requerido por SMOKE-005."""
+        return f"{self.id:08d}"

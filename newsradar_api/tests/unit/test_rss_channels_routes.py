@@ -130,12 +130,12 @@ def test_update_source_channel_not_found_returns_404():
 
 @pytest.mark.unit
 def test_update_source_channel_integrity_conflict_returns_409():
-    channel = MagicMock(id=1, information_source_id=1, url="https://old.test/rss", category_id=1)
+    channel = MagicMock(id=1, information_source_id=1, url="https://old.test/rss", category_id=1000000)
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = channel
     db.commit.side_effect = IntegrityError("statement", "params", Exception("orig"))
     payload = MagicMock()
-    payload.model_dump.return_value = {"url": "https://updated.test/rss", "category_id": 2}
+    payload.model_dump.return_value = {"url": "https://updated.test/rss", "category_id": 1000000}
 
     with pytest.raises(HTTPException) as exc_info:
         update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
@@ -278,7 +278,7 @@ def test_get_update_delete_source_channel_additional_branches():
         id=1,
         information_source_id=1,
         url="https://old.test/rss",
-        category_id=1,
+        category_id=1000000,
         iptc_category="04010000",
         media_name="m1",
     )
@@ -289,9 +289,9 @@ def test_get_update_delete_source_channel_additional_branches():
     assert got.id == 1
 
     payload = MagicMock()
-    payload.model_dump.return_value = {"url": "https://new.test/rss", "category_id": 2}
+    payload.model_dump.return_value = {"url": "https://new.test/rss", "category_id": 1000000}
     updated = update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
-    assert updated.category_id == 2
+    assert updated.category_id == 1000000
 
     delete_source_channel(source_id=1, channel_id=1, db=db)
     db.delete.assert_called_once_with(channel)
