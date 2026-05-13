@@ -1,4 +1,6 @@
-# ADR 024: Internacionalización del Frontend (ES/EN) sin librerías externas
+# ADR 027: Internacionalización del Frontend (ES/EN) sin librerías externas
+
+> Renombrado desde ADR-024 para resolver colisión de numeración con [[ADR-024-fastapi]].
 
 **Estado:** Aceptado  
 **Fecha:** 2026-04-23  

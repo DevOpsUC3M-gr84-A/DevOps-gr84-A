@@ -1,50 +1,162 @@
-# 1. Información General del Sitio
-site_name: NEWSRADAR
-site_description: Documentación técnica y de requisitos del proyecto DevOps-gr84-A
-site_author: Equipo DevOps-gr84-A
-use_directory_urls: false
+# =============================================================================
+# NEWSRADAR · Configuración de MkDocs
+# Documentación técnica, ADRs y trazabilidad de IA del proyecto DevOps-gr84-A
+# =============================================================================
 
-# 2. Configuración del Tema Visual
+# 1. Información General del Sitio
+site_name: NEWSRADAR · Documentación Técnica
+site_description: Documentación técnica, decisiones de arquitectura (ADRs) y trazabilidad de prompts de IA del proyecto DevOps-gr84-A.
+site_author: Equipo DevOps-gr84-A
+site_url: https://devopsuc3m-gr84-a.github.io/DevOps-gr84-A/
+repo_url: https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A
+repo_name: DevOpsUC3M-gr84-A/DevOps-gr84-A
+edit_uri: edit/main/docs/
+use_directory_urls: false
+copyright: Copyright &copy; 2026 Equipo DevOps-gr84-A · Universidad Carlos III de Madrid
+
+# 2. Configuración del Tema Visual (Material for MkDocs)
 theme:
   name: material
   language: es
+  features:
+    - navigation.instant          # Carga instantánea entre páginas (SPA-like)
+    - navigation.tracking         # Actualiza la URL con la sección visible
+    - navigation.tabs             # Pestañas superiores por sección raíz
+    - navigation.tabs.sticky      # Las pestañas se mantienen visibles al hacer scroll
+    - navigation.sections         # Agrupa secciones en el sidebar
+    - navigation.expand           # Expande el árbol por defecto
+    - navigation.indexes          # Permite "index.md" como portada de sección
+    - navigation.top              # Botón "volver arriba"
+    - toc.follow                  # El sumario sigue el scroll
+    - search.suggest              # Sugerencias mientras escribes
+    - search.highlight            # Resaltado de coincidencias
+    - search.share                # Compartir resultado de búsqueda
+    - content.code.copy           # Botón "copiar" en bloques de código
+    - content.code.annotate       # Anotaciones numeradas en código
+    - content.tabs.link           # Sincroniza pestañas de contenido
+    - content.action.edit         # Botón "editar esta página"
   palette:
-    primary: indigo
-    accent: deep purple
+    # Modo claro
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Cambiar a modo oscuro
+    # Modo oscuro (slate, profesional)
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Cambiar a modo claro
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
 
 # 3. Estructura del Menú de Navegación
+#    NOTA para el equipo: los ADRs nuevos se añaden simplemente como archivo
+#    en `docs/ADRs/`. Después, añade una línea en la sección "Decisiones de
+#    Arquitectura (ADRs)" siguiendo el patrón existente. Si se prefiere un
+#    listado 100% automático, instalar `mkdocs-awesome-pages-plugin` y
+#    reemplazar la lista por un único `.pages` dentro de `docs/ADRs/`.
 nav:
-  - Inicio: index.md
-  - Requisitos: spec.md
-  - Arquitectura (ADRs): 
-    - ADR-001 (5 Capas): ADRs/ADR-001-arquitectura-5-capas.md
-    - ADR-002 (Docker): ADRs/ADR-002-docker.md
-    - ADR-003 (CI Actions): ADRs/ADR-003-ci-actions.md
-    - ADR-004 (MkDocs): ADRs/ADR-004-mkdocs.md
-    - ADR-005 (Estrategia Ramas): ADRs/ADR-005-estrategia-ramas.md
-    - ADR-006 (API REST y Usuarios): ADRs/ADR-006-api-rest-usuarios.md
-    - ADR-007 (SonarCloud): ADRs/ADR-007-sonarcloud.md
-    - ADR-008 (Seed RSS): ADRs/ADR-008-seed-datos-rss.md
-    - ADR-009 (Frontend Stack): ADRs/ADR-009-frontend-stack.md
-    - ADR-010 (Arquitectura Frontend): ADRs/ADR-010-arquitectura-frontend.md
-    - ADR-011 (Frontend Testing): ADRs/ADR-011-frontend-testing.md
-    - ADR-012 (Clasificación IPTC): ADRs/ADR-012-clasificacion-iptc.md
-    - ADR-013 (RBAC Lector): ADRs/ADR-013-rbac-lector.md
-    - ADR-014 (Gestión Alertas): ADRs/ADR-014-gestion-alertas.md
-    - ADR-015 (Migración Elasticsearch): ADRs/ADR-015-migracion-elasticsearch.md
-  - Trazabilidad de IA: prompts.md
+  - 🏠 Inicio / Getting Started: index.md
+  - 🚀 Guía de Arranque (Detallada): quickstart.md
+  - 🏛️ Arquitectura:
+      - Visión General (5 Capas): architecture.md
+      - Despliegue & CI/CD: deployment.md
+  - 📋 Trazabilidad y Requisitos:
+      - Requisitos (RF / RNF): spec.md
+  - 📐 Decisiones de Arquitectura (ADRs):
+      - ADR-001 · Arquitectura 5 Capas: ADRs/ADR-001-arquitectura-5-capas.md
+      - ADR-002 · Docker: ADRs/ADR-002-docker.md
+      - ADR-003 · CI con GitHub Actions: ADRs/ADR-003-ci-actions.md
+      - ADR-004 · MkDocs: ADRs/ADR-004-mkdocs.md
+      - ADR-005 · Estrategia de Ramas: ADRs/ADR-005-estrategia-ramas.md
+      - ADR-006 · API REST y Usuarios: ADRs/ADR-006-api-rest-usuarios.md
+      - ADR-007 · SonarCloud: ADRs/ADR-007-sonarcloud.md
+      - ADR-008 · Seed de Datos RSS: ADRs/ADR-008-seed-datos-rss.md
+      - ADR-009 · Frontend Stack: ADRs/ADR-009-frontend-stack.md
+      - ADR-010 · Arquitectura Frontend: ADRs/ADR-010-arquitectura-frontend.md
+      - ADR-011 · Frontend Testing: ADRs/ADR-011-frontend-testing.md
+      - ADR-012 · Clasificación IPTC: ADRs/ADR-012-clasificacion-iptc.md
+      - ADR-013 · RBAC Lector: ADRs/ADR-013-rbac-lector.md
+      - ADR-014 · Gestión de Alertas: ADRs/ADR-014-gestion-alertas.md
+      - ADR-015 · Migración a Elasticsearch: ADRs/ADR-015-migracion-elasticsearch.md
+      - ADR-016 · Acciones y Recomendaciones: ADRs/ADR-016-gestion-acciones-recomendaciones.md
+      - ADR-017 · Empaquetado Docker: ADRs/ADR-017-estrategia-empaquetado-docker.md
+      - ADR-018 · Resiliencia del Scheduler: ADRs/ADR-018-resiliencia-scheduler-y-ciclo-vida.md
+      - ADR-019 · Notificaciones y .gitignore: ADRs/ADR-019-formateo-notificaciones-y-gitignore.md
+      - ADR-020 · Recuperación de Contraseña: ADRs/ADR-020-recuperacion-contrasena.md
+      - ADR-021 · Verificación de Cuenta 24h: ADRs/ADR-021-sistema-de-verificacion-de-cuenta-por-email-24h.md
+      - ADR-022 · Clasificación de Noticias: ADRs/ADR-022-clasificacion-noticias.md
+      - ADR-023 · Refactor UI & Seguridad: ADRs/ADR-023-refactorizacion-ui-seguridad.md
+      - ADR-024 · FastAPI: ADRs/ADR-024-fastapi.md
+      - ADR-025 · PostgreSQL: ADRs/ADR-025-postgresql.md
+      - ADR-026 · Automatización de Evaluación: ADRs/ADR-026-automatizacion-evaluacion-y-entregas.md
+      - ADR-027 · Internacionalización (i18n): ADRs/ADR-027-internacionalizacion-i18n.md
+  - 🤖 Registro de Prompts de IA: prompts.md
 
 # 4. Plugins
 plugins:
-  - search
+  - search:
+      lang:
+        - es
+        - en
 
 # 5. Extensiones Markdown Avanzadas
 markdown_extensions:
-  - admonition
+  # Estructura y semántica
+  - admonition                 # Bloques !!! note / warning / tip
+  - attr_list                  # Atributos HTML en Markdown
+  - md_in_html                 # Markdown dentro de HTML
+  - def_list                   # Listas de definición
+  - footnotes                  # Notas al pie
+  - tables                     # Tablas extendidas
+  - toc:
+      permalink: true          # Enlace ancla en cada heading
+      permalink_title: Enlace permanente a esta sección
+      toc_depth: 4
+
+  # Familia PyMdown (resaltado, fences, tabs, tareas...)
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.details
+  - pymdownx.caret
+  - pymdownx.tilde
+  - pymdownx.mark
+  - pymdownx.keys
+  - pymdownx.smartsymbols
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.snippets:
       check_paths: true
       base_path: docs
+
+# 6. Enlaces sociales / pie de página
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DevOpsUC3M-gr84-A/DevOps-gr84-A
+      name: Repositorio en GitHub
+  generator: false
