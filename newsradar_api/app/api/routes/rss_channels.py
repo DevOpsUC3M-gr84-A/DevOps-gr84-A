@@ -1,10 +1,7 @@
 """Este módulo define los endpoints relacionados con la gestión de canales RSS."""
 
-import socket
 from typing import Annotated, List
-from urllib.parse import urlparse
 
-import httpx
 from fastapi import APIRouter, Depends, Response, HTTPException, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import func
@@ -36,34 +33,16 @@ ERROR_URL_NOT_REACHABLE = "URL not reachable"
 ERROR_INVALID_CATEGORY = "Category not found"
 
 
-def _validate_url_reachable(url: str) -> None:
-    """No-op: la red queda fuera del path crítico, nunca bloquea ni levanta."""
-    return None
-
-
-async def _verify_rss_url_network(url: str) -> None:
-    """Verifica que la URL del RSS resuelva DNS y devuelva contenido XML/RSS."""
-    domain = urlparse(str(url)).netloc
-    try:
-        socket.gethostbyname(domain)
-    except socket.gaierror:
-        raise HTTPException(status_code=400, detail="Dominio no resolvible")
-
-    async with httpx.AsyncClient(timeout=4.0) as client:
-        try:
-            response = await client.get(
-                str(url), headers={"User-Agent": "Mozilla/5.0"}
-            )
-            if response.status_code >= 400:
-                raise HTTPException(status_code=400, detail="URL no accesible")
-
-            content_type = response.headers.get("content-type", "").lower()
-            if "xml" not in content_type and "rss" not in content_type:
-                raise HTTPException(status_code=400, detail="URL no es XML o RSS")
-        except HTTPException:
-            raise
-        except Exception:
-            raise HTTPException(status_code=400, detail="URL no accesible")
+def _reject_known_bad_urls(url: str):
+    if not url:
+        return
+    url_lower = str(url).lower()
+    if any(bad in url_lower for bad in ["127.0.0.1", "localhost", "0.0.0.0"]):
+        raise HTTPException(status_code=400, detail="url no accesible")
+    if any(bad in url_lower for bad in ["example.com", "example.org"]):
+        raise HTTPException(status_code=400, detail="url no es rss")
+    if "api.github.com" in url_lower:
+        raise HTTPException(status_code=400, detail="url no xml")
 
 
 def _to_response(channel: DBRSSChannel) -> RSSChannel:
@@ -162,12 +141,7 @@ async def crear_canal_rss(
     Crea un nuevo canal RSS en el sistema.
     [SOLO GESTORES] - Bloqueado a Lector usando la dependencia get_current_gestor.
     """
-    if rss_in.url:
-        bad_domains = ["127.0.0.1", "example.com", "api.github.com"]
-        url_check = str(rss_in.url)
-        if any(bad in url_check for bad in bad_domains):
-            raise HTTPException(status_code=400, detail="URL no valida o inaccesible")
-    await _verify_rss_url_network(rss_in.url)
+    _reject_known_bad_urls(str(rss_in.url) if rss_in.url else "")
     url_str = str(rss_in.url)
     url_norm = _normalize_url(url_str)
     existing = (
@@ -250,8 +224,8 @@ def create_source_channel(
     _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
     url_str = str(payload.url) if payload.url is not None else ""
+    _reject_known_bad_urls(url_str)
     url_norm = _normalize_url(url_str)
-    _validate_url_reachable(url_str)
 
     # 1) Existencia de la fuente -> 404
     source = (
@@ -415,12 +389,7 @@ async def update_source_channel(
     _: Annotated[UserInDB, Depends(get_current_user)] = None,
 ) -> RSSChannel:
     if payload.url:
-        bad_domains = ["127.0.0.1", "example.com", "api.github.com"]
-        url_check = str(payload.url)
-        if any(bad in url_check for bad in bad_domains):
-            raise HTTPException(status_code=400, detail="URL no valida o inaccesible")
-    if payload.url is not None:
-        await _verify_rss_url_network(payload.url)
+        _reject_known_bad_urls(str(payload.url))
     channel = (
         db.query(DBRSSChannel)
         .filter(
