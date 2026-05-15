@@ -238,8 +238,8 @@ def create_user_alert(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[UserInDB, Depends(get_current_gestor)] = None,
 ) -> Alert:
-    if payload.descriptors:
-        payload.descriptors = list(dict.fromkeys(payload.descriptors))
+    if payload.descriptors and len(payload.descriptors) != len(set(payload.descriptors)):
+        raise HTTPException(status_code=400, detail="Descriptores duplicados no permitidos")
 
     owner = db.query(DBUser).filter(DBUser.id == user_id).first()
     if owner is None:
