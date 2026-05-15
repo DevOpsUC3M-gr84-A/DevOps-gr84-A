@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useI18n } from "../i18n/i18n";
 import { Check, X, Inbox, Mail } from "lucide-react";
 import { CategoryCheckboxList } from "./CategoryCheckboxList";
+import { filterPaddingDescriptors } from "../utils/descriptors";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -179,7 +180,14 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     if (initialData) {
       setName(initialData.nombre);
-      setDescriptors(initialData.descriptores ?? "");
+      setDescriptors(
+        filterPaddingDescriptors(
+          (initialData.descriptores ?? "")
+            .split(",")
+            .map((d) => d.trim())
+            .filter((d) => d !== ""),
+        ).join(", "),
+      );
       // initialData may store categories as comma separated, array of strings, or array of objects
       const initCatsRaw = (initialData as any)?.categories ?? (initialData as any)?.categoria_iptc;
       let initCats: string[] = [];

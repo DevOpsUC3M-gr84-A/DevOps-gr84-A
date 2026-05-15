@@ -8,6 +8,7 @@ import type {
   AlertFormPayload,
   AlertTableItem,
 } from "../components/AlertForm";
+import { filterPaddingDescriptors } from "../utils/descriptors";
 
 interface AlertCategory extends AlertCategoryOption {
   id: number;
@@ -106,7 +107,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     return {
       id: item.id,
       nombre: item.name,
-      descriptores: (item.descriptors ?? []).join(", "),
+      descriptores: filterPaddingDescriptors(item.descriptors ?? []).join(", "),
       categories,
       information_sources_ids:
         item.information_sources_ids ?? item.rss_channels_ids ?? [],
