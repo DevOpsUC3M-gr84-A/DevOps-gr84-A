@@ -1209,6 +1209,7 @@ export const SourcesRss = () => {
 
   const renderChannelRow = (channel: RssChannelApiItem) => (
     <tr key={channel.id}>
+      <td>{channel.id}</td>
       <td>
         <a href={channel.url} target="_blank" rel="noreferrer">
           {channel.url}
@@ -1279,6 +1280,7 @@ export const SourcesRss = () => {
         <table className="sources-rss-table" aria-label={t("sourcesRss.channelsPanel")}>
           <thead>
             <tr>
+              <th>ID</th>
               <th>{t("sourcesRss.feedUrl")}</th>
               <th>{t("sourcesRss.iptcCategory")}</th>
               <th>{t("common.actions")}</th>
