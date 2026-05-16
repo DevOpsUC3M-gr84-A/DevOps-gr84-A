@@ -28,12 +28,21 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # dejamos que la API suba igualmente para poder diagnosticar en caliente.
     try:
         Base.metadata.create_all(bind=engine)
-        logger.info("Startup FastAPI completado: metadata SQLAlchemy cargada")
+        logger.info(
+            "Startup FastAPI completado: metadata SQLAlchemy cargada (tablas=%s)",
+            sorted(Base.metadata.tables.keys()),
+        )
     except Exception as exc:  # noqa: BLE001 - startup defensivo
         logger.exception("Fallo creando metadata SQLAlchemy: %s", exc)
 
     db = SessionLocal()
     try:
+        # Re-aseguramos create_all dentro de la sesión por si el primer intento
+        # falló silenciosamente o si los modelos se registraron tarde.
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Re-create_all defensivo falló: %s", exc)
         try:
             create_initial_admin(db)
         except Exception as exc:  # noqa: BLE001

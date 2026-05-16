@@ -890,6 +890,7 @@ select {
   background-color: var(--border-light);
   border-radius: var(--border-radius-md);
   padding: 3px;
+  margin-bottom: 1rem;
 }
 
 .lang-btn {

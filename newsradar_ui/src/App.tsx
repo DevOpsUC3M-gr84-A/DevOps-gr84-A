@@ -404,9 +404,16 @@ const ProtectedLayout = ({
   const { t } = useI18n();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [userName, setUserName] = useState("Usuario");
-  const [userRole, setUserRole] = useState(() => t("roles.lector"));
+  const [userRoleIds, setUserRoleIds] = useState<number[]>([]);
   const [userInitials, setUserInitials] = useState("US");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+
+  const roleIdsToLabel = (roleIds: number[]): string => {
+    if (roleIds.includes(3)) return t("roles.admin");
+    if (roleIds.includes(1)) return t("roles.gestor");
+    return t("roles.lector");
+  };
+  const userRole = roleIdsToLabel(userRoleIds);
 
   const sectionTitleByPath: Record<string, string> = {
     "/dashboard": t("nav.dashboard").toUpperCase(),
@@ -426,18 +433,6 @@ const ProtectedLayout = ({
     if (!token || !userId) {
       return;
     }
-
-    const roleIdToLabel = (roleIds: number[]): string => {
-      if (roleIds.includes(3)) {
-        return t("roles.admin");
-      }
-
-      if (roleIds.includes(1)) {
-        return t("roles.gestor");
-      }
-
-      return t("roles.lector");
-    };
 
     let cancelled = false;
 
@@ -475,7 +470,7 @@ const ProtectedLayout = ({
         );
 
         setUserName(fullName);
-        setUserRole(roleIdToLabel(parsedRoleIds));
+        setUserRoleIds(parsedRoleIds);
         setUserInitials(initials);
         setUserAvatar(data.avatar || null);
       } catch {

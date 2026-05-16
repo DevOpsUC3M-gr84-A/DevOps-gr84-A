@@ -45,16 +45,25 @@ interface ChannelCategorySource {
 
 const SLUG_TO_IPTC: Record<string, string> = {
   artes_cultura_entretenimiento_y_medios: "01000000",
+  arts_and_entertainment: "01000000",
   arts_culture_entertainment_and_media: "01000000",
   catastrofes_y_accidentes: "03000000",
+  ciencia: "13000000",
+  ciencia_y_tecnologia: "13000000",
+  clima_y_medio_ambiente: "06000000",
+  conflicto_guerra_y_paz: "16000000",
   crime_law_and_justice: "02000000",
   cultura: "01000000",
+  culturas: "01000000",
+  deporte: "15000000",
+  deportes: "15000000",
   disaster_and_accident: "03000000",
   economia: "04000000",
   economy_business_and_finance: "04000000",
   education: "05000000",
   environment: "06000000",
-  ciencia_y_tecnologia: "13000000",
+  environmental_issue: "06000000",
+  espana: "11000000",
   health: "07000000",
   human_interest: "08000000",
   interes_humano: "08000000",
@@ -62,37 +71,41 @@ const SLUG_TO_IPTC: Record<string, string> = {
   lifestyle_and_leisure: "10000000",
   mano_de_obra: "09000000",
   medio_ambiente: "06000000",
+  mercados: "04000000",
   meteorologia: "17000000",
+  nacional: "11000000",
+  natural: "06000000",
   policia_y_justicia: "02000000",
-  politics: "11000000",
   politica: "11000000",
+  politics: "11000000",
   religion_and_belief: "12000000",
   religion_y_culto: "12000000",
+  salud: "07000000",
   science_and_technology: "13000000",
   society: "14000000",
   sociedad: "14000000",
   sport: "15000000",
   sports: "15000000",
-  deporte: "15000000",
-  tecnologia: "04010000",
+  tecnologia: "13000000",
   unrest_conflicts_and_war: "16000000",
-  conflicto_guerra_y_paz: "16000000",
   weather: "17000000",
 };
 
-const normalizeIptcSlug = (raw: unknown): string => {
-  const value = (typeof raw === "string" ? raw : "").trim();
+const EUROPA_PRESS_CH_TO_IPTC: Record<string, string> = {
+  "136": "04000000",
+  "66": "15000000",
+  "63": "11000000",
+};
 
-  if (!value) {
-    return "";
-  }
+const stripDiacritics = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
 
-  if (/^\d{8}$/.test(value)) {
-    return value;
-  }
-
-  const withoutPrefix = value.replace(/^medtop:/i, "");
-  const normalized = withoutPrefix
+const normalizeSlugToken = (raw: string): string =>
+  raw
     .normalize("NFD")
     .replaceAll(/\p{Diacritic}/gu, "")
     .toLowerCase()
@@ -101,7 +114,157 @@ const normalizeIptcSlug = (raw: unknown): string => {
     .filter((char) => char !== "")
     .join("_");
 
-  return SLUG_TO_IPTC[normalized] ?? normalized;
+const STRIPPED_URL_EXTENSIONS = new Set([
+  "xml",
+  "rss",
+  "aspx",
+  "asp",
+  "html",
+  "htm",
+  "json",
+  "atom",
+  "php",
+]);
+
+const stripUrlExtension = (segment: string): string => {
+  const dotIdx = segment.lastIndexOf(".");
+  if (dotIdx <= 0) return segment;
+  const ext = segment.slice(dotIdx + 1).toLowerCase();
+  if (STRIPPED_URL_EXTENSIONS.has(ext)) {
+    return segment.slice(0, dotIdx);
+  }
+  return segment;
+};
+
+const SLUG_KEYS_BY_LENGTH = Object.keys(SLUG_TO_IPTC).sort(
+  (a, b) => b.length - a.length,
+);
+
+const lookupSlugCode = (slug: string): string | null => {
+  if (!slug) return null;
+
+  if (SLUG_TO_IPTC[slug]) {
+    return SLUG_TO_IPTC[slug];
+  }
+
+  for (const token of slug.split("_")) {
+    if (token && SLUG_TO_IPTC[token]) {
+      return SLUG_TO_IPTC[token];
+    }
+  }
+
+  for (const key of SLUG_KEYS_BY_LENGTH) {
+    if (key.length >= 5 && slug.includes(key)) {
+      return SLUG_TO_IPTC[key];
+    }
+  }
+
+  return null;
+};
+
+const extractIptcFromUrl = (rawUrl: string): string | null => {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+
+  const iptcParam = parsed.searchParams.get("iptc");
+  if (iptcParam) {
+    const normalized = normalizeSlugToken(iptcParam);
+    if (/^\d{8}$/.test(normalized)) return normalized;
+    if (/^\d{7}$/.test(normalized)) return `0${normalized}`;
+    const code = lookupSlugCode(normalized);
+    if (code) return code;
+  }
+
+  const chParam = parsed.searchParams.get("ch");
+  if (chParam && EUROPA_PRESS_CH_TO_IPTC[chParam]) {
+    return EUROPA_PRESS_CH_TO_IPTC[chParam];
+  }
+
+  const segments = parsed.pathname
+    .toLowerCase()
+    .split("/")
+    .filter((segment) => segment !== "");
+
+  for (const rawSegment of segments) {
+    const segment = stripUrlExtension(rawSegment);
+    const digitsOnly = segment.replace(/[^0-9]/g, "");
+    if (/^\d{8}$/.test(digitsOnly)) {
+      return digitsOnly;
+    }
+    if (/^\d{7}$/.test(digitsOnly)) {
+      return `0${digitsOnly}`;
+    }
+
+    const normalized = normalizeSlugToken(segment);
+    const code = lookupSlugCode(normalized);
+    if (code) return code;
+  }
+
+  return null;
+};
+
+const tryExtractIptcCode = (rawValue: string): string | null => {
+  const value = rawValue.trim();
+  if (!value) return null;
+  if (/^(null|none|undefined|sin\s*categoria|sin\s*categor[ií]a)$/i.test(value)) {
+    return null;
+  }
+
+  if (/^\d{8}$/.test(value)) return value;
+  if (/^\d{7}$/.test(value)) return `0${value}`;
+
+  if (/^https?:\/\//i.test(value)) {
+    const fromUrl = extractIptcFromUrl(value);
+    if (fromUrl) return fromUrl;
+  }
+
+  const iptcQuery = /[?&]iptc=([^&]+)/i.exec(value);
+  if (iptcQuery) {
+    const normalized = normalizeSlugToken(iptcQuery[1]);
+    if (/^\d{8}$/.test(normalized)) return normalized;
+    const code = lookupSlugCode(normalized);
+    if (code) return code;
+  }
+
+  const chQuery = /[?&]ch=(\d+)/i.exec(value);
+  if (chQuery && EUROPA_PRESS_CH_TO_IPTC[chQuery[1]]) {
+    return EUROPA_PRESS_CH_TO_IPTC[chQuery[1]];
+  }
+
+  const normalized = normalizeSlugToken(value.replace(/^medtop:/i, ""));
+  const codeFromSlug = lookupSlugCode(normalized);
+  if (codeFromSlug) return codeFromSlug;
+  if (/^\d{8}$/.test(normalized)) return normalized;
+
+  return null;
+};
+
+const resolveChannelIptcCode = (channel: ChannelCategorySource): string | null => {
+  const declared = [
+    channel.categoria_iptc,
+    channel.iptc_category,
+    channel.category,
+  ];
+  for (const candidate of declared) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      const code = tryExtractIptcCode(candidate);
+      if (code) return code;
+    }
+  }
+
+  const urls = [channel.url, channel.feed_url, channel.rss_url, channel.link];
+  for (const url of urls) {
+    if (typeof url === "string" && url.trim()) {
+      const code = tryExtractIptcCode(url);
+      if (code) return code;
+    }
+  }
+
+  return null;
 };
 
 const getChannelRawCategoryValue = (channel: ChannelCategorySource): string => {
@@ -132,34 +295,55 @@ const findChannelCategory = (
   channel: ChannelCategorySource,
   categories: CategoryApiItem[],
 ): CategoryApiItem | null => {
-  const directMatch = categories.find(
-    (item) => item.id === channel.category_id || item.id === channel.categoria_id,
-  );
+  const channelIdNumber =
+    channel.category_id != null ? Number(channel.category_id) : Number.NaN;
+  const channelLegacyIdNumber =
+    channel.categoria_id != null ? Number(channel.categoria_id) : Number.NaN;
+
+  const directMatch = categories.find((item) => {
+    const itemIdNumber = Number(item.id);
+    if (Number.isNaN(itemIdNumber)) {
+      return false;
+    }
+    return (
+      (!Number.isNaN(channelIdNumber) && itemIdNumber === channelIdNumber) ||
+      (!Number.isNaN(channelLegacyIdNumber) && itemIdNumber === channelLegacyIdNumber)
+    );
+  });
 
   if (directMatch) {
     return directMatch;
   }
 
-  let categoryValue = getChannelRawCategoryValue(channel);
-
-  if (!categoryValue || /^(null|none|undefined)$/i.test(categoryValue)) {
-    return null;
-  }
-
-  const urlMatch = /iptc=([^&]+)/i.exec(categoryValue);
-  if (urlMatch) {
-    categoryValue = urlMatch[1];
-  }
-
-  const normalizedCode = normalizeIptcSlug(categoryValue);
-
-  return (
-    categories.find(
+  const resolvedCode = resolveChannelIptcCode(channel);
+  if (resolvedCode) {
+    const matchedByCode = categories.find(
       (item) =>
-        item.iptc_code === normalizedCode ||
-        item.iptc_code === categoryValue.trim() ||
-        String(item.id) === normalizedCode,
-    ) ?? null
+        item.iptc_code === resolvedCode ||
+        Number(item.id) === Number(resolvedCode),
+    );
+    if (matchedByCode) {
+      return matchedByCode;
+    }
+  }
+
+  const rawValue = getChannelRawCategoryValue(channel);
+  if (!rawValue) return null;
+
+  const normalizedNameFromValue = stripDiacritics(rawValue.replace(/_/g, " "));
+  return (
+    categories.find((item) => {
+      if (item.name && stripDiacritics(item.name) === normalizedNameFromValue) {
+        return true;
+      }
+      if (
+        item.iptc_label &&
+        stripDiacritics(item.iptc_label) === normalizedNameFromValue
+      ) {
+        return true;
+      }
+      return false;
+    }) ?? null
   );
 };
 
@@ -219,8 +403,12 @@ const getChannelCategoryLabel = (
     return matched.iptc_label ?? matched.name;
   }
 
-  const fallbackCode = normalizeIptcSlug(getChannelRawCategoryValue(channel));
-  return IPTC_MAP[fallbackCode] ?? "Sin categoría";
+  const fallbackCode = resolveChannelIptcCode(channel);
+  if (fallbackCode && IPTC_MAP[fallbackCode]) {
+    return IPTC_MAP[fallbackCode];
+  }
+
+  return "Sin categoría";
 };
 
 const isHttpUrl = (value: string): boolean => {
@@ -500,21 +688,8 @@ export const SourcesRss = () => {
 
   const getChannelCategoryKey = useCallback(
     (ch: RssChannelApiItem) => {
-      const matched = findChannelCategory(ch, categories);
-
-      if (matched) {
-        return matched.id ? `id:${matched.id}` : `iptc:${matched.iptc_code ?? ""}`;
-      }
-
-      if (ch.category_id) {
-        return `id:${ch.category_id}`;
-      }
-
-      if (ch.iptc_category) {
-        return `iptc:${ch.iptc_category}`;
-      }
-
-      return "none";
+      const label = getChannelCategoryLabel(ch, categories);
+      return stripDiacritics(label) || "sin-categoria";
     },
     [categories],
   );
@@ -539,30 +714,18 @@ export const SourcesRss = () => {
   }, [getChannelCategoryKey, selectedCategories, selectedSource, selectedSourceChannels]);
 
   const uniqueCategories = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { key: string; label: string }>();
 
     selectedSourceChannels.forEach((ch) => {
-      const matched = findChannelCategory(ch, categories);
       const label = getChannelCategoryLabel(ch, categories);
+      const labelKey = stripDiacritics(label) || "sin-categoria";
 
-      let key: string;
-
-      if (matched) {
-        key = matched.id ? `id:${matched.id}` : `iptc:${matched.iptc_code ?? ""}`;
-      } else if (ch.category_id) {
-        key = `id:${ch.category_id}`;
-      } else if (ch.iptc_category) {
-        key = `iptc:${ch.iptc_category}`;
-      } else {
-        key = "none";
-      }
-
-      if (!map.has(key)) {
-        map.set(key, label);
+      if (!map.has(labelKey)) {
+        map.set(labelKey, { key: labelKey, label });
       }
     });
 
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+    return Array.from(map.values());
   }, [selectedSourceChannels, categories]);
 
   const closeModal = () => {
@@ -621,9 +784,43 @@ export const SourcesRss = () => {
         ),
       ]);
 
+      const dedupedCategoriesMap = new Map<string, CategoryApiItem>();
+      for (const rawCategory of categoriesData) {
+        const numericId = Number(rawCategory.id);
+        if (!Number.isFinite(numericId)) {
+          continue;
+        }
+        const normalizedCategory: CategoryApiItem = {
+          ...rawCategory,
+          id: numericId,
+        };
+        const dedupeKey =
+          normalizedCategory.iptc_code?.toString().trim() ||
+          stripDiacritics(normalizedCategory.name ?? "") ||
+          String(numericId);
+        if (!dedupedCategoriesMap.has(dedupeKey)) {
+          dedupedCategoriesMap.set(dedupeKey, normalizedCategory);
+        }
+      }
+      const dedupedCategories = Array.from(dedupedCategoriesMap.values());
+
+      const visibleChannels = channelsData.filter((channel) => {
+        const urlCandidates = [
+          channel.url,
+          (channel as { feed_url?: string }).feed_url,
+          (channel as { rss_url?: string }).rss_url,
+          (channel as { link?: string }).link,
+        ];
+        return !urlCandidates.some(
+          (value) =>
+            typeof value === "string" &&
+            (value.includes("localhost/seed/") || /(^|[/?&])seed\//i.test(value)),
+        );
+      });
+
       setSources(sourcesData);
-      setChannels(channelsData);
-      setCategories(categoriesData);
+      setChannels(visibleChannels);
+      setCategories(dedupedCategories);
       console.log("Successfully loaded data:", { sourcesData, channelsData, categoriesData });
     } catch (error) {
       console.error("Failed to load sources and channels:", error);
@@ -889,8 +1086,10 @@ export const SourcesRss = () => {
     const trimmedUrl = channelForm.url.trim();
     const categoryIdValue = channelBeingEdited ? tempCategoryId : channelForm.categoryId;
     const selectedCategoryId = Number(categoryIdValue);
-    const source = sources.find((item) => item.id === sourceId);
-    const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
+    const source = sources.find((item) => Number(item.id) === Number(sourceId));
+    const selectedCategory = categories.find(
+      (item) => Number(item.id) === Number(selectedCategoryId),
+    );
 
     if (!Number.isInteger(sourceId) || !source) {
       setFeedback({
@@ -924,13 +1123,13 @@ export const SourcesRss = () => {
     const payload: Record<string, string | number> = channelBeingEdited
       ? {
           url: trimmedUrl,
-          category_id: selectedCategoryId,
+          category_id: Number(selectedCategoryId),
           iptc_category: mappedIptcCategory,
         }
       : {
           media_name: source.name,
           url: trimmedUrl,
-          category_id: selectedCategoryId,
+          category_id: Number(selectedCategoryId),
           iptc_category: mappedIptcCategory,
         };
 
@@ -1010,6 +1209,7 @@ export const SourcesRss = () => {
 
   const renderChannelRow = (channel: RssChannelApiItem) => (
     <tr key={channel.id}>
+      <td>{channel.id}</td>
       <td>
         <a href={channel.url} target="_blank" rel="noreferrer">
           {channel.url}
@@ -1080,6 +1280,7 @@ export const SourcesRss = () => {
         <table className="sources-rss-table" aria-label={t("sourcesRss.channelsPanel")}>
           <thead>
             <tr>
+              <th>ID</th>
               <th>{t("sourcesRss.feedUrl")}</th>
               <th>{t("sourcesRss.iptcCategory")}</th>
               <th>{t("common.actions")}</th>

@@ -65,7 +65,12 @@ class TestRssSchemas:
         assert schema.iptc_category == CategoriaIPTC.ECONOMIA
 
     def test_rss_channel_response_schema(self):
-        """Valida el esquema de respuesta de canal RSS"""
+        """Valida el esquema de respuesta de canal RSS.
+
+        El contrato OpenAPI ya no expone `media_name` ni `iptc_category` en la
+        respuesta (ver app/schemas/rss.py): sólo se serializan `id`, `url`,
+        `category_id` y `created_at`. Los campos extra se ignoran.
+        """
         data = {
             "media_name": "BBC",
             "url": "https://bbc.com/rss.xml",
@@ -76,8 +81,10 @@ class TestRssSchemas:
         }
         schema = RSSChannelResponse(**data)
         assert schema.id == 10
-        assert schema.media_name == "BBC"
-        assert schema.iptc_category == CategoriaIPTC.CIENCIA
+        assert str(schema.url) == "https://bbc.com/rss.xml"
+        assert schema.category_id == 3
+        assert not hasattr(schema, "media_name")
+        assert not hasattr(schema, "iptc_category")
 
 
 @pytest.mark.unit

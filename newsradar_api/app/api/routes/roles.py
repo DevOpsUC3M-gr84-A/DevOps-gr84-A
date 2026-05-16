@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user import User as DBUser, UserRole
 from app.schemas.user import UserInDB
-from app.stores.memory import roles_store, users_store
+from app.stores.memory import roles_store, users_store, user_role_ids_store
 from app.utils.deps import get_current_user
 from app.schemas.roles import Role, RoleCreate, RoleUpdate
 
@@ -105,14 +105,18 @@ def delete_role(
 
     role_name_lower = (role.name or "").strip().lower()
 
-    # 1) Memoria: usuarios sincronizados con role_ids.
-    memory_count = sum(
-        1 for user in users_store.values() if role_id in user.role_ids
+    # 1) user_role_ids_store: role_ids reales asignados a usuarios.
+    custom_count = sum(
+        1 for rids in user_role_ids_store.values() if role_id in rids
     )
 
-    # 2) BD: mapear el nombre del rol a UserRole (gestor/lector/admin) y, si no
-    #    coincide, mapear por role_id como fallback. Contar usuarios en ambos
-    #    casos por separado y sumar.
+    # 2) Memoria legacy: usuarios cuyo role_id coincide y no están en user_role_ids_store.
+    memory_count = sum(
+        1 for uid, user in users_store.items()
+        if role_id in user.role_ids and uid not in user_role_ids_store
+    )
+
+    # 3) BD: sólo para roles del sistema (IDs 1/2/3 o nombres gestor/lector/admin).
     name_to_enum = {
         "gestor": UserRole.GESTOR,
         "lector": UserRole.LECTOR,
@@ -129,8 +133,6 @@ def delete_role(
             .filter(DBUser.role == db_role)
             .count()
         )
-        # 3) Búsqueda extra por string del nombre (defensiva por si el enum se
-        #    almacena como string en la columna).
         if db_count == 0:
             db_count = (
                 db.query(DBUser)
@@ -138,9 +140,9 @@ def delete_role(
                 .count()
             )
 
-    total = memory_count + db_count
+    total = custom_count + memory_count + db_count
     print(f"DEBUG: Usuarios encontrados con rol '{role.name}' (id={role_id}): "
-          f"memoria={memory_count}, db={db_count}, total={total}")
+          f"custom_store={custom_count}, memoria={memory_count}, db={db_count}, total={total}")
 
     if total > 0:
         raise HTTPException(status_code=409, detail=ERROR_ROLE_IN_USE)

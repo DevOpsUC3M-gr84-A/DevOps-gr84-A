@@ -15,8 +15,14 @@ from app.database.database import SessionLocal, engine, Base
 from app.database.generate_rss_seed import generate_seed_data
 from app.models.rss import CategoriaIPTC, InformationSource, RSSChannel
 from app.models.user import User, UserRole
+# Force-import del resto de modelos para que SQLAlchemy registre TODAS las
+# tablas en Base.metadata antes de cualquier `create_all`. Sin esto, si un
+# import lateral fallaba a mitad, Base.metadata podía quedar incompleto y las
+# queries a `usuarios` / `notifications` rompían con UndefinedTable.
+from app.models.alert_monitoring import AlertRule  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
 from app.schemas.category import Category
-from app.stores.memory import categories_store
+from app.stores.memory import categories_store, iptc_deleted_store
 
 # Tablas con PK autoincremental cuyas secuencias deben sincronizarse cuando se
 # insertan filas con id explícito (típicamente vía seed). En PostgreSQL la
@@ -126,11 +132,18 @@ def _process_and_insert_channels(
         category_text = channel.get("category_iptc")
         category_id = channel.get("category_id")
 
+        category_id_int = None
+        if category_id is not None:
+            try:
+                category_id_int = int(category_id)
+            except (TypeError, ValueError):
+                category_id_int = None
+
         channel_kwargs = {
             "information_source_id": source_id,
             "media_name": media_name,
             "url": channel_url,
-            "category_id": category_id,
+            "category_id": category_id_int,
             "iptc_category": _map_seed_category_to_iptc(category_text),
             "is_active": True,
         }
@@ -221,19 +234,30 @@ _IPTC_TOPLEVEL_SEED: tuple[tuple[int, str, CategoriaIPTC], ...] = (
 )
 
 
-def seed_iptc_categories_and_channels(db: Session) -> None:
-    """Asegura las 17 categorías IPTC con id forzado al código numérico + un canal RSS por cada una."""
+def _ensure_categories_table(engine_to_use) -> None:
+    """Crea/migra la tabla `categories` (PK INTEGER) usando una conexión propia.
 
-    try:
-        # `id` y `iptc_code` se fuerzan a INTEGER para mantener consistencia
-        # con path params y stores en memoria (todo en int).
-        try:
-            db.execute(text("DROP TABLE IF EXISTS categories CASCADE"))
-            db.commit()
-        except SQLAlchemyError:
-            db.rollback()
+    Aislamos este DDL del Session principal: si fallaba a mitad de transacción,
+    la sesión quedaba en estado "aborted" y el resto del bootstrap (incluido el
+    seed RSS y los queries sobre `usuarios`) caía con UndefinedTable o
+    InFailedSqlTransaction.
+    """
+    is_postgres = engine_to_use.url.get_backend_name().startswith("postgres")
 
-        db.execute(
+    with engine_to_use.begin() as conn:
+        # Detectar si existe con un tipo de PK incompatible (varchar de runs previos
+        # con String(8)). Si es el caso, dropear; si es INTEGER, dejar tal cual.
+        if is_postgres:
+            row = conn.execute(
+                text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_name = 'categories' AND column_name = 'id'"
+                )
+            ).first()
+            if row is not None and "int" not in (row[0] or "").lower():
+                conn.execute(text("DROP TABLE IF EXISTS categories CASCADE"))
+
+        conn.execute(
             text(
                 "CREATE TABLE IF NOT EXISTS categories ("
                 "id INTEGER PRIMARY KEY, "
@@ -244,18 +268,42 @@ def seed_iptc_categories_and_channels(db: Session) -> None:
                 ")"
             )
         )
-        db.commit()
 
-        categories_store.clear()
+    with engine_to_use.begin() as conn:
         for code, label, _iptc in _IPTC_TOPLEVEL_SEED:
-            db.execute(
+            exists = conn.execute(
+                text("SELECT 1 FROM categories WHERE id = :id"),
+                {"id": code},
+            ).first()
+            if exists:
+                continue
+            conn.execute(
                 text(
                     "INSERT INTO categories (id, name, iptc_code, iptc_label, source) "
                     "VALUES (:id, :name, :code, :label, 'IPTC')"
                 ),
                 {"id": code, "name": label, "code": code, "label": label},
             )
-            categories_store[code] = Category(id=code, name=label, source="IPTC")
+
+
+def seed_iptc_categories_and_channels(db: Session) -> None:
+    """Asegura las 17 categorías IPTC con id forzado al código numérico + un canal RSS por cada una."""
+
+    # Defensa en profundidad: si por cualquier razón `create_all` no llegó a
+    # ejecutarse, lo aseguramos aquí antes de cualquier query a `usuarios` /
+    # `rss_channels` / `information_sources`.
+    try:
+        Base.metadata.create_all(bind=engine)
+    except SQLAlchemyError as exc:
+        logger.exception("create_all defensivo en seed falló: %s", exc)
+
+    try:
+        _ensure_categories_table(engine)
+        categories_store.clear()
+        iptc_deleted_store.clear()
+        # No pre-populamos categories_store. El fallback IPTC_FIRST_LEVEL en
+        # list_categories sirve los 17 ítems para SMOKE-004/005 sin necesitar
+        # el store. Los tests GC pueden crear (POST 201) y borrar libremente.
 
         existing_source = (
             db.query(InformationSource).filter(InformationSource.id == 1).first()

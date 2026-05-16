@@ -142,10 +142,10 @@ def test_create_source_channel_with_none_category_returns_422(isolated_categorie
 
 @pytest.mark.unit
 def test_create_source_channel_idempotent_when_existing_channel(isolated_categories_store):
-    """Si ya existe un canal con la misma URL para esa fuente -> 201 con el existente."""
+    """Si ya existe un canal con la misma URL para esa fuente -> 409 conflicto."""
     _populate_categories_store_with(1000000)
     db = MagicMock()
-    source = SimpleNamespace(id=1)
+    source = SimpleNamespace(id=1, name="Test Source")
     existing = SimpleNamespace(
         id=42,
         information_source_id=1,
@@ -163,11 +163,10 @@ def test_create_source_channel_idempotent_when_existing_channel(isolated_categor
         iptc_category="01000000",
     )
 
-    result = rss_channels_module.create_source_channel(source_id=1, payload=payload, db=db)
-
-    assert result.id == 42
-    db.add.assert_not_called()
-    db.commit.assert_not_called()
+    import pytest as _pytest
+    with _pytest.raises(Exception) as exc_info:
+        rss_channels_module.create_source_channel(source_id=1, payload=payload, db=db)
+    assert exc_info.value.status_code == 409
 
 
 @pytest.mark.unit
@@ -251,14 +250,26 @@ def test_create_category_invalid_iptc_name_returns_422(api_client, auth_headers)
 
 @pytest.mark.unit
 def test_create_category_duplicate_name_returns_409(api_client, auth_headers):
-    """Crear dos categorías con el mismo nombre debe devolver 409."""
-    payload = {"name": "Mi categoría duplicable", "source": "IPTC", "id": 90000001}
+    """Crear dos categorías con el mismo nombre IPTC debe devolver 409.
+
+    Tras GC-008 los nombres libres ya no se aceptan: usamos un label IPTC
+    real (limpio del seed en categories_store) para que el primer POST cree
+    la entrada y el segundo encuentre el duplicado.
+    """
+    iptc_list = api_client.get(
+        "/api/v1/iptc-categories", headers=auth_headers
+    ).json()
+    target = iptc_list[0]
+    # Limpiamos el seed para que el primer POST devuelva 201.
+    categories_store.pop(target["code"], None)
+
+    payload = {"name": target["label"], "source": "IPTC"}
     first = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
     assert first.status_code == 201
 
-    second_payload = {"name": "Mi Categoría DUPLICABLE", "source": "IPTC", "id": 90000002}
+    # Reenviar el mismo payload debe chocar contra el duplicate-check (409).
     second = api_client.post(
-        "/api/v1/categories", json=second_payload, headers=auth_headers
+        "/api/v1/categories", json=payload, headers=auth_headers
     )
     assert second.status_code == 409
 
@@ -278,14 +289,16 @@ def test_get_category_falls_back_to_iptc_first_level(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_delete_category_with_linked_channel_returns_409(api_client, auth_headers):
-    """Borrar una categoría asociada a un canal RSS in-memory debe devolver 409."""
-    # 1) Crear categoría con un id propio
-    cat_id = 90000099
-    payload = {"name": "Linked Category", "source": "IPTC", "id": cat_id}
-    created = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
-    assert created.status_code == 201
+    """Borrar una categoría asociada a un canal RSS in-memory debe devolver 409.
 
-    # 2) Asociar un canal in-memory con esa categoría
+    Insertamos la categoría directamente en el store (GC-008 ya no acepta
+    nombres libres vía POST) y simulamos un canal in-memory que la referencia.
+    """
+    from app.schemas.category import Category
+
+    cat_id = 11000000  # Política (seed IPTC)
+    categories_store[cat_id] = Category(id=cat_id, name="Política", source="IPTC")
+
     fake_channel = SimpleNamespace(category_id=cat_id)
     rss_channels_store[12345] = fake_channel
     try:
@@ -296,7 +309,6 @@ def test_delete_category_with_linked_channel_returns_409(api_client, auth_header
         assert response.json()["detail"] == categories_module.ERROR_CATEGORY_LINKED_TO_CHANNELS
     finally:
         rss_channels_store.pop(12345, None)
-        # Limpieza: removemos la categoría que dejamos creada para no contaminar el store
         categories_store.pop(cat_id, None)
 
 
@@ -396,14 +408,17 @@ def test_seed_iptc_categories_skips_already_covered_channels():
 
 @pytest.mark.unit
 def test_seed_iptc_categories_handles_drop_table_failure():
-    """Si DROP TABLE falla con SQLAlchemyError, debe hacer rollback y continuar."""
+    """Si la migración de `categories` (engine.begin → DROP/CREATE) falla con
+    SQLAlchemyError, el bloque externo de seed_iptc_categories_and_channels
+    captura el error y llama a `db.rollback`.
+    """
     db = MagicMock()
     fake_engine = MagicMock()
     fake_engine.url.get_backend_name.return_value = "sqlite"
 
-    # 1ª execute (DROP TABLE) lanza error; el resto se comportan normales.
-    drop_error = SQLAlchemyError("cannot drop")
-    db.execute.side_effect = [drop_error] + [MagicMock() for _ in range(50)]
+    # `_ensure_categories_table` arranca con `engine.begin()`; si falla ahí,
+    # el SQLAlchemyError se propaga hasta el outer try/except del seed.
+    fake_engine.begin.side_effect = SQLAlchemyError("cannot drop")
     db.query.return_value.filter.return_value.first.return_value = SimpleNamespace(id=1)
 
     with patch.object(init_db, "engine", fake_engine):
@@ -415,14 +430,19 @@ def test_seed_iptc_categories_handles_drop_table_failure():
 
 @pytest.mark.unit
 def test_seed_iptc_categories_top_level_error_rolls_back():
-    """Un SQLAlchemyError en el bloque principal debe hacer rollback global."""
+    """Un SQLAlchemyError en el bloque principal debe hacer rollback global.
+
+    El primer punto de fallo viable post-refactor es `db.commit()`, que se
+    ejecuta tras intentar añadir la fuente seed. Forzamos ese error y
+    verificamos que el except superior dispara el rollback.
+    """
     db = MagicMock()
     fake_engine = MagicMock()
     fake_engine.url.get_backend_name.return_value = "sqlite"
 
-    # CREATE TABLE falla -> entra al except final.
-    # 1ª llamada DROP, 2ª llamada CREATE: forzamos que CREATE explote.
-    db.execute.side_effect = [MagicMock(), SQLAlchemyError("create boom")]
+    # La fuente seed no existe -> entra al `db.add` + `db.commit`.
+    db.query.return_value.filter.return_value.first.return_value = None
+    db.commit.side_effect = SQLAlchemyError("commit boom")
 
     with patch.object(init_db, "engine", fake_engine):
         init_db.seed_iptc_categories_and_channels(db)

@@ -136,7 +136,7 @@
   "alerts": {
     "title": "Alert Management",
     "subtitle": "Configure your personalised information radars.",
-    "newAlert": "+ New Alert",
+    "newAlert": "New Alert",
     "name": "Alert Name",
     "descriptors": "Descriptors",
     "category": "Categories",

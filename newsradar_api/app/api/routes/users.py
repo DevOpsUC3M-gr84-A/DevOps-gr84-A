@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user import User as DBUser
 from app.schemas.user import User, UserCreate, UserUpdate, UserInDB, UserListItem, UpdateUserRoleRequest
-from app.stores.memory import users_store, alerts_store, notifications_store
+from app.stores.memory import users_store, alerts_store, notifications_store, user_role_ids_store
 from app.services.user_service import (
     create_db_user,
     update_db_user,
@@ -76,11 +76,13 @@ def create_user(
 
     db.refresh(user_db)
     sync_memory_user(user_db)
+
+    # Persistir los role_ids reales (personalizados) del payload
+    actual_role_ids = list(payload.role_ids) if payload.role_ids else [1]
+    user_role_ids_store[user_db.id] = actual_role_ids
+
     user_schema = to_user_schema(user_db)
-    if payload.role_ids:
-        user_schema.role_ids = list(payload.role_ids)
-    else:
-        user_schema.role_ids = [1]
+    user_schema.role_ids = actual_role_ids
     print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
     return user_schema
 
@@ -100,6 +102,9 @@ def get_user(
 
     sync_memory_user(user)
     user_schema = to_user_schema(user)
+    # Si tenemos role_ids reales guardados (personalizados), usarlos
+    if user_id in user_role_ids_store:
+        user_schema.role_ids = user_role_ids_store[user_id]
     print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
     return user_schema
 
@@ -134,7 +139,11 @@ def update_user(
     user_schema = to_user_schema(updated)
     payload_role_ids = data.get("role_ids")
     if payload_role_ids:
+        # Actualizar el store de role_ids personalizados
+        user_role_ids_store[user_id] = list(payload_role_ids)
         user_schema.role_ids = list(payload_role_ids)
+    elif user_id in user_role_ids_store:
+        user_schema.role_ids = user_role_ids_store[user_id]
     print(f"DEBUG: Devolviendo usuario con role_ids: {user_schema.role_ids}")
     return user_schema
 
@@ -168,6 +177,7 @@ def delete_user(
     db.delete(user)
     db.commit()
     users_store.pop(user_id, None)
+    user_role_ids_store.pop(user_id, None)
 
 
 @users_router.patch(

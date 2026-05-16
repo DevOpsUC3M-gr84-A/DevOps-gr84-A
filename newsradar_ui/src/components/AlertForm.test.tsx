@@ -298,7 +298,11 @@ describe("AlertForm Component", () => {
       screen.getByRole("checkbox", { name: /Ciencia y tecnología/i }),
     );
     fireEvent.change(inputCron, { target: { value: "*/15 * * * *" } });
-    fireEvent.change(inputFuentes, { target: { value: "Reuters, BBC" } });
+    // El form ahora descarta texto libre y sólo conserva IDs numéricos enteros
+    // (vía Number() + isInteger). Pasamos un mix sucio para verificar el filtro.
+    fireEvent.change(inputFuentes, {
+      target: { value: " 2 , Reuters, 5 , BBC, 9.5 " },
+    });
 
     // String sucio: con espacios extra y comas seguidas
     fireEvent.change(inputDesc, {
@@ -320,7 +324,9 @@ describe("AlertForm Component", () => {
               iptc_code: "13000000",
             }),
           ],
-          information_sources_ids: ["Reuters", "BBC"],
+          // Tras Number()/isInteger, sólo quedan los IDs numéricos enteros
+          // ("Reuters"/"BBC"/"9.5" se descartan en el filtro del form).
+          information_sources_ids: ["2", "5"],
           cron_expression: "*/15 * * * *",
         }),
       );
@@ -635,5 +641,71 @@ describe("AlertForm Component", () => {
     expect(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS")).toHaveValue(
       "",
     );
+  });
+
+  test("descarta IDs no enteros del campo de fuentes (Number()/isInteger)", async () => {
+    render(
+      <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Filtro Numérico" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
+      target: { value: "IA" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Sociedad/i }));
+    fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
+      target: { value: "0 * * * *" },
+    });
+    // Mezcla: enteros válidos + decimales + texto + espacios.
+    fireEvent.change(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters"), {
+      target: { value: " 12, 3.5, abc , 7 , , NaN " },
+    });
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByText("GUARDAR ALERTA"));
+    });
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          information_sources_ids: ["12", "7"],
+          rss_channels_ids: ["12", "7"],
+        }),
+      );
+    });
+  });
+
+  test("si todas las fuentes son texto, el array queda vacío sin romper el submit", async () => {
+    render(
+      <AlertForm isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Ej: TENDENCIAS TECH 2026"), {
+      target: { value: "Solo texto" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: IA, ROBÓTICA, CHIPS"), {
+      target: { value: "IA" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Sociedad/i }));
+    fireEvent.change(screen.getByLabelText("EXPRESION CRON"), {
+      target: { value: "0 * * * *" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Ej: ElPais, BBC, Reuters"), {
+      target: { value: "ElPais, BBC" },
+    });
+
+    await React.act(async () => {
+      fireEvent.click(screen.getByText("GUARDAR ALERTA"));
+    });
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          information_sources_ids: [],
+        }),
+      );
+    });
   });
 });

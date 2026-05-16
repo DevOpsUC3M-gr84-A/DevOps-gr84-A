@@ -8,6 +8,7 @@ import type {
   AlertFormPayload,
   AlertTableItem,
 } from "../components/AlertForm";
+import { filterPaddingDescriptors } from "../utils/descriptors";
 
 interface AlertCategory extends AlertCategoryOption {
   id: number;
@@ -48,6 +49,40 @@ interface ApiAlertPayload {
   notify_inbox: boolean;
   notify_email: boolean;
 }
+
+const IPTC_LABELS_FALLBACK: Record<string, string> = {
+  "01000000": "Artes, cultura, entretenimiento y medios",
+  "02000000": "Policía y justicia",
+  "03000000": "Catástrofes y accidentes",
+  "04000000": "Economía, negocios y finanzas",
+  "05000000": "Educación",
+  "06000000": "Medio ambiente",
+  "07000000": "Salud",
+  "08000000": "Interés humano, animales, insólito",
+  "09000000": "Mano de obra",
+  "10000000": "Estilo de vida y tiempo libre",
+  "11000000": "Política",
+  "12000000": "Religión y culto",
+  "13000000": "Ciencia y tecnología",
+  "14000000": "Sociedad",
+  "15000000": "Deporte",
+  "16000000": "Conflicto, guerra y paz",
+  "17000000": "Meteorología",
+};
+
+const sanitizeNumericIds = (raw: unknown): string[] => {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const entry of raw) {
+    if (entry === null || entry === undefined) continue;
+    const trimmed = String(entry).trim();
+    if (trimmed === "") continue;
+    const numeric = Number(trimmed);
+    if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) continue;
+    out.push(String(numeric));
+  }
+  return out;
+};
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -106,7 +141,7 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
     return {
       id: item.id,
       nombre: item.name,
-      descriptores: (item.descriptors ?? []).join(", "),
+      descriptores: filterPaddingDescriptors(item.descriptors ?? []).join(", "),
       categories,
       information_sources_ids:
         item.information_sources_ids ?? item.rss_channels_ids ?? [],
@@ -342,18 +377,44 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
           )
       : [];
 
-    const apiCategories: ApiAlertCategoryItem[] = categoriesArray.map(
+    const apiCategoriesPrimary: ApiAlertCategoryItem[] = categoriesArray.map(
       (category) => ({
         code: category.iptc_code,
         label: category.name,
       }),
     );
 
-    const informationSourcesIds = Array.isArray(alertData.information_sources_ids)
-      ? alertData.information_sources_ids
-          .map((source) => String(source).trim())
-          .filter((source) => source !== "")
+    // Fallback seguro: si categoryOptions aún no había cargado y la lista
+    // primaria queda vacía pero el formulario sí seleccionó códigos IPTC,
+    // los reconstruimos con el mapa estático para no enviar `categories: []`
+    // ni strings sueltos (causa habitual del 422 `model_attributes_type`).
+    const rawCategories = Array.isArray(alertData.categories)
+      ? (alertData.categories as Array<AlertCategoryPayload | string>)
       : [];
+    const apiCategoriesFallback: ApiAlertCategoryItem[] = rawCategories
+      .map((entry): ApiAlertCategoryItem | null => {
+        if (entry === null || entry === undefined) return null;
+        if (typeof entry === "string") {
+          const code = entry.trim();
+          const label = IPTC_LABELS_FALLBACK[code];
+          if (!code || !label) return null;
+          return { code, label };
+        }
+        const code = String(entry.iptc_code ?? "").trim();
+        const label =
+          String(entry.name ?? "").trim() || IPTC_LABELS_FALLBACK[code] || "";
+        if (!code || !label) return null;
+        return { code, label };
+      })
+      .filter((item): item is ApiAlertCategoryItem => item !== null);
+
+    const apiCategories: ApiAlertCategoryItem[] =
+      apiCategoriesPrimary.length > 0 ? apiCategoriesPrimary : apiCategoriesFallback;
+
+    const informationSourcesIds = sanitizeNumericIds(
+      alertData.information_sources_ids,
+    );
+    const rssChannelsIds = sanitizeNumericIds(alertData.rss_channels_ids);
 
     const payload: ApiAlertPayload = {
       name: alertData.name,
@@ -364,9 +425,12 @@ export const AlertsManagement = ({ onLogout }: { onLogout: () => void }) => {
       notify_email: alertData.notify_email,
     };
 
-    // Always include the sources/channels fields (empty array if none)
+    // Always include the sources/channels fields (empty array if none).
+    // Solo enteros válidos llegan al backend: el campo de texto libre que el
+    // usuario pueda haber rellenado con nombres ("ElPais", "BBC") se descarta.
     payload.information_sources_ids = informationSourcesIds;
-    payload.rss_channels_ids = informationSourcesIds;
+    payload.rss_channels_ids =
+      rssChannelsIds.length > 0 ? rssChannelsIds : informationSourcesIds;
 
     console.log("DATOS A ENVIAR:", payload);
 

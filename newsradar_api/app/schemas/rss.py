@@ -34,12 +34,15 @@ class RSSChannelUpdate(BaseModel):
     iptc_category: Optional[CategoriaIPTC] = None
 
 
-class RSSChannelResponse(RSSChannelCreate):
+class RSSChannelResponse(BaseModel):
     """
     Esquema de respuesta para un canal RSS, incluye campos adicionales como ID y fecha de creación.
+    Sólo expone campos definidos en el contrato OpenAPI (sin iptc_category ni media_name).
     """
 
     id: int
+    url: HttpUrl
+    category_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -49,8 +52,6 @@ class RSSChannelResponse(RSSChannelCreate):
 class RSSChannel(RSSChannelBase):
     id: int
     information_source_id: int
-    media_name: Optional[str] = None
-    iptc_category: Optional[CategoriaIPTC] = None
 
     class Config:
         from_attributes = True

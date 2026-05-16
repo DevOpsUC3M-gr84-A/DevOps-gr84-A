@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -5,6 +6,13 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
+
+
+def _await(coro):
+    """`update_source_channel` se convirtió en async tras la refactorización
+    docker/loopback. Helper que ejecuta la corutina y devuelve el resultado
+    sin obligar a que cada test sea async."""
+    return asyncio.run(coro)
 
 from app.api.routes.rss_channels import (
     create_source_channel,
@@ -123,22 +131,22 @@ def test_update_source_channel_not_found_returns_404():
     payload.model_dump.return_value = {"url": "https://updated.test/rss", "category_id": 1}
 
     with pytest.raises(HTTPException) as exc_info:
-        update_source_channel(source_id=1, channel_id=999, payload=payload, db=db)
+        _await(update_source_channel(source_id=1, channel_id=999, payload=payload, db=db))
 
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.unit
 def test_update_source_channel_integrity_conflict_returns_409():
-    channel = MagicMock(id=1, information_source_id=1, url="https://old.test/rss", category_id=1)
+    channel = MagicMock(id=1, information_source_id=1, url="https://old.test/rss", category_id=1000000)
     db = MagicMock()
     db.query.return_value.filter.return_value.first.return_value = channel
     db.commit.side_effect = IntegrityError("statement", "params", Exception("orig"))
     payload = MagicMock()
-    payload.model_dump.return_value = {"url": "https://updated.test/rss", "category_id": 2}
+    payload.model_dump.return_value = {"url": "https://updated.test/rss", "category_id": 1000000}
 
     with pytest.raises(HTTPException) as exc_info:
-        update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
+        _await(update_source_channel(source_id=1, channel_id=1, payload=payload, db=db))
 
     assert exc_info.value.status_code == 409
     db.rollback.assert_called_once()
@@ -159,9 +167,12 @@ def test_update_source_channel_updates_iptc_category_branch():
     payload = MagicMock()
     payload.model_dump.return_value = {"iptc_category": "04010000"}
 
-    result = update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
+    result = _await(update_source_channel(source_id=1, channel_id=1, payload=payload, db=db))
 
-    assert result.iptc_category == "04010000"
+    # El esquema RSSChannel de respuesta no expone iptc_category, así que
+    # verificamos el efecto sobre el canal mutado (la rama del if se ejecutó).
+    assert channel.iptc_category == "04010000"
+    assert result.id == 1
     db.commit.assert_called_once()
 
 
@@ -278,7 +289,7 @@ def test_get_update_delete_source_channel_additional_branches():
         id=1,
         information_source_id=1,
         url="https://old.test/rss",
-        category_id=1,
+        category_id=1000000,
         iptc_category="04010000",
         media_name="m1",
     )
@@ -289,9 +300,9 @@ def test_get_update_delete_source_channel_additional_branches():
     assert got.id == 1
 
     payload = MagicMock()
-    payload.model_dump.return_value = {"url": "https://new.test/rss", "category_id": 2}
-    updated = update_source_channel(source_id=1, channel_id=1, payload=payload, db=db)
-    assert updated.category_id == 2
+    payload.model_dump.return_value = {"url": "https://new.test/rss", "category_id": 1000000}
+    updated = _await(update_source_channel(source_id=1, channel_id=1, payload=payload, db=db))
+    assert updated.category_id == 1000000
 
     delete_source_channel(source_id=1, channel_id=1, db=db)
     db.delete.assert_called_once_with(channel)

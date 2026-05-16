@@ -25,7 +25,6 @@ def _hardcoded_descriptors(keyword: str, max_results: int = 10) -> List[str]:
     base = (keyword or "").strip().lower()
     seen: List[str] = []
     if base:
-        seen.append(base)
         seen.append(f"{base}s")
     for suffix in _GENERIC_SUFFIXES:
         candidate = f"{base} {suffix}".strip() if base else suffix

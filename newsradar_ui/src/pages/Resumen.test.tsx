@@ -17,9 +17,18 @@ vi.mock("d3-cloud", () => ({
         return chain;
       },
       padding: () => chain,
-      rotate: () => chain,
-      font: () => chain,
-      fontSize: () => chain,
+      // Invocamos los callbacks de configuración para que las flechas
+      // pasadas en `Resumen.tsx` (.rotate(() => 0), .fontSize(d => d.size))
+      // queden cubiertas.
+      rotate: (fn: any) => {
+        if (typeof fn === "function" && _words[0]) fn(_words[0]);
+        return chain;
+      },
+      font: (_f: any) => chain,
+      fontSize: (fn: any) => {
+        if (typeof fn === "function" && _words[0]) fn(_words[0]);
+        return chain;
+      },
       on: (event: string, cb: (words: any[]) => void) => {
         if (event === "end") _endCb = cb;
         return chain;
@@ -167,6 +176,32 @@ describe("ResumenPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/No se pudo cargar los datos/i)).toBeInTheDocument();
     });
+  });
+
+  test("aplica el color claro a los descriptores menos frecuentes (rama ratio<=0.4)", async () => {
+    // Un descriptor de alta frecuencia (10 alertas) y otros con 1 sola
+    // ocurrencia → ratio = 1/10 = 0.1 → wordColor cae al branch `#334155`.
+    const dominant = Array.from({ length: 10 }, (_, i) => ({
+      id: i,
+      descriptors: ["dominante"],
+      categories: [],
+    }));
+    const rare = [
+      { id: 100, descriptors: ["raro"], categories: [] },
+      { id: 101, descriptors: ["minoritario"], categories: [] },
+    ];
+
+    jest.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [...dominant, ...rare],
+    } as Response);
+
+    render(<ResumenPage />);
+
+    const rareWord = await screen.findByText("RARO");
+    // Style inline aplicado por wordColor → color "#334155" (rgb(51, 65, 85))
+    const style = rareWord.getAttribute("style") ?? "";
+    expect(style).toMatch(/rgb\(51,\s*65,\s*85\)|#334155/);
   });
 
   test("no muestra la sección de categorías si no hay ninguna", async () => {

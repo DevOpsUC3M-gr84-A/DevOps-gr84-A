@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import cloud from "d3-cloud";
 import { useI18n } from "../i18n/i18n";
+import { filterPaddingDescriptors } from "../utils/descriptors";
 import "./Resumen.css";
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -63,7 +64,7 @@ const buildLayout = (words: WordData[], width: number, height: number): Promise<
 const buildWordFrequency = (alerts: Alert[]): WordData[] => {
   const freq: Record<string, number> = {};
   for (const alert of alerts) {
-    for (const descriptor of alert.descriptors ?? []) {
+    for (const descriptor of filterPaddingDescriptors(alert.descriptors ?? [])) {
       const key = descriptor.toUpperCase();
       freq[key] = (freq[key] ?? 0) + 1;
     }
@@ -80,7 +81,7 @@ const buildCategoryGroups = (alerts: Alert[]): CategoryData[] => {
     for (const cat of alert.categories ?? []) {
       const name = cat.label ?? cat.code ?? "Sin categoría";
       if (!map[name]) map[name] = new Set();
-      for (const d of alert.descriptors ?? []) map[name].add(d);
+      for (const d of filterPaddingDescriptors(alert.descriptors ?? [])) map[name].add(d);
     }
   }
   return Object.entries(map)
