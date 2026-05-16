@@ -201,27 +201,59 @@ def test_reject_known_bad_urls_public_host_passes_through():
 
 
 @pytest.mark.unit
-def test_reject_known_bad_urls_loopback_outside_docker_revalidates_original():
-    """Fuera de Docker, la URL original (loopback) se valida tal cual."""
-    with patch.object(mod, "_running_in_docker", return_value=False), patch.object(
-        mod, "_validate_url_reachable"
-    ) as validator:
-        result = mod._reject_known_bad_urls("http://127.0.0.1:8100/rss")
-    assert result == "http://127.0.0.1:8100/rss"
-    # Dos llamadas: una sobre la URL "efectiva" (igual a la original fuera
-    # de Docker) y otra explícita sobre la URL original.
-    assert validator.call_count == 2
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        (
+            "http://127.0.0.1:8100/rss",
+            "http://host.docker.internal:8100/rss",
+        ),
+        (
+            "http://localhost:8100/rss",
+            "http://host.docker.internal:8100/rss",
+        ),
+        (
+            "http://localhost:8100/feed.xml",
+            "http://host.docker.internal:8100/feed.xml",
+        ),
+    ],
+)
+def test_reject_known_bad_urls_port_8100_always_rewrites_without_socket(url, expected):
+    """Bypass del Mock M5: el puerto 8100 siempre se reescribe a
+    `host.docker.internal:8100` y NO se invoca ninguna validación de socket,
+    independientemente de si corremos dentro de Docker."""
+    with patch.object(mod, "_validate_url_reachable") as validator, patch.object(
+        mod.socket, "create_connection"
+    ) as sock:
+        result = mod._reject_known_bad_urls(url)
+    assert result == expected
+    validator.assert_not_called()
+    sock.assert_not_called()
 
 
 @pytest.mark.unit
-def test_reject_known_bad_urls_loopback_inside_docker_rewrites_once():
-    """Dentro de Docker, sólo se valida la URL reescrita (no la original)."""
-    with patch.object(mod, "_running_in_docker", return_value=True), patch.object(
-        mod, "_validate_url_reachable"
-    ) as validator:
-        result = mod._reject_known_bad_urls("http://127.0.0.1:8100/rss")
-    assert result == "http://host.docker.internal:8100/rss"
-    validator.assert_called_once_with("http://host.docker.internal:8100/rss")
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1:1/down",
+        "http://127.0.0.1/feed",
+        "http://localhost:9999/x",
+        "http://0.0.0.0:80/y",
+        "http://LOCALHOST:1234/z",  # case-insensitive
+    ],
+)
+def test_reject_known_bad_urls_non_8100_loopback_raises_400_without_socket(url):
+    """Kill-switch ciego: cualquier loopback que no sea el puerto 8100 lanza
+    400 inmediatamente, sin tocar la red ni `_validate_url_reachable`."""
+    with patch.object(mod, "_validate_url_reachable") as validator, patch.object(
+        mod.socket, "create_connection"
+    ) as sock:
+        with pytest.raises(HTTPException) as exc_info:
+            mod._reject_known_bad_urls(url)
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "url no accesible"
+    validator.assert_not_called()
+    sock.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

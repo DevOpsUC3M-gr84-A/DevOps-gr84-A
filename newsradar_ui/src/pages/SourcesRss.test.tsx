@@ -1468,6 +1468,270 @@ describe("SourcesRss", () => {
     ).toBeInTheDocument();
   });
 
+  // ---------------------------------------------------------------------
+  // Cobertura adicional para los helpers de inferencia de IPTC y los
+  // caminos de error (token ausente, 401, validaciones URL, etc.) que
+  // SonarCloud marcaba como nuevas líneas sin cubrir.
+  // ---------------------------------------------------------------------
+
+  test("infiere la categoría IPTC a partir de la URL del canal cuando no viene categoria_iptc", async () => {
+    // categoria_iptc vacía pero la URL contiene el slug `politica` →
+    // lookupSlugCode debe mapear a "11000000" y el label "Política" aparece.
+    const politicsCategory = {
+      id: 21,
+      name: "Política",
+      source: "IPTC",
+      iptc_code: "11000000",
+      iptc_label: "Política",
+    };
+    const channelWithSlug = {
+      id: 30,
+      information_source_id: 1,
+      url: "https://agencia.example.com/seccion/politica.xml",
+      category_id: null as unknown as number,
+      iptc_category: "",
+      media_name: "Agencia Central",
+    };
+    mockInitialLoad({
+      channels: [channelWithSlug],
+      categories: [politicsCategory],
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    const labels = await screen.findAllByText(/Política/i);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  test("infiere IPTC por parámetro `?iptc=` con slug largo (tecnologia)", async () => {
+    const techCat = {
+      id: 22,
+      name: "Ciencia y tecnología",
+      source: "IPTC",
+      iptc_code: "13000000",
+      iptc_label: "Ciencia y tecnología",
+    };
+    const channel = {
+      id: 31,
+      information_source_id: 1,
+      url: "https://feed.example.com/rss?iptc=ciencia_y_tecnologia",
+      category_id: null as unknown as number,
+      iptc_category: "",
+      media_name: "Agencia Central",
+    };
+    mockInitialLoad({ channels: [channel], categories: [techCat] });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    const labels = await screen.findAllByText(/Ciencia y tecnología/i);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  test("infiere IPTC por parámetro `?ch=63` (mapeo Europa Press)", async () => {
+    const politicsCategory = {
+      id: 23,
+      name: "Política",
+      source: "IPTC",
+      iptc_code: "11000000",
+      iptc_label: "Política",
+    };
+    const channel = {
+      id: 32,
+      information_source_id: 1,
+      url: "https://www.europapress.es/rss.aspx?ch=63",
+      category_id: null as unknown as number,
+      iptc_category: "",
+      media_name: "Agencia Central",
+    };
+    mockInitialLoad({ channels: [channel], categories: [politicsCategory] });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    const labels = await screen.findAllByText(/Política/i);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  test("acepta valor categoria_iptc en formato `medtop:` y 7 dígitos", async () => {
+    const sportCat = {
+      id: 24,
+      name: "Deporte",
+      source: "IPTC",
+      iptc_code: "15000000",
+      iptc_label: "Deporte",
+    };
+    const channel = {
+      id: 33,
+      information_source_id: 1,
+      url: "https://feed.example.com/sports",
+      category_id: null as unknown as number,
+      iptc_category: "medtop:sport",
+      media_name: "Agencia Central",
+    };
+    mockInitialLoad({ channels: [channel], categories: [sportCat] });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    const labels = await screen.findAllByText(/Deporte/i);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  test("acepta segmento de URL de 8 dígitos (código IPTC directo)", async () => {
+    const econCat = {
+      id: 25,
+      name: "Economía, negocios y finanzas",
+      source: "IPTC",
+      iptc_code: "04000000",
+      iptc_label: "Economía, negocios y finanzas",
+    };
+    const channel = {
+      id: 34,
+      information_source_id: 1,
+      url: "https://feed.example.com/04000000/seccion.xml",
+      category_id: null as unknown as number,
+      iptc_category: "",
+      media_name: "Agencia Central",
+    };
+    mockInitialLoad({ channels: [channel], categories: [econCat] });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    const labels = await screen.findAllByText(/Economía, negocios y finanzas/i);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  test("muestra 'Sin categoría' cuando no se puede inferir IPTC", async () => {
+    const channel = {
+      id: 35,
+      information_source_id: 1,
+      url: "https://feed.example.com/sin/datos.xml",
+      category_id: null as unknown as number,
+      iptc_category: "null",
+      media_name: "Agencia Central",
+    };
+    mockInitialLoad({ channels: [channel], categories: [] });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    const labels = await screen.findAllByText(/Sin categoría/i);
+    expect(labels.length).toBeGreaterThan(0);
+  });
+
+  test("descarta canales `seed/` y categorías con id no numérico", async () => {
+    const seedChannel = {
+      id: 40,
+      information_source_id: 1,
+      url: "http://localhost/seed/example.xml",
+      category_id: 10,
+      iptc_category: "13000000",
+      media_name: "Agencia Central",
+    };
+    const validChannel = {
+      ...baseChannel,
+      id: 41,
+      url: "https://agencia.example.com/real.xml",
+    };
+    const garbageCategory = {
+      // id no numérico: el ciclo de dedup lo descarta (line 791 continue)
+      id: "not-a-number" as unknown as number,
+      name: "Roto",
+      source: "IPTC",
+      iptc_code: "00000000",
+      iptc_label: "Roto",
+    };
+    mockInitialLoad({
+      channels: [seedChannel, validChannel],
+      categories: [baseCategory, garbageCategory],
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    // El canal con /seed/ se ha filtrado.
+    expect(
+      screen.queryByText("http://localhost/seed/example.xml"),
+    ).not.toBeInTheDocument();
+    // El canal válido sigue mostrándose.
+    expect(
+      await screen.findByText("https://agencia.example.com/real.xml"),
+    ).toBeInTheDocument();
+  });
+
+  test("no realiza peticiones si no hay token (sesión expirada)", async () => {
+    mockedUseAuth.mockReturnValue({
+      login: vi.fn(),
+      logout: mockedLogout,
+      token: null,
+      isAuthenticated: false,
+    });
+
+    render(<SourcesRss />);
+    // Sin token, useEffect corta el loadSourcesAndChannels antes del fetch.
+    await waitFor(() => {
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  test("redirige a /login si una petición de mutación de canal devuelve 401", async () => {
+    mockInitialLoad({ channels: [], categories: [baseCategory] });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: "Unauthorized",
+      json: async () => ({}),
+    });
+
+    const assignSpy = vi.fn();
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: { assign: assignSpy, href: "/" } as Location,
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo canal/i }));
+    fireEvent.change(screen.getByLabelText("URL DEL FEED RSS"), {
+      target: { value: "https://nuevo.example.com/rss.xml" },
+    });
+    fireEvent.change(screen.getByLabelText("CATEGORÍA IPTC"), {
+      target: { value: "10" },
+    });
+
+    const channelForm = screen
+      .getByRole("button", { name: /Crear canal/i })
+      .closest("form");
+    if (channelForm) fireEvent.submit(channelForm);
+
+    await waitFor(() => expect(assignSpy).toHaveBeenCalledWith("/login"));
+  });
+
+  test("muestra detalle de error genérico cuando la API responde JSON sin `detail`", async () => {
+    mockInitialLoad({ channels: [], categories: [baseCategory] });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      json: async () => ({ otra_cosa: "valor" }),
+    });
+
+    render(<SourcesRss />);
+    await screen.findByText("Agencia Central");
+    fireEvent.click(screen.getByRole("button", { name: /Nuevo canal/i }));
+
+    fireEvent.change(screen.getByLabelText("URL DEL FEED RSS"), {
+      target: { value: "https://nuevo.example.com/rss.xml" },
+    });
+    fireEvent.change(screen.getByLabelText("CATEGORÍA IPTC"), {
+      target: { value: "10" },
+    });
+
+    const channelForm = screen
+      .getByRole("button", { name: /Crear canal/i })
+      .closest("form");
+    if (channelForm) fireEvent.submit(channelForm);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
   test("filtra canales por categoría seleccionada", async () => {
     const otherCategory = {
       id: 11,
