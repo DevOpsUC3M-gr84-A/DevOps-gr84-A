@@ -349,9 +349,16 @@ export const AlertForm: React.FC<AlertFormProps> = ({
 
     const descriptoresArray = parseDescriptors(descriptors);
 
+    // Solo IDs numéricos enteros llegan al payload. Texto libre como nombres
+    // de medios ("ElPais", "BBC") se descarta aquí para evitar 422/400 en backend.
     const informationSourcesArray = informationSourcesIds
       .map((s) => s.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((s) => {
+        const numeric = Number(s);
+        return Number.isFinite(numeric) && Number.isInteger(numeric);
+      })
+      .map((s) => String(Number(s)));
 
     const formData = {
       name: name,
