@@ -40,30 +40,37 @@ def test_create_category_minimal(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_create_category_uses_explicit_id_when_name_is_not_iptc(api_client, auth_headers):
+    """Tras GC-008, un nombre que no pertenece al catálogo IPTC ya nunca crea
+    una categoría libre: la API devuelve 422 aunque se mande un id explícito."""
     payload = {
         "id": 1000000,
         "name": "Categoría personalizada",
         "source": "IPTC",
     }
     response = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
-    assert response.status_code == 201
+    assert response.status_code == 422
 
 
 @pytest.mark.unit
 def test_create_category_with_valid_iptc_code(api_client, auth_headers):
+    """GC-008: el name debe coincidir con la etiqueta IPTC del iptc_code enviado."""
+    from app.stores.memory import categories_store
+
     iptc_list = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()
-    valid_code = iptc_list[0]["code"]
+    target = iptc_list[0]
+    # Limpiamos el store para evitar el conflicto 409 con la seed autouse.
+    categories_store.pop(target["code"], None)
 
     payload = {
-        "name": "Deportes",
+        "name": target["label"],
         "source": "IPTC",
-        "iptc_code": valid_code,
-        "iptc_label": iptc_list[0]["label"],
+        "iptc_code": target["code"],
+        "iptc_label": target["label"],
     }
     response = api_client.post("/api/v1/categories", json=payload, headers=auth_headers)
     assert response.status_code == 201
-    assert response.json()["id"] == valid_code
-    assert response.json()["name"] == "Deportes"
+    assert response.json()["id"] == target["code"]
+    assert response.json()["name"] == target["label"]
 
 
 @pytest.mark.unit
@@ -86,10 +93,14 @@ def test_create_category_without_iptc_code(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_get_category_by_id(api_client, auth_headers):
-    cat_id = api_client.get("/api/v1/categories", headers=auth_headers).json()[0]["id"]
-    response = api_client.get(f"/api/v1/categories/{cat_id}", headers=auth_headers)
+    """El listado devuelve `id` como string padded (SMOKE-005); el GET-single
+    sigue normalizando a entero. El test convierte para comparar correctamente.
+    """
+    cat_id_raw = api_client.get("/api/v1/categories", headers=auth_headers).json()[0]["id"]
+    cat_id_int = int(cat_id_raw)
+    response = api_client.get(f"/api/v1/categories/{cat_id_int}", headers=auth_headers)
     assert response.status_code == 200
-    assert response.json()["id"] == cat_id
+    assert response.json()["id"] == cat_id_int
 
 
 @pytest.mark.unit
@@ -100,11 +111,18 @@ def test_get_category_not_found(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_update_category_name(api_client, auth_headers):
-    categories = api_client.get("/api/v1/categories", headers=auth_headers).json()
-    iptc_codes = {item["code"] for item in api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()}
-    cat_id = next((item["id"] for item in categories if item["id"] not in iptc_codes), categories[0]["id"])
-    valid_name = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()[0]["label"]
-    response = api_client.put(f"/api/v1/categories/{cat_id}", json={"name": valid_name}, headers=auth_headers)
+    """GC-008/GC-012: si se actualiza el name, hay que enviar también un source
+    coherente. Pasamos el iptc_label como name para que el catálogo lo acepte.
+    """
+    iptc_list = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()
+    target = iptc_list[0]
+    valid_name = target["label"]
+    cat_id_int = int(target["code"])
+    response = api_client.put(
+        f"/api/v1/categories/{cat_id_int}",
+        json={"name": valid_name, "source": "IPTC"},
+        headers=auth_headers,
+    )
     assert response.status_code == 200
     assert response.json()["name"] == valid_name
 
@@ -114,11 +132,14 @@ def test_update_category_valid_iptc_code(api_client, auth_headers):
     iptc_list = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()
     valid_code = iptc_list[1]["code"]
     categories = api_client.get("/api/v1/categories", headers=auth_headers).json()
-    iptc_codes = {item["code"] for item in iptc_list}
-    cat_id = next((item["id"] for item in categories if item["id"] not in iptc_codes), categories[0]["id"])
-    response = api_client.put(f"/api/v1/categories/{cat_id}", json={"iptc_code": valid_code}, headers=auth_headers)
+    cat_id_int = int(categories[0]["id"])
+    response = api_client.put(
+        f"/api/v1/categories/{cat_id_int}",
+        json={"iptc_code": valid_code},
+        headers=auth_headers,
+    )
     assert response.status_code == 200
-    assert response.json()["id"] == cat_id
+    assert response.json()["id"] == cat_id_int
 
 
 @pytest.mark.unit
@@ -132,7 +153,15 @@ def test_update_category_invalid_iptc_code(api_client, auth_headers):
 
 @pytest.mark.unit
 def test_update_category_not_found(api_client, auth_headers):
-    response = api_client.put("/api/v1/categories/99999", json={"name": "No existe"}, headers=auth_headers)
+    """Para un id inexistente, evitamos el bloque de validación name/source
+    (que devolvería 400) enviando solo iptc_code: debe responder 404.
+    """
+    iptc_list = api_client.get("/api/v1/iptc-categories", headers=auth_headers).json()
+    response = api_client.put(
+        "/api/v1/categories/99999",
+        json={"iptc_code": iptc_list[0]["code"]},
+        headers=auth_headers,
+    )
     assert response.status_code == 404
 
 
