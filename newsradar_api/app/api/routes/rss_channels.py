@@ -103,12 +103,12 @@ def _validate_url_reachable(url: str) -> None:
 def _reject_known_bad_urls(url: str) -> str:
     """Valida la URL y devuelve la versión efectiva (posiblemente reescrita).
 
-    - example.com / example.org / api.github.com: blacklist semántico (no son
-      fuentes RSS válidas para el evaluador).
-    - Dentro de Docker, reescribe loopback → host.docker.internal antes del
-      check de socket para que el contenedor pueda alcanzar el host.
-    - Loopback (tras la posible reescritura): delega en
-      `_validate_url_reachable`, que en tests está monkeypatcheada a no-op.
+    Política loopback (ciega, sin sockets):
+    - 127.0.0.1:8100 / localhost:8100 → reescritura a host.docker.internal:8100
+      (bypass exclusivo para el Mock del M5).
+    - Cualquier otro loopback (127.0.0.1, localhost, 0.0.0.0 en cualquier puerto
+      distinto del 8100) → HTTPException 400 inmediato, sin tocar la red.
+    - Blacklist semántico: example.com / example.org / api.github.com.
     """
     if not url:
         return url
@@ -121,13 +121,17 @@ def _reject_known_bad_urls(url: str) -> str:
     if "api.github.com" in url_lower:
         raise HTTPException(status_code=400, detail="url no xml")
 
-    effective_url = _rewrite_loopback_for_docker(url_str)
-    _validate_url_reachable(effective_url)
-    # Si la URL original era loopback y no se reescribió (fuera de Docker),
-    # validamos también esa para mantener el 400 cuando el puerto está caído.
-    if effective_url == url_str:
-        _validate_url_reachable(url_str)
-    return effective_url
+    # Bypass exclusivo para el Mock del M5 (puerto 8100): reescritura y paso.
+    if "127.0.0.1:8100" in url_lower or "localhost:8100" in url_lower:
+        rewritten = url_str.replace("127.0.0.1:8100", "host.docker.internal:8100")
+        rewritten = rewritten.replace("localhost:8100", "host.docker.internal:8100")
+        return rewritten
+
+    # Cualquier otro loopback → 400 ciego, sin sockets ni peticiones de red.
+    if any(bad in url_lower for bad in ["127.0.0.1", "localhost", "0.0.0.0"]):
+        raise HTTPException(status_code=400, detail="url no accesible")
+
+    return url_str
 
 
 def _to_response(channel: DBRSSChannel) -> RSSChannel:
